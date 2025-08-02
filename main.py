@@ -14,6 +14,7 @@ from iobrpy.workflow.estimate import estimate_score as estimate_score_main
 from iobrpy.workflow.mcpcounter import MCPcounter_estimate as MCPcounter_estimate_main
 from iobrpy.workflow.mcpcounter import preprocess_input as preprocess_input_main
 from iobrpy.workflow.quantiseq import main as quantiseq_main
+from iobrpy.workflow.epic import main as epic_main
 
 VERSION = "0.1.2"
 
@@ -153,6 +154,14 @@ def main():
     p9.add_argument('--rmgenes', default='unassigned',
                     help="Genes to remove: 'default', 'none', or comma-separated list")
 
+    # Step 10: epic
+    p10 = subparsers.add_parser('epic', help='Run EPIC deconvolution')
+    p10.add_argument('-i', '--input',  dest='input',  required=True,
+                    help='Path to the bulk expression matrix (genes×samples)')
+    p10.add_argument('-o', '--output', dest='output', required=True,
+                    help='Path to save EPIC cell fractions (CSV/TSV)')
+    p10.add_argument('--reference', choices=['TRef','BRef','both'], default='TRef',
+                    help='Which reference to use for deconvolution')
 
     args = parser.parse_args()
 
@@ -285,6 +294,17 @@ def main():
         ]
         quantiseq_main()
         _sys_argv = _sys_argv_orig
+    elif args.command == 'epic':
+        # 构造 sys.argv 并调用 epic.main()
+        _sys_argv_orig = _sys.argv[:]
+        _sys.argv = [
+            _sys.argv[0],
+            '-i',       args.input,
+            '--reference', args.reference,
+            '-o',       args.output
+        ]
+        epic_main()
+        _sys.argv = _sys_argv_orig
 
 if __name__ == "__main__":
     main()
