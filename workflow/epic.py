@@ -240,7 +240,7 @@ def main():
                    help="Use range-based optimization accounting for reference variance bounds")
     p.add_argument('--unlog', action='store_true', default=False,
                    help="Treat bulk input as log2(expr) values and convert back via 2**x (default ON)")
-    p.add_argument('--solver', choices=['SLSQP','trust-constr'], default='trust-constr',
+    p.add_argument('--solver', choices=['SLSQP','trust-constr'], default='SLSQP',
                    help="Optimization solver to use: 'SLSQP' or 'trust-constr'")
     p.add_argument('--jitter', type=float, default=0.0,
                    help="Relative jitter magnitude for initial proportion estimates (e.g. 1e-6)")
