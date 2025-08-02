@@ -10,3 +10,4 @@ from .estimate import estimate_score as estimate_score_main
 from .mcpcounter import MCPcounter_estimate as MCPcounter_estimate_main
 from .mcpcounter import preprocess_input as preprocess_input_main
 from .quantiseq import main as quantiseq_main
+from .epic import main as epic_main
