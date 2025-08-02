@@ -11,6 +11,8 @@ import numpy as np
 import pandas as pd
 from scipy.optimize import minimize
 from scipy.stats import pearsonr, spearmanr
+from tqdm import tqdm
+import importlib_resources as pkg_resources
 
 # --------------- DEFAULT mRNA PER CELL -----------------
 mRNA_cell_default = {
@@ -29,6 +31,19 @@ mRNA_cell_default = {
 }
 
 # --------------- INTERNAL UTILITIES -------------------
+def infer_sep(filepath: str) -> str:
+    ext = os.path.splitext(filepath)[1].lower()
+    if ext == '.csv':
+        return ','
+    if ext in ('.tsv', '.txt'):
+        return '\t'
+    return None
+
+def _showwarning(message, category, filename, lineno, file=None, line=None):
+    tqdm.write(warnings.formatwarning(message, category, filename, lineno))
+
+warnings.showwarning = _showwarning
+
 def merge_duplicates(mat: pd.DataFrame, in_type=None):
     dup = mat.index.duplicated()
     if dup.any():
@@ -49,7 +64,7 @@ def scale_counts(counts: pd.DataFrame,
                  sig_genes=None,
                  renorm_genes=None,
                  norm_fact=None):
-    print(f"DEBUG scale_counts ENTRY: counts.shape={counts.shape},"
+    print(f"Scale_counts ENTRY: counts.shape={counts.shape},"
           f" sig_genes={len(sig_genes) if sig_genes is not None else None},"
           f" renorm_genes={len(renorm_genes) if renorm_genes is not None else None}")
     counts = counts.loc[:, ~counts.columns.duplicated()]
@@ -59,14 +74,10 @@ def scale_counts(counts: pd.DataFrame,
         if renorm_genes is None:
             renorm_genes = counts.index.tolist()
         norm_fact = counts.loc[renorm_genes].sum(axis=0)
-        print(f"DEBUG scale_counts norm_fact (first 5): {norm_fact.iloc[:5].tolist()};"
-              f" zeros? {(norm_fact == 0).any()}, NaNs? {norm_fact.isna().any()}")
     sub = counts.loc[sig_genes]
-    print(f"DEBUG scale_counts sub.shape={sub.shape}")
-    print("DEBUG sub head:\n" + sub.iloc[:3, :3].to_string())
+    print(f"Scale_counts sub.shape={sub.shape}")
     scaled = sub.div(norm_fact, axis=1) * 1e6
-    print(f"DEBUG scale_counts scaled.shape={scaled.shape}")
-    print("DEBUG scaled head:\n" + scaled.iloc[:3, :3].to_string())
+    print(f"Scale_counts scaled.shape={scaled.shape}")
     return scaled, norm_fact
 
 
@@ -139,60 +150,62 @@ def EPIC(bulk: pd.DataFrame,
         return cons
     # 8) optimization per sample
     mprops, gof_list = [], []
-    for sample in bulk_s.columns:
-        b = bulk_s[sample].values
-        A = ref_s.values
-        # objective
-        if not range_based_optim:
-            fun = lambda x: np.nansum(w * (A.dot(x) - b)**2)
-        else:
-            def fun(x):
-                vmax = (A + refV_s.values).dot(x) - b
-                vmin = (A - refV_s.values).dot(x) - b
-                err = np.zeros_like(b)
-                mask = np.sign(vmax) * np.sign(vmin) == 1
-                err[mask] = np.minimum(np.abs(vmax[mask]), np.abs(vmin[mask]))
-                return np.sum(err)
-        # initial guess + jitter
-        base = (1 - 1e-5) / nC
-        if init_jitter > 0:
-            jitter = init_jitter * (np.random.rand(nC) - 0.5)
-            x0 = np.clip(base * (1 + jitter), 0, None)
-        else:
-            x0 = np.full(nC, base)
-        # solver choice
-        if solver == 'trust-constr':
-            res = minimize(fun, x0, method='trust-constr', constraints=make_constraints(),
-                           options={'gtol':1e-6, 'barrier_tol':1e-6})
-        else:
-            res = minimize(fun, x0, method='SLSQP', constraints=make_constraints())
-        x = res.x
-        if not with_other_cells and constrained_sum:
-            x = x / x.sum()
-        mprops.append(x)
-        # GOF metrics
-        b_est = A.dot(x)
-        sp = spearmanr(b, b_est)
-        pe = pearsonr(b, b_est)
-        try:
-            a, b0 = np.polyfit(b, b_est, 1)
-        except np.linalg.LinAlgError:
-            a, b0 = np.nan, np.nan
-        a0 = np.sum(b * b_est) / np.sum(b * b) if np.sum(b * b) else np.nan
-        rmse = np.sqrt(fun(x) / len(sig))
-        rmse0 = np.sqrt(fun(np.zeros_like(x)) / len(sig))
-        gof_list.append({
-            'convergeCode': res.status,
-            'convergeMessage': res.message,
-            'RMSE_weighted': rmse,
-            'Root_mean_squared_geneExpr_weighted': rmse0,
-            'spearmanR': sp.correlation, 'spearmanP': sp.pvalue,
-            'pearsonR': pe.statistic, 'pearsonP': pe.pvalue,
-            'regline_a_x': a,
-            'regline_b': b0,
-            'regline_a_x_through0': a0,
-            'sum_mRNAProportions': np.sum(x)
-        })
+    with tqdm(total=len(bulk_s.columns),desc="EPIC deconvolution",unit="sample",leave=False) as pbar:
+        for sample in bulk_s.columns:
+            pbar.update(1)
+            b = bulk_s[sample].values
+            A = ref_s.values
+            # objective
+            if not range_based_optim:
+                fun = lambda x: np.nansum(w * (A.dot(x) - b)**2)
+            else:
+                def fun(x):
+                    vmax = (A + refV_s.values).dot(x) - b
+                    vmin = (A - refV_s.values).dot(x) - b
+                    err = np.zeros_like(b)
+                    mask = np.sign(vmax) * np.sign(vmin) == 1
+                    err[mask] = np.minimum(np.abs(vmax[mask]), np.abs(vmin[mask]))
+                    return np.sum(err)
+            # initial guess + jitter
+            base = (1 - 1e-5) / nC
+            if init_jitter > 0:
+                jitter = init_jitter * (np.random.rand(nC) - 0.5)
+                x0 = np.clip(base * (1 + jitter), 0, None)
+            else:
+                x0 = np.full(nC, base)
+            # solver choice
+            if solver == 'trust-constr':
+                res = minimize(fun, x0, method='trust-constr', constraints=make_constraints(),
+                                options={'gtol':1e-6, 'barrier_tol':1e-6})
+            else:
+                 res = minimize(fun, x0, method='SLSQP', constraints=make_constraints())
+            x = res.x
+            if not with_other_cells and constrained_sum:
+                x = x / x.sum()
+            mprops.append(x)
+            # GOF metrics
+            b_est = A.dot(x)
+            sp = spearmanr(b, b_est)
+            pe = pearsonr(b, b_est)
+            try:
+                a, b0 = np.polyfit(b, b_est, 1)
+            except np.linalg.LinAlgError:
+                a, b0 = np.nan, np.nan
+            a0 = np.sum(b * b_est) / np.sum(b * b) if np.sum(b * b) else np.nan
+            rmse = np.sqrt(fun(x) / len(sig))
+            rmse0 = np.sqrt(fun(np.zeros_like(x)) / len(sig))
+            gof_list.append({
+                'convergeCode': res.status,
+                'convergeMessage': res.message,
+                'RMSE_weighted': rmse,
+                'Root_mean_squared_geneExpr_weighted': rmse0,
+                'spearmanR': sp.correlation, 'spearmanP': sp.pvalue,
+                'pearsonR': pe.statistic, 'pearsonP': pe.pvalue,
+                'regline_a_x': a,
+                'regline_b': b0,
+                'regline_a_x_through0': a0,
+                'sum_mRNAProportions': np.sum(x)
+            })
     cell_types = list(ref_s.columns)
     mRNA_df = pd.DataFrame(mprops, index=bulk_s.columns, columns=cell_types)
     if with_other_cells:
@@ -222,8 +235,6 @@ def main():
     p = argparse.ArgumentParser(description="EPIC: deconvolute bulk expression like R EPIC().")
     p.add_argument('-i', '--input', required=True,
                    help="Path to the bulk expression matrix CSV file (genes as rows, samples as columns)")
-    p.add_argument('--ref_pkl', required=True,
-                   help="Path to the reference pickle file containing 'refProfiles', optional 'refProfiles.var', and 'sigGenes'")
     p.add_argument('--reference', choices=['TRef','BRef','both'], default='TRef',
                    help="Reference dataset to use for deconvolution: TRef, BRef, or both")
     p.add_argument('--mRNA_cell_sub', default=None,
@@ -246,19 +257,21 @@ def main():
                    help="Relative jitter magnitude for initial proportion estimates (e.g. 1e-6)")
     p.add_argument('--seed', type=int, default=None,
                    help="Random seed for reproducible jitter initialization")
-    p.add_argument('-o', '--output', dest='outdir', default=None,
-                   help="Output directory where result CSV files will be written")
+    p.add_argument('-o', '--output', dest='out_file', required=True,
+                   help="Path to output file for cellFractions (csv/tsv/txt)")
     args = p.parse_args()
 
     if args.seed is not None:
         np.random.seed(args.seed)
 
-    bulk = pd.read_csv(args.input, sep=None, engine='python', index_col=0)
+    sep_in = infer_sep(args.input)
+    bulk = pd.read_csv(args.input, sep=sep_in, index_col=0)
     if args.unlog:
         print("DEBUG: applying unlog -> 2**(log2_expr) to bulk matrix")
         bulk = bulk.applymap(lambda x: 2**x)
 
-    with open(args.ref_pkl, 'rb') as f:
+    ref_pkg = pkg_resources.files('iobrpy').joinpath('resources', 'epic_TRef_BRef.pkl')
+    with ref_pkg.open('rb') as f:
         ref_data = pickle.load(f)
 
     def _to_df(raw, meta):
@@ -326,14 +339,10 @@ def main():
         init_jitter=args.jitter
     )
 
-    base = os.path.splitext(os.path.basename(args.input))[0]
-    out_prefix = os.path.join(args.outdir, base) if args.outdir else base
-    if args.outdir:
-        os.makedirs(os.path.dirname(out_prefix), exist_ok=True)
-    res['cellFractions'].to_csv(f"{out_prefix}_EPIC.csv")
-    res['mRNAProportions'].to_csv(f"{out_prefix}_mRNAProportions.csv")
-    res['fit_gof'].to_csv(f"{out_prefix}_fit_gof.csv")
-    print(f"Saved: {out_prefix}_EPIC.csv, {out_prefix}_mRNAProportions.csv, {out_prefix}_fit_gof.csv")
+    ext = os.path.splitext(args.out_file)[1].lower()
+    sep_out = ',' if ext == '.csv' else '\t'
+    res['cellFractions'].to_csv(args.out_file, sep=sep_out, index=True)
+    print(f"Saved cellFractions ➜ {args.out_file}")
 
 if __name__ == '__main__':
     main()
