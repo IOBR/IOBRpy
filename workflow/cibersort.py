@@ -162,6 +162,7 @@ if __name__ == "__main__":
 
     if result_df is not None:
         result_df.columns = [col + '_CIBERSORT' for col in result_df.columns]
+        result_df.index.name = 'ID'
         delim = ',' if args.output.lower().endswith('.csv') else '\t'
         result_df.to_csv(args.output, sep=delim)
         print(f"[Done] Output written to {args.output} ")
