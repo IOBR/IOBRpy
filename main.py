@@ -15,6 +15,7 @@ from iobrpy.workflow.mcpcounter import MCPcounter_estimate as MCPcounter_estimat
 from iobrpy.workflow.mcpcounter import preprocess_input as preprocess_input_main
 from iobrpy.workflow.quantiseq import main as quantiseq_main
 from iobrpy.workflow.epic import main as epic_main
+from iobrpy.workflow.deside import main as deside_main
 
 VERSION = "0.1.2"
 
@@ -163,6 +164,35 @@ def main():
     p10.add_argument('--reference', choices=['TRef','BRef','both'], default='TRef',
                     help='Which reference to use for deconvolution')
 
+    # Step 11: deside
+    p11 = subparsers.add_parser('deside', help='Run DeSide deconvolution')
+    p11.add_argument('-m', '--model_dir', required=True,
+                     help='Path to DeSide_model directory')
+    p11.add_argument('-i', '--input', required=True,
+                     help='Expression file (CSV/TSV) with rows=genes and columns=samples')
+    p11.add_argument('-o', '--output', required=True,
+                     help='Output CSV for predicted cell fractions')
+    p11.add_argument('--exp_type', choices=['TPM','log_space','linear'], default='TPM',
+                     help='Input format: TPM (log2 processed), log_space (log2 TPM+1), or linear (TPM/counts)')
+    p11.add_argument('--gmt', nargs='+', default=None,
+                     help='Optional GMT files for pathway masking')
+    p11.add_argument('--print_info', action='store_true',
+                     help='Show detailed logs during prediction')
+    p11.add_argument('--add_cell_type', action='store_true',
+                     help='Append predicted cell type labels')
+    p11.add_argument('--scaling_by_constant', action='store_true', default=True,
+                     help='Enable division-by-constant scaling')
+    p11.add_argument('--scaling_by_sample', action='store_true',
+                     help='Enable per-sample min–max scaling')
+    p11.add_argument('--one_minus_alpha', action='store_true',
+                     help='Use 1−α transformation for all cell types')
+    p11.add_argument('--method_adding_pathway', choices=['add_to_end','convert'], default='add_to_end',
+                     help='How to integrate pathway profiles: add_to_end or convert')
+    p11.add_argument('--transpose', action='store_true', default=True,
+                     help='Transpose input so that rows=samples and columns=genes')
+    p11.add_argument('-r', '--result_dir', default=None,
+                     help='Directory to save result plots')
+
     args = parser.parse_args()
 
     if args.command == 'prepare_salmon':
@@ -295,7 +325,6 @@ def main():
         quantiseq_main()
         _sys_argv = _sys_argv_orig
     elif args.command == 'epic':
-        # 构造 sys.argv 并调用 epic.main()
         _sys_argv_orig = _sys.argv[:]
         _sys.argv = [
             _sys.argv[0],
@@ -304,6 +333,26 @@ def main():
             '-o',       args.output
         ]
         epic_main()
+        _sys.argv = _sys_argv_orig
+    elif args.command == 'deside':
+        _sys_argv_orig = _sys.argv[:]
+        _sys.argv = [
+            _sys_argv_orig[0],
+            '--model_dir', args.model_dir,
+            '--input', args.input,
+            '--output', args.output,
+            '--exp_type', args.exp_type,
+            *(['--gmt'] + args.gmt if args.gmt else []),
+            *(['--print_info'] if args.print_info else []),
+            *(['--add_cell_type'] if args.add_cell_type else []),
+            *(['--scaling_by_constant'] if args.scaling_by_constant else []),
+            *(['--scaling_by_sample'] if args.scaling_by_sample else []),
+            *(['--one_minus_alpha'] if args.one_minus_alpha else []),
+            '--method_adding_pathway', args.method_adding_pathway,
+            *(['--transpose'] if args.transpose else []),
+            *(['--result_dir', args.result_dir] if args.result_dir else []),
+        ]
+        deside_main()
         _sys.argv = _sys_argv_orig
 
 if __name__ == "__main__":
