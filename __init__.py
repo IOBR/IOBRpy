@@ -10,3 +10,4 @@ from iobrpy.workflow.mcpcounter import MCPcounter_estimate as MCPcounter_estimat
 from iobrpy.workflow.mcpcounter import preprocess_input as preprocess_input_main
 from iobrpy.workflow.quantiseq import main as quantiseq_main
 from iobrpy.workflow.epic import main as epic_main
+from iobrpy.workflow.deside import main as deside_main
