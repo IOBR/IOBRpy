@@ -11,3 +11,4 @@ from .mcpcounter import MCPcounter_estimate as MCPcounter_estimate_main
 from .mcpcounter import preprocess_input as preprocess_input_main
 from .quantiseq import main as quantiseq_main
 from .epic import main as epic_main
+from .deside import main as deside_main
