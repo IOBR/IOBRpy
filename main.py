@@ -278,6 +278,7 @@ def main():
             n_jobs=args.threads
         )
         result_df.columns = [col + '_CIBERSORT' for col in result_df.columns]
+        result_df.index.name = 'ID'
         delim = ',' if args.output_path.lower().endswith('.csv') else '\t'
         result_df.to_csv(args.output_path, sep=delim, index=True)
         print(f"CIBERSORT results saved to {args.output_path}")
