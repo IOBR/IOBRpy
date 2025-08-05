@@ -11,3 +11,4 @@ from iobrpy.workflow.mcpcounter import preprocess_input as preprocess_input_main
 from iobrpy.workflow.quantiseq import main as quantiseq_main
 from iobrpy.workflow.epic import main as epic_main
 from iobrpy.workflow.deside import main as deside_main
+from iobrpy.workflow.tme_cluster import main as tme_cluster_main
