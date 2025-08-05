@@ -12,3 +12,4 @@ from .mcpcounter import preprocess_input as preprocess_input_main
 from .quantiseq import main as quantiseq_main
 from .epic import main as epic_main
 from .deside import main as deside_main
+from .tme_cluster import main as tme_cluster_main
