@@ -16,6 +16,7 @@ from iobrpy.workflow.mcpcounter import preprocess_input as preprocess_input_main
 from iobrpy.workflow.quantiseq import main as quantiseq_main
 from iobrpy.workflow.epic import main as epic_main
 from iobrpy.workflow.deside import main as deside_main
+from iobrpy.workflow.tme_cluster import main as tme_cluster_main
 
 VERSION = "0.1.2"
 
@@ -193,6 +194,37 @@ def main():
     p11.add_argument('-r', '--result_dir', default=None,
                      help='Directory to save result plots')
 
+    # Step 12: tme_cluster
+    p12 = subparsers.add_parser('tme_cluster', help='Run TME clustering')
+    p12.add_argument('--input', required=True,
+                     help='Path to input file (CSV/TSV/TXT)')
+    p12.add_argument('--output', required=True,
+                     help='Path to save clustering results (CSV/TSV/TXT)')
+    p12.add_argument('--features', default=None,
+                     help="Feature columns to use, e.g. '1:22' if use cibersort(excluding the sample column)")
+    p12.add_argument('--pattern', default=None,
+                     help='Regex to select feature columns by name')
+    p12.add_argument('--id', default=None,
+                     help='Column name for sample IDs (default: first column)')
+    p12.add_argument('--scale', action='store_true', dest='scale', default=True,
+                     help='Enable z-score scaling (default: True)')
+    p12.add_argument('--no-scale', action='store_false', dest='scale',
+                     help='Disable z-score scaling')
+    p12.add_argument('--min_nc', type=int, default=2,
+                     help='Minimum number of clusters')
+    p12.add_argument('--max_nc', type=int, default=6,
+                     help='Maximum number of clusters')
+    p12.add_argument('--max_iter', type=int, default=10,
+                     help='Maximum number of iterations for the k-means algorithm')
+    p12.add_argument('--tol', type=float, default=1e-4,
+                     help='Convergence tolerance for cluster center updates')
+    p12.add_argument('--print_result', action='store_true', default=False,
+                     help='Print intermediate KL scores and cluster counts')
+    p12.add_argument('--input_sep', default=None,
+                     help='Field separator for input (auto-detect if not set)')
+    p12.add_argument('--output_sep', default=None,
+                     help='Field separator for output (auto-detect if not set)')
+
     args = parser.parse_args()
 
     if args.command == 'prepare_salmon':
@@ -354,6 +386,28 @@ def main():
             *(['--result_dir', args.result_dir] if args.result_dir else []),
         ]
         deside_main()
+        _sys.argv = _sys_argv_orig
+    elif args.command == 'tme_cluster':
+        _sys_argv_orig = _sys.argv[:]
+        # build args list for tme_cluster_main
+        cli = [_sys_argv_orig[0]]
+        cli += ['--input', args.input]
+        cli += ['--output', args.output]
+        if args.features: cli += ['--features', args.features]
+        if args.pattern:  cli += ['--pattern', args.pattern]
+        if args.id:       cli += ['--id', args.id]
+        if args.scale:    cli += ['--scale']
+        else:             cli += ['--no-scale']
+        cli += ['--min_nc', str(args.min_nc)]
+        cli += ['--max_nc', str(args.max_nc)]
+        cli += ['--max_iter', str(args.max_iter)]
+        cli += ['--tol', str(args.tol)]
+        if args.print_result: cli += ['--print_result']
+        if args.input_sep:  cli += ['--input_sep', args.input_sep]
+        if args.output_sep: cli += ['--output_sep', args.output_sep]
+
+        _sys.argv = cli
+        tme_cluster_main()
         _sys.argv = _sys_argv_orig
 
 if __name__ == "__main__":
