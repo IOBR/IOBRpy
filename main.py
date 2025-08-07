@@ -219,7 +219,7 @@ def main():
                      help='Maximum number of iterations for the k-means algorithm')
     p12.add_argument('--tol', type=float, default=1e-4,
                      help='Convergence tolerance for cluster center updates')
-    p12.add_argument('--print_result', action='store_true', default=False,
+    p12.add_argument('--print_result', action='store_true', default=True,
                      help='Print intermediate KL scores and cluster counts')
     p12.add_argument('--input_sep', default=None,
                      help='Field separator for input (auto-detect if not set)')
