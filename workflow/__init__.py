@@ -13,3 +13,4 @@ from .quantiseq import main as quantiseq_main
 from .epic import main as epic_main
 from .deside import main as deside_main
 from .tme_cluster import main as tme_cluster_main
+from .LR_cal import main as LR_cal_main
