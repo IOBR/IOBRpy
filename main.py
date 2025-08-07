@@ -17,6 +17,7 @@ from iobrpy.workflow.quantiseq import main as quantiseq_main
 from iobrpy.workflow.epic import main as epic_main
 from iobrpy.workflow.deside import main as deside_main
 from iobrpy.workflow.tme_cluster import main as tme_cluster_main
+from iobrpy.workflow.LR_cal import main as LR_cal_main
 
 VERSION = "0.1.2"
 
@@ -224,6 +225,16 @@ def main():
                      help='Field separator for input (auto-detect if not set)')
     p12.add_argument('--output_sep', default=None,
                      help='Field separator for output (auto-detect if not set)')
+    
+    # Step 13: LR_cal
+    p13 = subparsers.add_parser('LR_cal', help='Compute ligand-receptor interactions')
+    p13.add_argument('--input', required=True, help='Path to input expression matrix (genes x samples)')
+    p13.add_argument('--output', required=True, help='Path to save LR scores')
+    p13.add_argument('--data_type', choices=['count','tpm'], default='tpm',
+                     help='Type of input data: count or tpm')
+    p13.add_argument('--id_type', default='ensembl', help='Gene ID type')
+    p13.add_argument('--cancer_type', default='pancan', help='Cancer type network')
+    p13.add_argument('--verbose', action='store_true', help='Enable verbose output')
 
     args = parser.parse_args()
 
@@ -408,6 +419,15 @@ def main():
 
         _sys.argv = cli
         tme_cluster_main()
+        _sys.argv = _sys_argv_orig
+    elif args.command == 'LR_cal':
+        _sys_argv_orig = _sys.argv[:]
+        _sys.argv = [_sys_argv_orig[0], '--input', args.input,
+                     '--output', args.output,
+                     '--data_type', args.data_type,
+                     '--id_type', args.id_type,
+                     '--cancer_type', args.cancer_type] + (['--verbose'] if args.verbose else [])
+        LR_cal_main()
         _sys.argv = _sys_argv_orig
 
 if __name__ == "__main__":
