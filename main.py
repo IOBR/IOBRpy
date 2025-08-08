@@ -18,6 +18,7 @@ from iobrpy.workflow.epic import main as epic_main
 from iobrpy.workflow.deside import main as deside_main
 from iobrpy.workflow.tme_cluster import main as tme_cluster_main
 from iobrpy.workflow.LR_cal import main as LR_cal_main
+from iobrpy.workflow.nmf import main as nmf_main
 
 VERSION = "0.1.2"
 
@@ -236,6 +237,19 @@ def main():
     p13.add_argument('--cancer_type', default='pancan', help='Cancer type network')
     p13.add_argument('--verbose', action='store_true', help='Enable verbose output')
 
+        # Step 14: nmf
+    p14 = subparsers.add_parser('nmf', help='Run NMF-based clustering (uses nmf.py logic)')
+    p14.add_argument('-i', '--input', required=True, help='Input matrix file (CSV or TSV). First column should be sample names (index).')
+    p14.add_argument('-o', '--output', required=True, help='Output directory where results will be saved.')
+    p14.add_argument('--kmin', type=int, default=2, help='Minimum k (inclusive). Default: 2')
+    p14.add_argument('--kmax', type=int, default=8, help='Maximum k (inclusive). Default: 8')
+    p14.add_argument('--features', type=str, default=None, help="Columns (cell types) to use, e.g. '2-10' or '1:5'. 1-based inclusive.")
+    p14.add_argument('--log1p', action='store_true', help='Apply log1p transform to the input (useful for counts).')
+    p14.add_argument('--normalize', action='store_true', help='Apply L1 row normalization (each sample sums to 1).')
+    p14.add_argument('--shift', type=float, default=None, help='If input contains negatives, add a constant shift to make values non-negative.')
+    p14.add_argument('--random-state', type=int, default=42, help='Random state passed to NMF')
+    p14.add_argument('--max-iter', type=int, default=1000, help='Maximum iterations for NMF (default: 1000)')
+
     args = parser.parse_args()
 
     if args.command == 'prepare_salmon':
@@ -428,6 +442,24 @@ def main():
                      '--id_type', args.id_type,
                      '--cancer_type', args.cancer_type] + (['--verbose'] if args.verbose else [])
         LR_cal_main()
+        _sys.argv = _sys_argv_orig
+    elif args.command == 'nmf':
+        _sys_argv_orig = _sys.argv[:]
+        # build argv for the nmf CLI (it uses its own argparse inside nmf.main)
+        cli = [_sys_argv_orig[0]]
+        cli += ['--input', args.input]
+        cli += ['--output', args.output]
+        cli += ['--kmin', str(args.kmin)]
+        cli += ['--kmax', str(args.kmax)]
+        if args.features: cli += ['--features', args.features]
+        if args.log1p: cli += ['--log1p']
+        if args.normalize: cli += ['--normalize']
+        if args.shift is not None: cli += ['--shift', str(args.shift)]
+        cli += ['--random-state', str(args.random_state)]
+        cli += ['--max-iter', str(args.max_iter)]
+
+        _sys.argv = cli
+        nmf_main()
         _sys.argv = _sys_argv_orig
 
 if __name__ == "__main__":
