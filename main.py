@@ -6,7 +6,7 @@ from pathlib import Path
 import sys as _sys
 from iobrpy.workflow.prepare_salmon import prepare_salmon_tpm as prepare_salmon_tpm_main
 from iobrpy.workflow.count2tpm import count2tpm as count2tpm_main
-from iobrpy.workflow.anno_eset import anno_eset as anno_eset_main
+from iobrpy.workflow.anno_eset import main as anno_eset_main
 from iobrpy.workflow.calculate_sig_score import calculate_sig_score as calculate_sig_score_main
 from iobrpy.workflow.cibersort import cibersort as cibersort_main
 from iobrpy.workflow.IPS import main as IPS_main
@@ -69,11 +69,15 @@ def main():
     p3.add_argument('-o', '--output', dest='output_path', required=True,
                     help='Path to save annotated expression set')
     p3.add_argument('--annotation', required=True,
-                    choices=['anno_hug133plus2','anno_rnaseq','anno_illumina'],
-                    help='Annotation key to use')
+                    choices=['anno_hug133plus2','anno_rnaseq','anno_illumina','anno_grch38'],
+                    help='Annotation key to use (ignored if --annotation-file is provided)')
+    p3.add_argument('--annotation-file', default=None,
+                    help='Path to external annotation file (pkl/csv/tsv/xlsx). Overrides built-in annotation if provided.')
+    p3.add_argument('--annotation-key', default=None,
+                    help='If external pkl contains multiple dataframes (a dict), select which key to use.')
     p3.add_argument('--symbol', default='symbol',
                     help='Annotation symbol column')
-    p3.add_argument('--probe', default='probe_id',
+    p3.add_argument('--probe', default='id',
                     help='Annotation probe column')
     p3.add_argument('--method', default='mean', choices=['mean','sd','sum'],
                     help='Dup handling method')
@@ -285,22 +289,24 @@ def main():
         print(f"Saved TPM matrix to {args.output_path}")
 
     elif args.command == 'anno_eset':
-        eset_df = pd.read_csv(
-            args.input_path,
-            sep=None,
-            engine='python',
-            index_col=0
-        )
-        result_df = anno_eset_main(
-            eset_df=eset_df,
-            annotation=args.annotation,
-            symbol=args.symbol,
-            probe=args.probe,
-            method=args.method
-        )
-        result_df.index.name = ''
-        result_df.to_csv(args.output_path, index_label='')
-        print(f"Annotated expression set saved to {args.output_path}")
+        _sys_argv_orig = _sys.argv[:]
+        # build argv for anno_eset_main, include annotation-file/key if provided
+        cli = [_sys_argv_orig[0],
+               '--input', args.input_path,
+               '--output', args.output_path,
+               '--annotation', args.annotation,
+               '--symbol', args.symbol,
+               '--probe', args.probe,
+               '--method', args.method]
+        if args.annotation_file:
+            cli += ['--annotation-file', args.annotation_file]
+        if args.annotation_key:
+            cli += ['--annotation-key', args.annotation_key]
+
+        _sys.argv = cli
+        # call the CLI-style main so its argparse + tqdm run normally
+        anno_eset_main()
+        _sys.argv = _sys_argv_orig
 
     elif args.command == 'calculate_sig_score':
         ext = Path(args.input_path).suffix.lower()
