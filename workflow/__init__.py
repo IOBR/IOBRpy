@@ -2,7 +2,7 @@
 
 from .prepare_salmon import prepare_salmon_tpm as prepare_salmon_tpm_main
 from .count2tpm import count2tpm as count2tpm_main
-from .anno_eset import anno_eset as anno_eset_main
+from .anno_eset import main as anno_eset_main
 from .calculate_sig_score import calculate_sig_score as calculate_sig_score_main
 from .cibersort import cibersort as cibersort_main
 from .IPS import main as IPS_main
