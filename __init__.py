@@ -1,7 +1,7 @@
 # 导入 workflow 下每个步骤的 main 函数
 from iobrpy.workflow.prepare_salmon import prepare_salmon_tpm as prepare_salmon_tpm_main
 from iobrpy.workflow.count2tpm import count2tpm as count2tpm_main
-from iobrpy.workflow.anno_eset import anno_eset as anno_eset_main
+from iobrpy.workflow.anno_eset import main as anno_eset_main
 from iobrpy.workflow.calculate_sig_score import calculate_sig_score as calculate_sig_score_main
 from iobrpy.workflow.cibersort import cibersort as cibersort_main
 from iobrpy.workflow.IPS import main as IPS_main
