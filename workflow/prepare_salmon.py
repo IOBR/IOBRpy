@@ -1,6 +1,11 @@
 import argparse
 import pandas as pd
 import os
+try:
+    from tqdm.auto import tqdm
+except Exception:
+    def tqdm(iterable, **kwargs):
+        return iterable
 
 def print_colorful_message(message, color):
     try:
@@ -34,12 +39,30 @@ def remove_duplicate_genes(eset: pd.DataFrame, column_of_symbol: str = 'Name') -
     Returns:
         pd.DataFrame: Deduplicated matrix with averaged values.
     """
-    non_numeric = eset.select_dtypes(exclude=['number']).columns
-    numeric_means = eset.groupby(column_of_symbol).mean(numeric_only=True).reset_index()
-    for col in non_numeric:
-        if col != column_of_symbol:
-            first_vals = eset.groupby(column_of_symbol)[col].first().reset_index()
-            numeric_means = numeric_means.merge(first_vals, on=column_of_symbol)
+    # group once
+    group = eset.groupby(column_of_symbol)
+
+    # numeric columns: compute group mean per column with progress
+    numeric_cols = eset.select_dtypes(include=['number']).columns.tolist()
+    if numeric_cols:
+        numeric_dict = {}
+        for col in tqdm(numeric_cols, desc="Aggregating numeric columns", unit="col"):
+            # group[col].mean() returns a Series indexed by group keys
+            numeric_dict[col] = group[col].mean()
+        numeric_means = pd.DataFrame(numeric_dict)
+        numeric_means.index.name = column_of_symbol
+        numeric_means = numeric_means.reset_index()
+    else:
+        # no numeric columns: create a base frame with group keys so merges later work
+        numeric_means = pd.DataFrame({column_of_symbol: list(group.groups.keys())})
+
+    # non-numeric columns: merge first non-null value per group (show progress)
+    non_numeric = [c for c in eset.select_dtypes(exclude=['number']).columns if c != column_of_symbol]
+    if non_numeric:
+        for col in tqdm(non_numeric, desc="Merging non-numeric columns", unit="col"):
+            first_vals = group[col].first().reset_index()
+            numeric_means = numeric_means.merge(first_vals, on=column_of_symbol, how='left')
+
     return numeric_means
 
 def prepare_salmon_tpm(eset_path: str,
@@ -55,17 +78,6 @@ def prepare_salmon_tpm(eset_path: str,
         return_feature (str): Gene identifier to return (symbol, ENST, ENSG).
         remove_version (bool): Whether to remove version suffix from IDs.
     """
-
-    print("   ")
-    print_colorful_message("#########################################################", "blue")
-    print_colorful_message(" TPM Matrix Preparation from Salmon Output ", "cyan")
-    print_colorful_message(" If you encounter issues, report at: ", "cyan")
-    print_colorful_message(" https://github.com/YourLab/YourTool/issues ", "cyan")
-    print_colorful_message("#########################################################", "blue")
-    print(" Author: Your Name ")
-    print(" Email: your.email@example.com ")
-    print_colorful_message("#########################################################", "blue")
-    print("   ")
 
     try:
         print(f">>> Loading file: {eset_path}")
@@ -93,6 +105,7 @@ def prepare_salmon_tpm(eset_path: str,
             df['Name'] = df['Name'].str.split('.').str[0]
 
         print(">>> Removing duplicate genes by averaging expression values")
+        print(">>> Deduplicating (progress will be shown for non-numeric columns)...")
         df = remove_duplicate_genes(df, column_of_symbol='Name')
 
         expr_cols = df.select_dtypes(include=['number']).columns
@@ -100,10 +113,10 @@ def prepare_salmon_tpm(eset_path: str,
 
         print(f">>> Saving to {output_matrix}")
         df.to_csv(output_matrix, index=False)
-        print_colorful_message(">>> ✅ Done!", "green")
+        print_colorful_message("Done!", "green")
 
     except Exception as e:
-        print_colorful_message(f"❌ Error occurred: {e}", "red")
+        print_colorful_message(f"Error occurred: {e}", "red")
 
 
 def main():
