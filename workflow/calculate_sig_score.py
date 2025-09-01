@@ -29,6 +29,44 @@ signature_score_calculation_methods = {
 # Debug flag
 default_debug = False
 
+def _merge_signature_groups(all_sigs, signature_names):
+    """
+    Merge multiple top-level signature GROUP dicts (name->genes) into one dict.
+    - signature_names: list of group names, may contain comma-separated tokens
+    - supports special token 'all' (case-insensitive) to use all dict-valued groups
+    - if a signature name collides with different gene sets, rename to '<name>__<group>'
+    """
+    expanded = []
+    for tok in signature_names:
+        expanded.extend([t.strip() for t in str(tok).split(',') if t.strip()])
+
+    if any(t.lower() == 'all' for t in expanded):
+        selected_groups = [k for k, v in all_sigs.items() if isinstance(v, dict)]
+    else:
+        selected_groups = expanded
+
+    if default_debug:
+        print(f"DEBUG: Selected groups -> {selected_groups}")
+
+    combined = {}
+    for grp in selected_groups:
+        sig_dict = all_sigs.get(grp)
+        if not isinstance(sig_dict, dict):
+            raise KeyError(f"Signature group '{grp}' must map to dict(name->genes) in the pickle.")
+        for sig_name, genes in sig_dict.items():
+            if sig_name in combined:
+                if set(combined[sig_name]) == set(genes):
+                    continue
+                new_name = f"{sig_name}__{grp}"
+                if default_debug:
+                    print(f"DEBUG: name collision on '{sig_name}', renamed to '{new_name}'")
+                combined[new_name] = list(genes)
+            else:
+                combined[sig_name] = list(genes)
+    if default_debug:
+        print(f"DEBUG: Combined signatures: {len(combined)}")
+    return combined
+
 def load_signatures(pkl_path):
     """Load signature collections from a pickle file."""
     return pd.read_pickle(pkl_path)
@@ -197,13 +235,13 @@ def sig_score_integration(eset, sig_dict, mini_gene_count, adjust_eset, parallel
 
     return pd.concat([p, z, s], axis=1).reset_index()
 
-def calculate_sig_score(eset, signature_name, method, mini_gene_count, adjust_eset, parallel_size):
+def calculate_sig_score(eset, signature_names, method, mini_gene_count, adjust_eset, parallel_size):
     resource_pkg = 'iobrpy.resources'
     resource_path = pkg_resources.files(resource_pkg).joinpath('calculate_data.pkl')
     all_sigs = pd.read_pickle(resource_path)
-    sig_dict = all_sigs.get(signature_name)
-    if not isinstance(sig_dict, dict):
-        raise KeyError(f"Signature '{signature_name}' must map to dict(name->genes)")
+    sig_dict = _merge_signature_groups(all_sigs, signature_names)
+    if not isinstance(sig_dict, dict) or len(sig_dict) == 0:
+        raise KeyError(f"No valid signatures found from groups: {signature_names}")
     m = method.lower()
     if m == 'pca': return sig_score_pca(eset, sig_dict, mini_gene_count, adjust_eset)
     if m == 'zscore': return sig_score_zscore(eset, sig_dict, mini_gene_count, adjust_eset)
@@ -222,7 +260,13 @@ def main():
     p.add_argument(
         '--signature',
         required=True,
-        help='Name of the signature within the pickle to use for scoring,including go_bp,go_cc,go_mf,signature_collection,signature_tme,signature_sc,signature_tumor,signature_metabolism,kegg,hallmark,reactome'
+        nargs='+',
+        help=('One or more signature GROUP names to use. '
+              'Examples: signature_collection signature_tme  (space-separated), '
+              'or signature_collection,signature_tme (comma-separated). '
+              'Supported groups include: go_bp, go_cc, go_mf, '
+              'signature_collection, signature_tme, signature_sc, signature_tumor, '
+              'signature_metabolism, kegg, hallmark, reactome, or "all" to use all groups.')
     )
     p.add_argument(
         '--method',
@@ -261,6 +305,7 @@ def main():
     args = p.parse_args()
 
     if args.debug:
+        global default_debug
         default_debug = True
         print("DEBUG args:", vars(args))
 
