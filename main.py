@@ -88,8 +88,17 @@ def main():
                     help='Path to input expression matrix')
     p4.add_argument('-o', '--output', dest='output_path', required=True,
                     help='Path to save signature scores')
-    p4.add_argument('--signature', required=True,
-                    help='Signature name to use for scoring')
+    p4.add_argument(
+        '--signature',
+        required=True,
+        nargs='+',
+        help=('One or more signature GROUP names to use. '
+              'Examples: signature_collection signature_tme  (space-separated), '
+              'or signature_collection,signature_tme (comma-separated). '
+              'Supported groups include: go_bp, go_cc, go_mf, '
+              'signature_collection, signature_tme, signature_sc, signature_tumor, '
+              'signature_metabolism, kegg, hallmark, reactome, or "all" to use all groups.')
+    )
     p4.add_argument('--method', dest='score_method', choices=['pca','zscore','ssgsea','integration'], default='pca',
                     help='Scoring method to apply')
     p4.add_argument('--mini_gene_count', type=int, default=3,
