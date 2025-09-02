@@ -9,9 +9,9 @@ from tqdm import tqdm
 
 def parse_args():
     p = argparse.ArgumentParser(description="TME clustering with Hartigan-Wong kmeans and KL index matching R NbClust")
-    p.add_argument('--input',    required=True,
+    p.add_argument('-i', '--input',    required=True,
                    help="Input file path (CSV/TSV/TXT)")
-    p.add_argument('--output',   required=True,
+    p.add_argument('-o', '--output',   required=True,
                    help="Output file path (CSV/TSV/TXT)")
     p.add_argument('--features', default=None,
                    help="Feature columns to use, e.g. '2:23' (1-based)")
