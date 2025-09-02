@@ -30,7 +30,7 @@ def parse_args():
                         help='Show detailed logs during prediction')
     parser.add_argument('--add_cell_type', action='store_true',
                         help='Append predicted cell type labels (classification mode)')
-    parser.add_argument('--scaling_by_constant', action='store_true',default = True,
+    parser.add_argument('--scaling_by_constant', action='store_true',
                         help='Enable division-by-constant scaling (default True in CLI)')
     parser.add_argument('--scaling_by_sample', action='store_true',
                         help='Enable per-sample min–max scaling (default off in CLI)')
@@ -40,7 +40,7 @@ def parse_args():
                         choices=['add_to_end','convert'],
                         default='add_to_end',
                         help='How to integrate pathway profiles: add_to_end or convert')
-    parser.add_argument('--transpose', action='store_true',default = True,
+    parser.add_argument('--transpose', action='store_true',
                         help='Transpose input so that rows=samples and columns=genes')
     parser.add_argument('-r','--result_dir', default=None,
                         help='Directory to save result plots')
