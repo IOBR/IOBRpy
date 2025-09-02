@@ -196,7 +196,7 @@ def main():
                      help='Show detailed logs during prediction')
     p11.add_argument('--add_cell_type', action='store_true',
                      help='Append predicted cell type labels')
-    p11.add_argument('--scaling_by_constant', action='store_true', default=True,
+    p11.add_argument('--scaling_by_constant', action='store_true',
                      help='Enable division-by-constant scaling')
     p11.add_argument('--scaling_by_sample', action='store_true',
                      help='Enable per-sample min–max scaling')
@@ -204,7 +204,7 @@ def main():
                      help='Use 1−α transformation for all cell types')
     p11.add_argument('--method_adding_pathway', choices=['add_to_end','convert'], default='add_to_end',
                      help='How to integrate pathway profiles: add_to_end or convert')
-    p11.add_argument('--transpose', action='store_true', default=True,
+    p11.add_argument('--transpose', action='store_true',
                      help='Transpose input so that rows=samples and columns=genes')
     p11.add_argument('-r', '--result_dir', default=None,
                      help='Directory to save result plots')
