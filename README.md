@@ -1,161 +1,204 @@
-# ITMfinder: Intratumoral Microbiome Finder Tool
+# iobrpy
 
-ITMfinder is a Python software tool designed for identifying and analyzing intratumoral microbiomes. It processes FASTQ data through multiple steps, including quality control, host gene removal, taxonomic analysis, and integration of results, enabling researchers to gain insights into the tumor microenvironment.
+A Python **command‑line toolkit** for bulk RNA‑seq analysis of the tumor microenvironment (TME): data prep → signature scoring → immune deconvolution → clustering → ligand–receptor scoring.
+
+---
 
 ## Features
-- Quality control of input FASTQ data using `fastp`
-- Host gene removal using `Bowtie2`
-- Taxonomic analysis using `Kraken2`, with abundance estimation using `Bracken`
-- Integration of results and diversity analysis
+
+**Data preparation**
+- `prepare_salmon` — Clean up Salmon outputs into a TPM matrix; strip version suffixes; keep `symbol`/`ENSG`/`ENST` identifiers.
+- `count2tpm` — Convert read counts to TPM (supports Ensembl/Entrez/Symbol/MGI; biomart/local annotation; effective length CSV).
+- `anno_eset` — Harmonize/annotate an expression matrix (choose symbol/probe columns; deduplicate; aggregation method).
+
+**Pathway / signature scoring**
+- `calculate_sig_score` — Sample‑level signature scores via `pca`, `zscore`, `ssgsea`, or `integration`. 
+  Supports the following signature **groups** (space‑ or comma‑separated), or `all` to merge them:
+  - `go_bp`, `go_cc`, `go_mf`
+  - `signature_collection`, `signature_tme`, `signature_sc`, `signature_tumor`, `signature_metabolism`
+  - `kegg`, `hallmark`, `reactome`
+
+**Immune deconvolution and scoring**
+- `cibersort` — CIBERSORT wrapper/implementation with permutations, quantile normalization, absolute mode.
+- `quantiseq` — quanTIseq deconvolution with `lsei` or robust norms (`hampel`, `huber`, `bisquare`); tumor‑gene filtering; mRNA scaling.
+- `epic` — EPIC cell fractions using `TRef`/`BRef` references.
+- `estimate` — ESTIMATE immune/stromal/tumor purity scores.
+- `mcpcounter` — MCPcounter infiltration scores.
+- `IPS` — Immunophenoscore (AZ/SC/CP/EC + total).
+- `deside` — Deep learning–based deconvolution (requires pre‑downloaded model; supports pathway‑masked mode via KEGG/Reactome GMTs).
+
+**Clustering / decomposition**
+- `tme_cluster` — k‑means with **automatic k** via KL index (Hartigan–Wong), feature selection and standardization.
+- `nmf` — NMF‑based clustering (auto‑selects k; excludes k=2) with PCA plot and top features.
+
+**Ligand–receptor**
+- `LR_cal` — Ligand–receptor interaction scoring using cancer‑type specific networks.
+
+---
 
 ## Installation
 
-### Prerequisites
-- Python 3.6+
-- [fastp](https://github.com/OpenGene/fastp)
-- [Bowtie2](http://bowtie-bio.sourceforge.net/bowtie2/index.shtml)
-- [Kraken2](https://ccb.jhu.edu/software/kraken2/)
-- [Bracken](https://ccb.jhu.edu/software/bracken/)
+```bash
+# Option A: Conda
+conda env create -f environment.yml
+conda activate iobrpy
 
-To clone the repository and install required Python packages:
-```sh
-# Clone the repository
-git clone https://github.com/your-username/itmfinder.git
-cd itmfinder
-
-# Install required Python packages
+# Option B: pip
 pip install -r requirements.txt
+# Dev install (recommended while editing code)
+pip install -e .
 ```
 
-## Usage
-ITMfinder is a command-line tool that executes different analysis steps by specifying the desired step.
+---
 
-### Basic Usage
-```sh
-itmfinder --step [1-8] [additional arguments]
+## Command‑line usage
+
+### Global
+```bash
+iobrpy -h
+iobrpy <command> --help
+# Example: show help for count2tpm
+iobrpy count2tpm --help
 ```
 
-### Arguments
-- `--step`
-  - Specifies the step to execute (1-8).
-- `--num_threads`
-  - Number of threads to use for processing (default: `8`).
-- `--batch_size`
-  - Number of samples to process in parallel (default: `1`).
-- `--memory_mapping`
-  - Use memory mapping for Kraken2 to reduce memory usage during analysis (Step 6). This reduces memory consumption by using memory-mapped files instead of loading everything into memory, which is helpful if system memory is limited.
+### General I/O conventions
+- **Input orientation**: genes × samples by default.
+- **Separators**: auto‑detected from file extension (`.csv` vs `.tsv`/`.txt`); you can override via command options where available.
+- **Outputs**: CSV/TSV/TXT
 
-### Analysis Steps
-ITMfinder comprises eight main steps, each representing a different phase of the analysis:
+### Typical end‑to‑end workflow
 
-1. **Step 1: Quality Control (FASTQ Data)**
-   Performs quality control on input FASTQ data using `fastp`.
-   ```sh
-   itmfinder --step 1 \
-     --path1_fastq /path/to/raw_fastq \
-     --path2_fastp /path/to/cleaned_fastq \
-     --num_threads 8 \
-     --suffix1 _1.fastq.gz \
-     --length_required 50 \
-     --batch_size 1
-   ```
+1) **Prepare an expression matrix**
+```bash
+# a) From Salmon outputs → TPM
+iobrpy prepare_salmon -i salmon_tpm.tsv.gz -o TPM_matrix.csv --return_feature symbol --remove_version
 
-2. **Step 2: Host Gene Removal**
-   Removes host gene sequences using `Bowtie2`.
-   ```sh
-   itmfinder --step 2 \
-     --path2_fastp /path/to/cleaned_fastq \
-     --path3_hr /path/to/host_removed \
-     --db_bowtie2 /path/to/bowtie2_db \
-     --num_threads 8 \
-     --batch_size 1
-   ```
+# b) From raw gene counts → TPM
+iobrpy count2tpm -i counts.tsv.gz -o TPM_matrix.csv --idType Ensembl --org hsa --source local
+# (Optionally provide transcript effective lengths)
+#   --effLength_csv efflen.csv --id id --length eff_length --gene_symbol symbol
+```
 
-3. **Step 3: (Optional) Second Round of Host Gene Removal**
-   Performs an additional round of host gene removal if required.
-   ```sh
-   itmfinder --step 3 \
-     --path3_hr /path/to/host_removed \
-     --path3_hr2 /path/to/host_removed_round2 \
-     --db_bowtie2 /path/to/bowtie2_db \
-     --num_threads 8 \
-     --batch_size 1
-   ```
+2) **(Optional) Annotate / de‑duplicate**
+```bash
+iobrpy anno_eset -i TPM_matrix.csv -o TPM_anno.csv --annotation anno_hug133plus2 --symbol symbol --probe id --method mean 
+# You can also use: --annotation-file my_anno.csv --annotation-key gene_id
+```
 
-4. **Step 4: Taxonomic Analysis (Kraken2)**
-   Performs taxonomic classification using `Kraken2`.
-   ```sh
-   itmfinder --step 4 \
-     --path3_hr /path/to/host_removed \
-     --path4_ku1 /path/to/kraken2_output \
-     --db_ku /path/to/kraken2_db \
-     --num_threads 8 \
-     --memory_mapping
-   ```
+3) **Signature scoring**
+```bash
+iobrpy calculate_sig_score -i TPM_anno.csv -o sig_scores.csv --signature signature_collection --method pca --mini_gene_count 2 --parallel_size 1
+# Accepts space‑separated or comma‑separated groups; use "all" for a full merge.
+```
 
-5. **Step 5: Extract Microbiome Sequences and Remove Contaminants**
-   Extracts microbiome sequences and removes potential contaminants.
-   ```sh
-   itmfinder --step 5 \
-     --path3_hr /path/to/host_removed \
-     --path4_ku1 /path/to/kraken2_output \
-     --path5_mr /path/to/microbiome_reads \
-     --TID 2 10239 4751 2157 \
-     --batch_size 1
-   ```
+4) **Immune deconvolution (choose one or many)**
+```bash
+# CIBERSORT
+iobrpy cibersort -i TPM_anno.csv -o cibersort.csv --perm 100 --QN True --absolute Flase --abs_method sig.score --threads 1
 
-6. **Step 6: Kraken2 and Bracken Analysis**
-   Performs Kraken2 analysis again and uses `Bracken` for abundance estimation.
-   ```sh
-   itmfinder --step 6 \
-     --path5_mr /path/to/microbiome_reads \
-     --path6_ku2 /path/to/kraken2_output2 \
-     --path7_bracken /path/to/bracken_output \
-     --db_ku /path/to/kraken2_db \
-     --num_threads 8 \
-     --memory_mapping \
-     --force
-   ```
+# quanTIseq (method: lsei / robust norms)
+iobrpy quantiseq -i TPM_anno.csv -o quantiseq.csv --signame TIL10 --method lsei --tumor --arrays --scale_mrna
 
-7. **Step 7: Integrate Analysis Data**
-   Merges all sample data into a matrix for integrated analysis.
-   ```sh
-   itmfinder --step 7 \
-     --path6_ku2 /path/to/kraken2_output2 \
-     --path7_bracken /path/to/bracken_output \
-     --path8_mpa /path/to/merged_mpa \
-     --mpa_suffix .kraken.mpa.std.txt \
-     --report_suffix kraken.report.txt \
-     --output_file 1-combine_mpa_std.txt
-   ```
+# EPIC
+iobrpy epic -i TPM_anno.csv -o epic.csv --reference TRef
 
-8. **Step 8: Data Summary**
-   Performs file size statistics to identify potential outliers in the data.
-   ```sh
-   itmfinder --step 8 \
-     --path2_fastp /path/to/cleaned_fastq \
-     --path3_hr /path/to/host_removed \
-     --path6_ku2 /path/to/kraken2_output2 \
-     --path5_mr /path/to/microbiome_reads \
-     --out_dir /path/to/data_summary
-   ```
+# ESTIMATE
+iobrpy estimate -i TPM_anno.csv -o estimate.csv --platform affymetrix
+
+# MCPcounter
+iobrpy mcpcounter -i TPM_anno.csv -o mcpcounter.csv --features HUGO_symbols
+
+# IPS
+iobrpy IPS -i TPM_anno.csv -o IPS.csv
+
+# DeSide
+iobrpy deside --model_dir path/to/your/DeSide_model -i TPM_anno.csv -o deside.csv --result_dir path/to/your/plot/folder --exp_type TPM --method_adding_pathway add_to_end --scaling_by_constant --transpose --print_info
+```
+
+5) **TME clustering / NMF clustering**
+```bash
+# KL index auto‑select k (k‑means)
+iobrpy tme_cluster -i cibersort.csv -o tme_cluster.csv --features 1:22 --id "ID" --min_nc 2 --max_nc 5 --print_result --scale
+
+# NMF clustering (auto k, excludes k=2)
+iobrpy nmf -i cibersort.csv -o path/to/your/result/folder --kmin 2 --kmax 10 --features 1:22 --max-iter 10000
+```
+
+6) **Ligand–receptor scoring (optional)**
+```bash
+iobrpy LR_cal -i TPM_anno.csv -o LR_score.csv --data_type tpm --id_type "symbol" --cancer_type pancan --verbose
+```
+
+---
+
+## Commands & common options
+
+### Data preparation
+- **prepare_salmon**
+  - `-i/--input` Salmon combined TSV/TSV.GZ
+  - `-o/--output` cleaned TPM matrix
+  - `-r/--return_feature {symbol,ENSG,ENST}`
+  - `--remove_version`
+- **count2tpm**
+  - `-i/--input`, `-o/--output`
+  - `--idType {Ensembl,entrez,symbol,mgi}`, `--org {hsa,mmus}`, `--source {local,biomart}`
+  - `--effLength_csv`, `--id`, `--length`, `--gene_symbol`, `--check_data`
+- **anno_eset**
+  - `-i/--input`, `-o/--output`
+  - `--annotation anno_grch38|anno_gc_vm32` (or `--annotation-file` + `--annotation-key`)
+  - `--symbol`, `--probe`, `--method mean|sd|sum`
+
+### Signature scoring
+- **calculate_sig_score**
+  - `--signature` groups: `go_bp`, `go_cc`, `go_mf`, `signature_collection`, `signature_tme`, `signature_sc`, `signature_tumor`, `signature_metabolism`, `kegg`, `hallmark`, `  reactome`, or `all`
+  - `--method pca|zscore|ssgsea|integration`
+  - `--mini_gene_count`, `--adjust_eset`, `--parallel_size`
+
+### Deconvolution / scoring
+- **cibersort**: `--perm`, `--QN true|false`, `--absolute true|false`, `--abs_method sig.score|no.sumto1`, `--threads`
+- **quantiseq**: `--arrays`, `--signame TIL10`, `--tumor`, `--scale_mrna`, `--method lsei|hampel|huber|bisquare`, `--rmgenes default|none|<list>`
+- **epic**: `--reference TRef|BRef|both`
+- **estimate**: `-p/--platform affymetrix|agilent|illumina`
+- **mcpcounter**: `-f/--features affy133P2_probesets|HUGO_symbols|ENTREZ_ID|ENSEMBL_ID`
+- **IPS**: input/output only (matrix → scores)
+- **deside** (deep learning–based deconvolution)
+  - **Required**: `-m/--model_dir <dir>`, `-i/--input <expr.csv/tsv>`, `-o/--output`
+  - **Input format**: `--exp_type {TPM|log_space|linear}`  
+  - **Pathway options**: `--gmt <one or more .gmt>`, `--method_adding_pathway {add_to_end|convert}`
+  - **Scaling / transforms**: `--scaling_by_constant`, `--scaling_by_sample`, `--one_minus_alpha`
+  - **Outputs & logs**: `--print_info`, `--add_cell_type`, `-r/--result_dir <dir>` (save result plots)
+  - **Matrix orientation**: `--transpose` (use if your file is samples×genes instead of genes×samples)
+
+
+### Clustering / decomposition
+- **tme_cluster**: `--features 1:K` or regex `--pattern`, `--id`, `--scale/--no-scale`, `--min_nc`, `--max_nc`, `--max_iter`,`--print_result`,`--input_sep`,`--output_sep`
+- **nmf**: `--kmin`, `--kmax`, `--features`, `--log1p`, `--normalize`, `--shift`, `--random-state`, `--max-iter`
+
+### Ligand–receptor
+- **LR_cal**: `--data_type count|tpm`, `--id_type`, `--cancer_type`, `--verbose`
+
+---
 
 ## Troubleshooting
 
-### 1. Memory Issues
-`Kraken2` and `Bracken` are memory-intensive programs. If you experience memory-related issues:
-- Reduce the `--num_threads` value to lower memory usage.
-- Use the `--memory_mapping` flag to reduce Kraken2 memory usage.
+- **Wrong input orientation**  
+  Deconvolution commands expect **genes × samples**. For `deside`, `--transpose` can be helpful depending on your file.
 
-### 2. Long File Paths
-If file paths are too long, errors may occur. Consider shortening directory names or paths.
+- **Mixed separators / encoding**  
+  Prefer `.csv`, `.txt` or `.tsv` consistently. Auto‑detection works in most subcommands but you can override with explicit flags where provided.
 
-## Contributions
-We welcome contributions and suggestions! Please submit any issues or feature requests on [GitHub Issues](https://github.com/your-username/itmfinder/issues).
+- **DeSide model missing**
+  The `deside` subcommand requires pretrained model files. If you get errors like `FileNotFoundError: DeSide_model not found` , download the official model archive from:
+  https://figshare.com/articles/dataset/DeSide_model/25117862/1?file=44330255
+
+---
+
+## Citation & acknowledgments
+
+This toolkit implements or wraps well‑known methods (CIBERSORT, quanTIseq, EPIC, ESTIMATE, MCPcounter, DeSide, etc.). For academic use, please cite the corresponding original papers in addition to this package.
+
+---
 
 ## License
-This project is licensed under the MIT License. See [LICENSE](LICENSE) for more details.
 
-## Download
-To download ITMfinder, visit the [GitHub repository](https://github.com/your-username/itmfinder) and follow the installation instructions.
-
+Add your license of choice (MIT/BSD/GPL, etc.) here.
