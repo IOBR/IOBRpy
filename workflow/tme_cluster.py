@@ -19,7 +19,7 @@ def parse_args():
                    help="Regex to select feature columns by name")
     p.add_argument('--id',       default=None,
                    help="Column name for sample IDs (default: first column)")
-    p.add_argument('--scale',    action='store_true', default=True,
+    p.add_argument('--scale',    action='store_true',
                    help="Enable z-score scaling (default: True)")
     p.add_argument('--no-scale', action='store_false', dest='scale',
                    help="Disable scaling")
@@ -31,7 +31,7 @@ def parse_args():
                    help="Maximum iterations for Hartigan–Wong k-means (default: 10)")
     p.add_argument('--tol', type=float, default=1e-4,
                    help="Convergence tolerance (default: 1e-4)")
-    p.add_argument('--print_result', action='store_true', default=True,
+    p.add_argument('--print_result', action='store_true',
                    help="Print intermediate info")
     p.add_argument('--input_sep',  default=None,
                    help="Field separator for input (auto-detect if not set)")
