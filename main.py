@@ -221,7 +221,7 @@ def main():
                      help='Regex to select feature columns by name')
     p12.add_argument('--id', default=None,
                      help='Column name for sample IDs (default: first column)')
-    p12.add_argument('--scale', action='store_true', dest='scale', default=True,
+    p12.add_argument('--scale', action='store_true', dest='scale',
                      help='Enable z-score scaling (default: True)')
     p12.add_argument('--no-scale', action='store_false', dest='scale',
                      help='Disable z-score scaling')
@@ -233,7 +233,7 @@ def main():
                      help='Maximum number of iterations for the k-means algorithm')
     p12.add_argument('--tol', type=float, default=1e-4,
                      help='Convergence tolerance for cluster center updates')
-    p12.add_argument('--print_result', action='store_true', default=True,
+    p12.add_argument('--print_result', action='store_true',
                      help='Print intermediate KL scores and cluster counts')
     p12.add_argument('--input_sep', default=None,
                      help='Field separator for input (auto-detect if not set)')
