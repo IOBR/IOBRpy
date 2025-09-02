@@ -23,7 +23,7 @@ from iobrpy.workflow.nmf import main as nmf_main
 VERSION = "0.1.2"
 
 def main():
-    parser = argparse.ArgumentParser(prog='iobrpy', description="Intratumoral Microbiome Finder Tool")
+    parser = argparse.ArgumentParser(prog='iobrpy', description="Immuno-Oncology Biological Research Python")
     parser.add_argument('--version', action='version', version=f'iobrpy {VERSION}')
 
     subparsers = parser.add_subparsers(dest='command', required=True)
@@ -211,9 +211,9 @@ def main():
 
     # Step 12: tme_cluster
     p12 = subparsers.add_parser('tme_cluster', help='Run TME clustering')
-    p12.add_argument('--input', required=True,
+    p12.add_argument('-i','--input', required=True,
                      help='Path to input file (CSV/TSV/TXT)')
-    p12.add_argument('--output', required=True,
+    p12.add_argument('-o','--output', required=True,
                      help='Path to save clustering results (CSV/TSV/TXT)')
     p12.add_argument('--features', default=None,
                      help="Feature columns to use, e.g. '1:22' if use cibersort(excluding the sample column)")
@@ -242,8 +242,8 @@ def main():
     
     # Step 13: LR_cal
     p13 = subparsers.add_parser('LR_cal', help='Compute ligand-receptor interactions')
-    p13.add_argument('--input', required=True, help='Path to input expression matrix (genes x samples)')
-    p13.add_argument('--output', required=True, help='Path to save LR scores')
+    p13.add_argument('-i','--input', required=True, help='Path to input expression matrix (genes x samples)')
+    p13.add_argument('-o','--output', required=True, help='Path to save LR scores')
     p13.add_argument('--data_type', choices=['count','tpm'], default='tpm',
                      help='Type of input data: count or tpm')
     p13.add_argument('--id_type', default='ensembl', help='Gene ID type')
