@@ -4,21 +4,21 @@ import importlib_resources as pkg_res
 import pickle
 from pathlib import Path
 import sys as _sys
-from iobrpy.workflow.prepare_salmon import prepare_salmon_tpm as prepare_salmon_tpm_main
-from iobrpy.workflow.count2tpm import count2tpm as count2tpm_main
-from iobrpy.workflow.anno_eset import main as anno_eset_main
-from iobrpy.workflow.calculate_sig_score import calculate_sig_score as calculate_sig_score_main
-from iobrpy.workflow.cibersort import cibersort as cibersort_main
-from iobrpy.workflow.IPS import main as IPS_main
-from iobrpy.workflow.estimate import estimate_score as estimate_score_main
-from iobrpy.workflow.mcpcounter import MCPcounter_estimate as MCPcounter_estimate_main
-from iobrpy.workflow.mcpcounter import preprocess_input as preprocess_input_main
-from iobrpy.workflow.quantiseq import main as quantiseq_main
-from iobrpy.workflow.epic import main as epic_main
-from iobrpy.workflow.deside import main as deside_main
-from iobrpy.workflow.tme_cluster import main as tme_cluster_main
-from iobrpy.workflow.LR_cal import main as LR_cal_main
-from iobrpy.workflow.nmf import main as nmf_main
+from IOBRpy.workflow.prepare_salmon import prepare_salmon_tpm as prepare_salmon_tpm_main
+from IOBRpy.workflow.count2tpm import count2tpm as count2tpm_main
+from IOBRpy.workflow.anno_eset import main as anno_eset_main
+from IOBRpy.workflow.calculate_sig_score import calculate_sig_score as calculate_sig_score_main
+from IOBRpy.workflow.cibersort import cibersort as cibersort_main
+from IOBRpy.workflow.IPS import main as IPS_main
+from IOBRpy.workflow.estimate import estimate_score as estimate_score_main
+from IOBRpy.workflow.mcpcounter import MCPcounter_estimate as MCPcounter_estimate_main
+from IOBRpy.workflow.mcpcounter import preprocess_input as preprocess_input_main
+from IOBRpy.workflow.quantiseq import main as quantiseq_main
+from IOBRpy.workflow.epic import main as epic_main
+from IOBRpy.workflow.deside import main as deside_main
+from IOBRpy.workflow.tme_cluster import main as tme_cluster_main
+from IOBRpy.workflow.LR_cal import main as LR_cal_main
+from IOBRpy.workflow.nmf import main as nmf_main
 
 VERSION = "0.1.2"
 
@@ -396,7 +396,7 @@ def main():
             '--rmgenes', args.rmgenes,
         ]
         quantiseq_main()
-        _sys_argv = _sys_argv_orig
+        _sys.argv = _sys_argv_orig
     elif args.command == 'epic':
         _sys_argv_orig = _sys.argv[:]
         _sys.argv = [
