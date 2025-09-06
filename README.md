@@ -120,7 +120,7 @@ iobrpy deside --model_dir path/to/your/DeSide_model -i TPM_anno.csv -o deside.cs
 iobrpy tme_cluster -i cibersort.csv -o tme_cluster.csv --features 1:22 --id "ID" --min_nc 2 --max_nc 5 --print_result --scale
 
 # NMF clustering (auto k, excludes k=2)
-iobrpy nmf -i cibersort.csv -o path/to/your/result/folder --kmin 2 --kmax 10 --features 1:22 --max-iter 10000
+iobrpy nmf -i cibersort.csv -o path/to/your/result/folder --kmin 2 --kmax 10 --features 1:22 --max-iter 10000 --skip_k_2
 ```
 
 6) **Ligand–receptor scoring (optional)**
