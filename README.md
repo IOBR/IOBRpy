@@ -70,62 +70,138 @@ iobrpy count2tpm --help
 1) **Prepare an expression matrix**
 ```bash
 # a) From Salmon outputs → TPM
-iobrpy prepare_salmon -i salmon_tpm.tsv.gz -o TPM_matrix.csv --return_feature symbol --remove_version
+iobrpy prepare_salmon \
+  -i salmon_tpm.tsv.gz \
+  -o TPM_matrix.csv \
+  --return_feature symbol \
+  --remove_version
 
 # b) From raw gene counts → TPM
-iobrpy count2tpm -i counts.tsv.gz -o TPM_matrix.csv --idType Ensembl --org hsa --source local
+iobrpy count2tpm \
+  -i counts.tsv.gz \
+  -o TPM_matrix.csv \
+  --idType Ensembl \
+  --org hsa \
+  --source local
 # (Optionally provide transcript effective lengths)
 #   --effLength_csv efflen.csv --id id --length eff_length --gene_symbol symbol
 ```
 
 2) **(Optional) Annotate / de‑duplicate**
 ```bash
-iobrpy anno_eset -i TPM_matrix.csv -o TPM_anno.csv --annotation anno_hug133plus2 --symbol symbol --probe id --method mean 
+iobrpy anno_eset \
+  -i TPM_matrix.csv \
+  -o TPM_anno.csv \
+  --annotation anno_hug133plus2 \
+  --symbol symbol \
+  --probe id \
+  --method mean  
 # You can also use: --annotation-file my_anno.csv --annotation-key gene_id
 ```
 
 3) **Signature scoring**
 ```bash
-iobrpy calculate_sig_score -i TPM_anno.csv -o sig_scores.csv --signature signature_collection --method pca --mini_gene_count 2 --parallel_size 1
+iobrpy calculate_sig_score \
+  -i TPM_anno.csv \
+  -o sig_scores.csv \
+  --signature signature_collection \
+  --method pca \
+  --mini_gene_count 2 \
+  --parallel_size 1
 # Accepts space‑separated or comma‑separated groups; use "all" for a full merge.
 ```
 
 4) **Immune deconvolution (choose one or many)**
 ```bash
 # CIBERSORT
-iobrpy cibersort -i TPM_anno.csv -o cibersort.csv --perm 100 --QN True --absolute Flase --abs_method sig.score --threads 1
+iobrpy cibersort \
+  -i TPM_anno.csv \
+  -o cibersort.csv \
+  --perm 100 \
+  --QN True \
+  --absolute False \
+  --abs_method sig.score \
+  --threads 1
 
 # quanTIseq (method: lsei / robust norms)
-iobrpy quantiseq -i TPM_anno.csv -o quantiseq.csv --signame TIL10 --method lsei --tumor --arrays --scale_mrna
+iobrpy quantiseq \
+  -i TPM_anno.csv \
+  -o quantiseq.csv \
+  --signame TIL10 \
+  --method lsei \
+  --tumor \
+  --arrays \
+  --scale_mrna
 
 # EPIC
-iobrpy epic -i TPM_anno.csv -o epic.csv --reference TRef
+iobrpy epic \
+  -i TPM_anno.csv \
+  -o epic.csv \
+  --reference TRef
 
 # ESTIMATE
-iobrpy estimate -i TPM_anno.csv -o estimate.csv --platform affymetrix
+iobrpy estimate \
+  -i TPM_anno.csv \
+  -o estimate.csv \
+  --platform affymetrix
 
 # MCPcounter
-iobrpy mcpcounter -i TPM_anno.csv -o mcpcounter.csv --features HUGO_symbols
+iobrpy mcpcounter \
+  -i TPM_anno.csv \
+  -o mcpcounter.csv \
+  --features HUGO_symbols
 
 # IPS
-iobrpy IPS -i TPM_anno.csv -o IPS.csv
+iobrpy IPS \
+  -i TPM_anno.csv \
+  -o IPS.csv
 
 # DeSide
-iobrpy deside --model_dir path/to/your/DeSide_model -i TPM_anno.csv -o deside.csv --result_dir path/to/your/plot/folder --exp_type TPM --method_adding_pathway add_to_end --scaling_by_constant --transpose --print_info
+iobrpy deside \
+  --model_dir path/to/your/DeSide_model \
+  -i TPM_anno.csv \
+  -o deside.csv \
+  -r path/to/your/plot/folder \
+  --exp_type TPM \
+  --method_adding_pathway add_to_end \
+  --scaling_by_constant \
+  --transpose \
+  --print_info
 ```
 
 5) **TME clustering / NMF clustering**
 ```bash
 # KL index auto‑select k (k‑means)
-iobrpy tme_cluster -i cibersort.csv -o tme_cluster.csv --features 1:22 --id "ID" --min_nc 2 --max_nc 5 --print_result --scale
+iobrpy tme_cluster \
+  -i cibersort.csv \
+  -o tme_cluster.csv \
+  --features 1:22 \
+  --id ID \
+  --min_nc 2 \
+  --max_nc 5 \
+  --print_result \
+  --scale
 
 # NMF clustering (auto k, excludes k=2)
-iobrpy nmf -i cibersort.csv -o path/to/your/result/folder --kmin 2 --kmax 10 --features 1:22 --max-iter 10000 --skip_k_2
+iobrpy nmf \
+  -i cibersort.csv \
+  -o path/to/your/result/folder \
+  --kmin 2 \
+  --kmax 10 \
+  --features 1:22 \
+  --max-iter 10000 \
+  --skip_k_2
 ```
 
 6) **Ligand–receptor scoring (optional)**
 ```bash
-iobrpy LR_cal -i TPM_anno.csv -o LR_score.csv --data_type tpm --id_type "symbol" --cancer_type pancan --verbose
+iobrpy LR_cal \
+  -i TPM_anno.csv \
+  -o LR_score.csv \
+  --data_type tpm \
+  --id_type symbol \
+  --cancer_type pancan \
+  --verbose
 ```
 
 ---
