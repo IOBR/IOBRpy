@@ -358,6 +358,9 @@ iobrpy LR_cal \
   The `deside` subcommand requires pretrained model files. If you get errors like `FileNotFoundError: DeSide_model not found` , download the official model archive from:
   https://figshare.com/articles/dataset/DeSide_model/25117862/1?file=44330255
 
+- **Python version for DeSide**
+  The `deside` subcommand runs **ONLY on Python 3.9**. Other versions (3.8/3.10/3.11/…) are **not supported** and may raise import/runtime errors.
+
 ---
 
 ## Citation & acknowledgments
