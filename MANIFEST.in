@@ -1,0 +1,6 @@
+include README.md
+include LICENSE
+
+recursive-include src/iobrpy/resources *.pkl *.gmt *.txt
+
+global-exclude *.py[cod] __pycache__ .DS_Store
