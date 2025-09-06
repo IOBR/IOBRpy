@@ -1,0 +1,54 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "iobrpy"
+version = "0.1.1"
+description = "Immuno-Oncology Biological Research tools in Python"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { file = "LICENSE" }
+authors = [{ name = "Haonan Huang" , email = "2905611068@qq.com" }]
+keywords = ["bioinformatics", "immuno-oncology", "RNA-seq", "deconvolution"]
+classifiers = [
+  "Intended Audience :: Science/Research",
+  "Topic :: Scientific/Engineering :: Bio-Informatics",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Operating System :: OS Independent",
+]
+
+dependencies = [
+  "numpy>=1.22",
+  "pandas>=1.5",
+  "scipy>=1.9",
+  "scikit-learn>=1.2",
+  "statsmodels>=0.13",
+  "matplotlib>=3.7",
+  "tqdm>=4.66",
+  "gseapy>=1.0.6",
+  "joblib>=1.3"
+]
+
+[project.urls]
+Homepage = "https://github.com/IOBR/IOBRpy"
+Issues = "https://github.com/IOBR/IOBRpy/issues"
+
+[project.scripts]
+iobrpy = "iobrpy.main:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+iobrpy = [
+  "resources/*",
+  "resources/**/*.txt",
+  "resources/**/*.pkl",
+  "resources/**/*.gmt"
+]
