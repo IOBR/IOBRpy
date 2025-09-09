@@ -7,6 +7,7 @@ import statsmodels.api as sm
 from tqdm import tqdm
 import os
 from importlib.resources import files
+from iobrpy.utils.print_colorful_message import print_colorful_message
 
 def infer_sep(path):
         ext = os.path.splitext(path)[1].lower()
@@ -327,6 +328,16 @@ def main():
     res[num_cols] = res[num_cols].mask(res[num_cols].abs() < eps, 0)
     res.to_csv(args.out, sep=out_sep, index=False)
     print(f"Results saved to {args.out}")
+    print("   ")
+    print_colorful_message("#########################################################", "blue")
+    print_colorful_message(" IOBRpy: Immuno-Oncology Biological Research using Python ", "cyan")
+    print_colorful_message(" If you encounter any issues, please report them at ", "cyan")
+    print_colorful_message(" https://github.com/IOBR/IOBRpy/issues ", "cyan")
+    print_colorful_message("#########################################################", "blue")
+    print(" Author: Haonan Huang, Dongqiang Zeng")
+    print(" Email: interlaken@smu.edu.cn ")
+    print_colorful_message("#########################################################", "blue")
+    print("   ")
 
 if __name__ == '__main__':
     main()
