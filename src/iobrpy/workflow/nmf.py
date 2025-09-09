@@ -27,7 +27,7 @@ from sklearn.decomposition import NMF, PCA
 from sklearn.metrics import silhouette_score
 from sklearn.preprocessing import normalize
 import matplotlib.pyplot as plt
-
+from iobrpy.utils.print_colorful_message import print_colorful_message
 
 def read_matrix(path):
     # Try comma first, then tab
@@ -270,6 +270,16 @@ def main():
     print('Outputs saved to:', os.path.abspath(args.output))
     print('Files: clusters.csv, pca_plot.png , top_features_per_cluster.csv')
 
+    print("   ")
+    print_colorful_message("#########################################################", "blue")
+    print_colorful_message(" IOBRpy: Immuno-Oncology Biological Research using Python ", "cyan")
+    print_colorful_message(" If you encounter any issues, please report them at ", "cyan")
+    print_colorful_message(" https://github.com/IOBR/IOBRpy/issues ", "cyan")
+    print_colorful_message("#########################################################", "blue")
+    print(" Author: Haonan Huang, Dongqiang Zeng")
+    print(" Email: interlaken@smu.edu.cn ")
+    print_colorful_message("#########################################################", "blue")
+    print("   ")
 
 if __name__ == '__main__':
     main()
