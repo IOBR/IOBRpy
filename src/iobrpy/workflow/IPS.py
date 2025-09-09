@@ -4,6 +4,7 @@ import argparse
 import os
 from tqdm import tqdm
 from importlib.resources import files
+from iobrpy.utils.print_colorful_message import print_colorful_message
 
 def main():
     # Parse command-line arguments
@@ -104,6 +105,17 @@ def main():
     result_df.to_csv(args.output, sep=sep, index=False)
     
     print(f"\nResults saved to: {args.output} ")
+
+    print("   ")
+    print_colorful_message("#########################################################", "blue")
+    print_colorful_message(" IOBRpy: Immuno-Oncology Biological Research using Python ", "cyan")
+    print_colorful_message(" If you encounter any issues, please report them at ", "cyan")
+    print_colorful_message(" https://github.com/IOBR/IOBRpy/issues ", "cyan")
+    print_colorful_message("#########################################################", "blue")
+    print(" Author: Haonan Huang, Dongqiang Zeng")
+    print(" Email: interlaken@smu.edu.cn ")
+    print_colorful_message("#########################################################", "blue")
+    print("   ")
 
 if __name__ == "__main__":
     main()
