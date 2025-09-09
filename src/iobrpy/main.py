@@ -18,11 +18,13 @@ from iobrpy.workflow.deside_bootstrap import main as deside_main
 from iobrpy.workflow.tme_cluster import main as tme_cluster_main
 from iobrpy.workflow.LR_cal import main as LR_cal_main
 from iobrpy.workflow.nmf import main as nmf_main
+from iobrpy.workflow.mouse2human_eset import main as mouse2human_eset_main
+from iobrpy.utils.print_colorful_message import print_colorful_message
 
-VERSION = "0.1.1"
+VERSION = "0.1.2"
 
 def main():
-    parser = argparse.ArgumentParser(prog='iobrpy', description="Immuno-Oncology Biological Research Python")
+    parser = argparse.ArgumentParser(prog='iobrpy', description="Immuno-Oncology Biological Research using Python")
     parser.add_argument('--version', action='version', version=f'iobrpy {VERSION}')
 
     subparsers = parser.add_subparsers(dest='command', required=True)
@@ -263,6 +265,25 @@ def main():
     p14.add_argument('--max-iter', type=int, default=1000, help='Maximum iterations for NMF (default: 1000)')
     p14.add_argument('--skip_k_2', action='store_true',help='Skip k=2 when searching for the best k (default: do not skip)')
 
+    # Step 15: mouse2human_eset
+    p15 = subparsers.add_parser('mouse2human_eset', help='Convert mouse gene symbols to human symbols (local mapping)')
+    p15.add_argument('-i', '--input', required=True,
+                 help='Path to input file (CSV/TSV/TXT, optionally .gz)')
+    p15.add_argument('-o', '--output', required=True,
+                 help='Path to save converted matrix (CSV/TSV/TXT, optionally .gz)')
+    p15.add_argument('--is_matrix', action='store_true',
+                 help='Treat input as a matrix (rows=genes, cols=samples). If omitted, expects a symbol column.')
+    p15.add_argument('--column_of_symbol', default=None,
+                 help='Column name containing gene symbols when not using --is_matrix.')
+    p15.add_argument('--verbose', action='store_true',
+                 help='Verbose output.')
+    p15.add_argument('--sep', default=None,
+                 help="Input separator (',' or '\\t'). If omitted, infer by input extension.")
+    p15.add_argument('--out_sep', default=None,
+                 help="Output separator (',' or '\\t'). If omitted, infer by output extension.")
+    p15.add_argument('--progress', action='store_true',default=True,
+                 help='Show a progress bar during saving.')
+
     args = parser.parse_args()
 
     if args.command == 'prepare_salmon':
@@ -296,6 +317,19 @@ def main():
         )
         tpm_df.to_csv(args.output_path)
         print(f"Saved TPM matrix to {args.output_path}")
+
+        # ---- Friendly banner (English comments) ----
+        print("   ")
+        print_colorful_message("#########################################################", "blue")
+        print_colorful_message(" IOBRpy: Immuno-Oncology Biological Research using Python ", "cyan")
+        print_colorful_message(" If you encounter any issues, please report them at ", "cyan")
+        print_colorful_message(" https://github.com/IOBR/IOBRpy/issues ", "cyan")
+        print_colorful_message("#########################################################", "blue")
+        print(" Author: Haonan Huang, Dongqiang Zeng")
+        print(" Email: interlaken@smu.edu.cn ")
+        print_colorful_message("#########################################################", "blue")
+        print("   ")
+        # ---- End banner ----
 
     elif args.command == 'anno_eset':
         _sys_argv_orig = _sys.argv[:]
@@ -340,6 +374,16 @@ def main():
         )
         scores_df.to_csv(args.output_path, index=False)
         print(f"Signature scores saved to {args.output_path}")
+        print("   ")
+        print_colorful_message("#########################################################", "blue")
+        print_colorful_message(" IOBRpy: Immuno-Oncology Biological Research using Python ", "cyan")
+        print_colorful_message(" If you encounter any issues, please report them at ", "cyan")
+        print_colorful_message(" https://github.com/IOBR/IOBRpy/issues ", "cyan")
+        print_colorful_message("#########################################################", "blue")
+        print(" Author: Haonan Huang, Dongqiang Zeng")
+        print(" Email: interlaken@smu.edu.cn ")
+        print_colorful_message("#########################################################", "blue")
+        print("   ")
     elif args.command == 'cibersort':
         result_df = cibersort_main(
             input_path=args.input_path,
@@ -354,6 +398,16 @@ def main():
         delim = ',' if args.output_path.lower().endswith('.csv') else '\t'
         result_df.to_csv(args.output_path, sep=delim, index=True)
         print(f"CIBERSORT results saved to {args.output_path}")
+        print("   ")
+        print_colorful_message("#########################################################", "blue")
+        print_colorful_message(" IOBRpy: Immuno-Oncology Biological Research using Python ", "cyan")
+        print_colorful_message(" If you encounter any issues, please report them at ", "cyan")
+        print_colorful_message(" https://github.com/IOBR/IOBRpy/issues ", "cyan")
+        print_colorful_message("#########################################################", "blue")
+        print(" Author: Haonan Huang, Dongqiang Zeng")
+        print(" Email: interlaken@smu.edu.cn ")
+        print_colorful_message("#########################################################", "blue")
+        print("   ")
     elif args.command == 'IPS':
         _sys_argv_orig = _sys.argv[:]
         _sys.argv = [_sys.argv[0],
@@ -373,6 +427,16 @@ def main():
         out_sep = '\t' if args.output_path.lower().endswith(('.tsv', '.txt')) else ','
         score_df.to_csv(args.output_path, sep=out_sep, index_label='ID')
         print(f"Estimate scores saved to {args.output_path}")
+        print("   ")
+        print_colorful_message("#########################################################", "blue")
+        print_colorful_message(" IOBRpy: Immuno-Oncology Biological Research using Python ", "cyan")
+        print_colorful_message(" If you encounter any issues, please report them at ", "cyan")
+        print_colorful_message(" https://github.com/IOBR/IOBRpy/issues ", "cyan")
+        print_colorful_message("#########################################################", "blue")
+        print(" Author: Haonan Huang, Dongqiang Zeng")
+        print(" Email: interlaken@smu.edu.cn ")
+        print_colorful_message("#########################################################", "blue")
+        print("   ")
     elif args.command == 'mcpcounter':
         expr_df = preprocess_input_main(args.input_path)
         scores_df = MCPcounter_estimate_main(expr_df, args.features)
@@ -382,6 +446,16 @@ def main():
         out_sep = ',' if out_ext == '.csv' else '\t'
         out_df.to_csv(args.output_path, sep=out_sep, index_label='ID', float_format='%.7f')
         print(f"MCPcounter results saved to {args.output_path}")
+        print("   ")
+        print_colorful_message("#########################################################", "blue")
+        print_colorful_message(" IOBRpy: Immuno-Oncology Biological Research using Python ", "cyan")
+        print_colorful_message(" If you encounter any issues, please report them at ", "cyan")
+        print_colorful_message(" https://github.com/IOBR/IOBRpy/issues ", "cyan")
+        print_colorful_message("#########################################################", "blue")
+        print(" Author: Haonan Huang, Dongqiang Zeng")
+        print(" Email: interlaken@smu.edu.cn ")
+        print_colorful_message("#########################################################", "blue")
+        print("   ")
     elif args.command == 'quantiseq':
         _sys_argv_orig = _sys.argv[:]
         _sys.argv = [
@@ -476,7 +550,29 @@ def main():
         _sys.argv = cli
         nmf_main()
         _sys.argv = _sys_argv_orig
+    elif args.command == 'mouse2human_eset':
+        _sys_argv_orig = _sys.argv[:]
+        cli = [
+            _sys_argv_orig[0],
+            '-i', args.input,
+            '-o', args.output,
+        ]
+        if args.is_matrix:
+            cli += ['--is_matrix']
+        if args.column_of_symbol:
+            cli += ['--column_of_symbol', args.column_of_symbol]
+        if args.verbose:
+            cli += ['--verbose']
+        if args.sep:
+            cli += ['--sep', args.sep]
+        if args.out_sep:
+            cli += ['--out_sep', args.out_sep]
+        if args.progress:
+            cli += ['--progress']
 
+        _sys.argv = cli
+        mouse2human_eset_main()
+        _sys.argv = _sys_argv_orig
 
 if __name__ == "__main__":
     main()
