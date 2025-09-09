@@ -6,26 +6,7 @@ try:
 except Exception:
     def tqdm(iterable, **kwargs):
         return iterable
-
-def print_colorful_message(message, color):
-    try:
-        colors = {
-            'red': '\033[91m',
-            'green': '\033[92m',
-            'yellow': '\033[93m',
-            'blue': '\033[94m',
-            'magenta': '\033[95m',
-            'cyan': '\033[96m',
-            'white': '\033[97m',
-        }
-        end_color = '\033[0m'
-        message = message.encode('ascii', errors='replace').decode('ascii')  # 自动替换非ASCII字符
-        if color not in colors:
-            print(message)
-        else:
-            print(f"{colors[color]}{message}{end_color}")
-    except Exception as e:
-        print("[FALLBACK] " + str(message))
+from iobrpy.utils.print_colorful_message import print_colorful_message
         
 def remove_duplicate_genes(eset: pd.DataFrame, column_of_symbol: str = 'Name') -> pd.DataFrame:
     """
@@ -114,6 +95,17 @@ def prepare_salmon_tpm(eset_path: str,
         print(f">>> Saving to {output_matrix}")
         df.to_csv(output_matrix, index=False)
         print_colorful_message("Done!", "green")
+
+        print("   ")
+        print_colorful_message("#########################################################", "blue")
+        print_colorful_message(" IOBRpy: Immuno-Oncology Biological Research using Python ", "cyan")
+        print_colorful_message(" If you encounter any issues, please report them at ", "cyan")
+        print_colorful_message(" https://github.com/IOBR/IOBRpy/issues ", "cyan")
+        print_colorful_message("#########################################################", "blue")
+        print(" Author: Haonan Huang, Dongqiang Zeng")
+        print(" Email: interlaken@smu.edu.cn ")
+        print_colorful_message("#########################################################", "blue")
+        print("   ")
 
     except Exception as e:
         print_colorful_message(f"Error occurred: {e}", "red")
