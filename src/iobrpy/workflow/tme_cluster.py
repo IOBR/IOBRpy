@@ -6,6 +6,7 @@ import random
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
+from iobrpy.utils.print_colorful_message import print_colorful_message
 
 def parse_args():
     p = argparse.ArgumentParser(description="TME clustering with Hartigan-Wong kmeans and KL index matching R NbClust")
@@ -164,8 +165,21 @@ def main():
     out = pd.DataFrame({'ID': ids, 'cluster': clusters})
     out = pd.concat([out, data.reset_index(drop=True)], axis=1)
     out.to_csv(args.output, sep=sep_out, index=False)
+    # Print absolute output file path and its directory for clarity
+    abs_out = os.path.abspath(args.output)
     if args.print_result:
         print(out['cluster'].value_counts())
+    print(f"tme_cluster results saved to：{abs_out}")
+    print("   ")
+    print_colorful_message("#########################################################", "blue")
+    print_colorful_message(" IOBRpy: Immuno-Oncology Biological Research using Python ", "cyan")
+    print_colorful_message(" If you encounter any issues, please report them at ", "cyan")
+    print_colorful_message(" https://github.com/IOBR/IOBRpy/issues ", "cyan")
+    print_colorful_message("#########################################################", "blue")
+    print(" Author: Haonan Huang, Dongqiang Zeng")
+    print(" Email: interlaken@smu.edu.cn ")
+    print_colorful_message("#########################################################", "blue")
+    print("   ")
 
 if __name__=='__main__':
     main()
