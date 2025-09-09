@@ -3,6 +3,8 @@ import os
 import pandas as pd
 import numpy as np
 from importlib.resources import files
+from iobrpy.utils.print_colorful_message import print_colorful_message
+
 try:
     from tqdm.auto import tqdm
 except Exception:
@@ -294,6 +296,19 @@ def main():
     out_file = args.output
     tpm_df.to_csv(out_file, index=True)
     print(f"Saved TPM matrix to {out_file}")
+
+    # ---- Friendly banner (English comments) ----
+    print("   ")
+    print_colorful_message("#########################################################", "blue")
+    print_colorful_message(" IOBRpy: Immuno-Oncology Biological Research using Python ", "cyan")
+    print_colorful_message(" If you encounter any issues, please report them at ", "cyan")
+    print_colorful_message(" https://github.com/IOBR/IOBRpy/issues ", "cyan")
+    print_colorful_message("#########################################################", "blue")
+    print(" Author: Haonan Huang, Dongqiang Zeng")
+    print(" Email: interlaken@smu.edu.cn ")
+    print_colorful_message("#########################################################", "blue")
+    print("   ")
+    # ---- End banner ----
 
 if __name__ == '__main__':
     main()
