@@ -14,6 +14,7 @@ from deside.plot import plot_predicted_result
 from deside.utility.read_file import read_gene_set
 from importlib.resources import files
 import matplotlib.pyplot as plt
+from iobrpy.utils.print_colorful_message import print_colorful_message
 
 base_font = 21
 
@@ -145,8 +146,20 @@ def main():
             result_dir=args.result_dir,
             font_scale=0.1
         )
+        print(f"Result figures saved under: {os.path.abspath(args.result_dir)}/pred_cell_prop_before_decon.png")
         
     print(f"DeSide deconvolution complete. Results saved to {args.output}")
+
+    print("   ")
+    print_colorful_message("#########################################################", "blue")
+    print_colorful_message(" IOBRpy: Immuno-Oncology Biological Research using Python ", "cyan")
+    print_colorful_message(" If you encounter any issues, please report them at ", "cyan")
+    print_colorful_message(" https://github.com/IOBR/IOBRpy/issues ", "cyan")
+    print_colorful_message("#########################################################", "blue")
+    print(" Author: Haonan Huang, Dongqiang Zeng")
+    print(" Email: interlaken@smu.edu.cn ")
+    print_colorful_message("#########################################################", "blue")
+    print("   ")
 
 if __name__ == '__main__':
     main()
