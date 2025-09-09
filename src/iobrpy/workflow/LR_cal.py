@@ -6,7 +6,7 @@ import os
 from importlib.resources import files, as_file
 from tqdm import tqdm
 from .count2tpm import count2tpm
-
+from iobrpy.utils.print_colorful_message import print_colorful_message
 
 def detect_sep(filename: str) -> str:
     ext = os.path.splitext(filename)[1].lower()
@@ -162,7 +162,18 @@ def LR_cal(input_file: str,
     result.to_csv(output_file, sep=sep_out, index=False)
     if verbose:
         print(f"Saved {result.shape}")
-
+    abs_out = os.path.abspath(output_file)
+    print(f"LR_cal results saved to：{abs_out}")
+    print("   ")
+    print_colorful_message("#########################################################", "blue")
+    print_colorful_message(" IOBRpy: Immuno-Oncology Biological Research using Python ", "cyan")
+    print_colorful_message(" If you encounter any issues, please report them at ", "cyan")
+    print_colorful_message(" https://github.com/IOBR/IOBRpy/issues ", "cyan")
+    print_colorful_message("#########################################################", "blue")
+    print(" Author: Haonan Huang, Dongqiang Zeng")
+    print(" Email: interlaken@smu.edu.cn ")
+    print_colorful_message("#########################################################", "blue")
+    print("   ")
 
 def main():
     parser = argparse.ArgumentParser()
