@@ -13,6 +13,7 @@ from scipy.optimize import minimize
 from scipy.stats import pearsonr, spearmanr
 from tqdm import tqdm
 from importlib.resources import files
+from iobrpy.utils.print_colorful_message import print_colorful_message
 
 # --------------- DEFAULT mRNA PER CELL -----------------
 mRNA_cell_default = {
@@ -344,6 +345,16 @@ def main():
     res['cellFractions'].columns = [f"{col}_EPIC" for col in res['cellFractions'].columns]
     res['cellFractions'].to_csv(args.out_file, sep=sep_out, index=True)
     print(f"Saved cellFractions ➜ {args.out_file}")
+    print("   ")
+    print_colorful_message("#########################################################", "blue")
+    print_colorful_message(" IOBRpy: Immuno-Oncology Biological Research using Python ", "cyan")
+    print_colorful_message(" If you encounter any issues, please report them at ", "cyan")
+    print_colorful_message(" https://github.com/IOBR/IOBRpy/issues ", "cyan")
+    print_colorful_message("#########################################################", "blue")
+    print(" Author: Haonan Huang, Dongqiang Zeng")
+    print(" Email: interlaken@smu.edu.cn ")
+    print_colorful_message("#########################################################", "blue")
+    print("   ")
 
 if __name__ == '__main__':
     main()
