@@ -10,6 +10,7 @@ try:
 except Exception:
     def tqdm(iterable, **kwargs):
         return iterable
+from iobrpy.utils.print_colorful_message import print_colorful_message
 
 def _load_external_annotation(path: Path, key: str = None):
     ext = path.suffix.lower()
@@ -248,6 +249,17 @@ def main():
         for idx, row in tqdm(result.iterrows(), total=result.shape[0], desc="Writing rows", unit="row"):
             out_f.write(str(idx) + ',' + ','.join(map(str, row.values)) + '\n')
     print(f"Annotated matrix saved to {args.output}")
+
+    print("   ")
+    print_colorful_message("#########################################################", "blue")
+    print_colorful_message(" IOBRpy: Immuno-Oncology Biological Research using Python ", "cyan")
+    print_colorful_message(" If you encounter any issues, please report them at ", "cyan")
+    print_colorful_message(" https://github.com/IOBR/IOBRpy/issues ", "cyan")
+    print_colorful_message("#########################################################", "blue")
+    print(" Author: Haonan Huang, Dongqiang Zeng")
+    print(" Email: interlaken@smu.edu.cn ")
+    print_colorful_message("#########################################################", "blue")
+    print("   ")
 
 if __name__=='__main__':
     main()
