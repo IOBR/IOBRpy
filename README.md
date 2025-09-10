@@ -77,12 +77,12 @@ iobrpy prepare_salmon \
   --return_feature symbol \
   --remove_version
 
-| Name        |  TS99 |  TC89 |    TC68 |     TC40 |   813738 |  1929563 |
-| 5S\_rRNA    | 0.000 | 0.000 |   0.000 |    0.000 |    0.000 |    0.000 |
-| 5\_8S\_rRNA | 0.000 | 0.000 |   0.000 |    0.000 |    0.000 |    0.000 |
-| 7SK         | 0.000 | 0.000 | 954.687 | 1488.249 | 3691.321 | 5399.889 |
-| A1BG        | 0.479 | 1.717 |   1.844 |    0.382 |    1.676 |    1.126 |
-| A1BG-AS1    | 0.149 | 0.348 |   0.755 |    0.000 |    0.314 |    0.400 |
+Gene        TS99       TC89       TC68       TC40       813738     1929563
+5S_rRNA     0.000      0.000      0.000      0.000      0.000      0.000
+5_8S_rRNA   0.000      0.000      0.000      0.000      0.000      0.000
+7SK         0.000      0.000      954.687    1488.249   3691.321   5399.889
+A1BG        0.479      1.717      1.844      0.382      1.676      1.126
+A1BG-AS1    0.149      0.348      0.755      0.000      0.314      0.400
 
 # b) From raw gene counts → TPM
 iobrpy count2tpm \
@@ -117,6 +117,14 @@ iobrpy mouse2human_eset \
   -o human_matrix.csv \
   --column_of_symbol SYMBOL \
   --verbose
+
+Gene        Sample1    Sample2    Sample3    Sample4    Sample5    Sample6
+SCMH1       0.905412   0.993271   0.826294   0.535761   0.515038   0.733388
+NARF        0.116423   0.944370   0.847920   0.441993   0.736983   0.467756
+CD52        0.988616   0.784523   0.303614   0.886433   0.608639   0.351713
+CAV2        0.063843   0.993835   0.891718   0.702293   0.703912   0.248690
+HOXB6       0.716829   0.555838   0.638682   0.971783   0.868208   0.802464
+
 ```
 
 3) **(Optional) Annotate / de‑duplicate**
@@ -129,6 +137,14 @@ iobrpy anno_eset \
   --probe id \
   --method mean  
 # You can also use: --annotation-file my_anno.csv --annotation-key gene_id
+
+Gene        GSM1523727   GSM1523728   GSM1523729   GSM1523744   GSM1523745   GSM1523746
+SH3KBP1     4.3279743    4.316195     4.3514247    4.2957463    4.2566543    4.2168822
+RPL41       4.2461486    4.2468076    4.2579398    4.2955956    4.2426114    4.3464246
+EEF1A1      4.2937622    4.291038     4.2621994    4.2718415    4.1992331    4.2639275
+HUWE1       4.2255821    4.2111235    4.1993775    4.2192063    4.2214823    4.2046394
+LOC1019288  4.2193027    4.2196698    4.2132521    4.1819267    4.2345738    4.2104611
+
 ```
 
 4) **Signature scoring**
@@ -141,6 +157,13 @@ iobrpy calculate_sig_score \
   --mini_gene_count 2 \
   --parallel_size 1
 # Accepts space‑separated or comma‑separated groups; use "all" for a full merge.
+ID          CD_8_T_effector_PCA   DDR_PCA    APM_PCA    Immune_Checkpoint_PCA   CellCycle_Reg_PCA   Pan_F_TBRs_PCA
+GSM1523727  -3.003007             0.112244   1.046749   -3.287490               1.226469            -3.836552
+GSM1523728  0.631973              1.138303   1.999972   0.405965                1.431343            0.164805
+GSM1523729  -2.568384             -1.490780  -0.940420  -2.087635               0.579742            -1.208286
+GSM1523744  -0.834788             4.558424   -0.274724  -0.873015               1.400215            -2.880584
+GSM1523745  -1.358852             4.754705   -2.215926  -1.086041               1.342590            -1.054318
+
 ```
 
 5) **Immune deconvolution (choose one or many)**
@@ -154,6 +177,13 @@ iobrpy cibersort \
   --absolute False \
   --abs_method sig.score \
   --threads 1
+
+ID          B_cells_naive_CIBERSORT  B_cells_memory_CIBERSORT  Plasma_cells_CIBERSORT  T_cells_CD8_CIBERSORT  T_cells_CD4_naive_CIBERSORT  T_cells_CD4_memory_resting_CIBERSORT
+GSM1523727  0.025261644              0.00067545                0.174139691             0.060873405             0                           0.143873862
+GSM1523728  0.007497053              0.022985466               0.079320853             0.052005437             0                           0.137097071
+GSM1523729  0.005356156              0.010721794               0.114171733             0                       0                           0.191541779
+GSM1523744  0                        0.064645073               0.089539616             0.024437887             0                           0.147821928
+GSM1523745  0                        0.014678117               0.121834835             0                       0                           0.176046775
 
 # quanTIseq (method: lsei / robust norms)
 iobrpy quantiseq \
