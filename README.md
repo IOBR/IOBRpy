@@ -10,6 +10,7 @@ A Python **command‑line toolkit** for bulk RNA‑seq analysis of the tumor mic
 - `prepare_salmon` — Clean up Salmon outputs into a TPM matrix; strip version suffixes; keep `symbol`/`ENSG`/`ENST` identifiers.
 - `count2tpm` — Convert read counts to TPM (supports Ensembl/Entrez/Symbol/MGI; biomart/local annotation; effective length CSV).
 - `anno_eset` — Harmonize/annotate an expression matrix (choose symbol/probe columns; deduplicate; aggregation method).
+- `mouse2human_eset` — Convert mouse gene symbols to human gene symbols. Supports two modes: **matrix mode** (rows = genes) or **table mode** (input contains a symbol column). 
 
 **Pathway / signature scoring**
 - `calculate_sig_score` — Sample‑level signature scores via `pca`, `zscore`, `ssgsea`, or `integration`. 
@@ -87,7 +88,24 @@ iobrpy count2tpm \
 #   --effLength_csv efflen.csv --id id --length eff_length --gene_symbol symbol
 ```
 
-2) **(Optional) Annotate / de‑duplicate**
+2) (Optional) Mouse → Human symbol mapping
+```bash
+# Matrix mode: rows are mouse gene symbols, columns are samples
+iobrpy mouse2human_eset \
+  -i mouse_matrix.tsv \
+  -o human_matrix.tsv \
+  --is_matrix \
+  --verbose
+
+# Table mode: input has a symbol column (e.g., SYMBOL), will de-duplicate then map
+iobrpy mouse2human_eset \
+  -i mouse_table.csv \
+  -o human_matrix.csv \
+  --column_of_symbol SYMBOL \
+  --verbose
+```
+
+3) **(Optional) Annotate / de‑duplicate**
 ```bash
 iobrpy anno_eset \
   -i TPM_matrix.csv \
@@ -99,7 +117,7 @@ iobrpy anno_eset \
 # You can also use: --annotation-file my_anno.csv --annotation-key gene_id
 ```
 
-3) **Signature scoring**
+4) **Signature scoring**
 ```bash
 iobrpy calculate_sig_score \
   -i TPM_anno.csv \
@@ -111,7 +129,7 @@ iobrpy calculate_sig_score \
 # Accepts space‑separated or comma‑separated groups; use "all" for a full merge.
 ```
 
-4) **Immune deconvolution (choose one or many)**
+5) **Immune deconvolution (choose one or many)**
 ```bash
 # CIBERSORT
 iobrpy cibersort \
@@ -169,7 +187,7 @@ iobrpy deside \
   --print_info
 ```
 
-5) **TME clustering / NMF clustering**
+6) **TME clustering / NMF clustering**
 ```bash
 # KL index auto‑select k (k‑means)
 iobrpy tme_cluster \
@@ -193,7 +211,7 @@ iobrpy nmf \
   --skip_k_2
 ```
 
-6) **Ligand–receptor scoring (optional)**
+7) **Ligand–receptor scoring (optional)**
 ```bash
 iobrpy LR_cal \
   -i TPM_anno.csv \
@@ -226,6 +244,15 @@ iobrpy LR_cal \
   - `--length <str>` (default: `eff_length`): length column
   - `--gene_symbol <str>` (default: `symbol`): gene symbol column
   - `--check_data`: check & drop missing/invalid entries before conversion
+
+- **mouse2human\_eset**
+  - `-i/--input <CSV|TSV|TXT[.gz]>` (required): input expression **matrix** or **table**
+  - `-o/--output <CSV|TSV|TXT[.gz]>` (required): converted matrix indexed by **human** symbols (genes × samples)
+  - `--is_matrix`: treat input as a matrix (rows = **mouse** gene symbols, columns = samples); if omitted, runs in **table mode**
+  - `--column_of_symbol <str>` (required in table mode): column name that contains **mouse** gene symbols
+  - `--sep <,|\t>`: override input separator; if omitted, inferred by extension.
+  - `--out_sep <,|\t>`: override output separator; if omitted, inferred by **output** path extension
+  - `--verbose`: print shapes and basic run info
 
 - **anno_eset**
   - `-i/--input <CSV/TSV/TXT>` (required)
@@ -359,7 +386,7 @@ iobrpy LR_cal \
   https://figshare.com/articles/dataset/DeSide_model/25117862/1?file=44330255
 
 - **Python version for DeSide**
-  The `deside` subcommand runs **ONLY on Python 3.9**. Other versions (3.8/3.10/3.11/…) are **not supported** and may raise import/runtime errors.
+  The `deside` subcommand runs **ONLY on Python 3.9**. Other versions (3.8/3.10/3.11/…) are **not supported** .When invoked via the `iobrpy CLI`, it **automatically creates/uses an isolated virtual environment with pinned dependencies** so it doesn’t leak packages from your outer env. You can override the venv location with IOBRPY_DESIDE_VENV or force a clean rebuild with IOBRPY_DESIDE_REBUILD=1; the CLI wires iobrpy into that venv through a small shim and then launches the worker. 
 
 ---
 
