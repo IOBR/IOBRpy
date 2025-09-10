@@ -4,12 +4,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "iobrpy"
-version = "0.1.1"
+version = "0.1.2"
 description = "Immuno-Oncology Biological Research tools in Python"
 readme = "README.md"
 requires-python = ">=3.9"
 license = { file = "LICENSE" }
-authors = [{ name = "Haonan Huang" , email = "2905611068@qq.com" }]
+authors = [{ name = "Haonan Huang, Dongqiang Zeng" , email = "interlaken@smu.edu.cn" }]
 keywords = ["bioinformatics", "immuno-oncology", "RNA-seq", "deconvolution"]
 classifiers = [
   "Intended Audience :: Science/Research",
