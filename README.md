@@ -66,7 +66,7 @@ iobrpy count2tpm --help
 - **Separators**: auto‑detected from file extension (`.csv` vs `.tsv`/`.txt`); you can override via command options where available.
 - **Outputs**: CSV/TSV/TXT
 
-### Typical end‑to‑end workflow
+### Typical end‑to‑end workflow — output file structure examples
 
 1) **Prepare an expression matrix**
 ```bash
@@ -77,6 +77,14 @@ iobrpy prepare_salmon \
   --return_feature symbol \
   --remove_version
 
+| Name        |  TS99 |  TC89 |    TC68 |     TC40 |   813738 |  1929563 |
+| :---------- | ----: | ----: | ------: | -------: | -------: | -------: |
+| 5S\_rRNA    | 0.000 | 0.000 |   0.000 |    0.000 |    0.000 |    0.000 |
+| 5\_8S\_rRNA | 0.000 | 0.000 |   0.000 |    0.000 |    0.000 |    0.000 |
+| 7SK         | 0.000 | 0.000 | 954.687 | 1488.249 | 3691.321 | 5399.889 |
+| A1BG        | 0.479 | 1.717 |   1.844 |    0.382 |    1.676 |    1.126 |
+| A1BG-AS1    | 0.149 | 0.348 |   0.755 |    0.000 |    0.314 |    0.400 |
+
 # b) From raw gene counts → TPM
 iobrpy count2tpm \
   -i counts.tsv.gz \
@@ -86,6 +94,14 @@ iobrpy count2tpm \
   --source local
 # (Optionally provide transcript effective lengths)
 #   --effLength_csv efflen.csv --id id --length eff_length --gene_symbol symbol
+
+| Name        | SAMPLE-2e394f45066d\_20180921 | SAMPLE-88dc3e3cd88e\_20180921 | SAMPLE-b80d019c9afa\_20180921 | SAMPLE-586259880b46\_20180926 | SAMPLE-e95813c8875d\_20180921 | SAMPLE-7bd449ae436b\_20180921 |
+| :---------- | ----------------------------: | ----------------------------: | ----------------------------: | ----------------------------: | ----------------------------: | ----------------------------: |
+| 5S\_rRNA    |                         5.326 |                         2.314 |                         2.377 |                         3.439 |                         6.993 |                         3.630 |
+| 5\_8S\_rRNA |                         0.000 |                         0.000 |                         0.000 |                         0.000 |                         0.000 |                         0.000 |
+| 7SK         |                         8.006 |                        13.969 |                        11.398 |                         5.504 |                         8.510 |                         6.418 |
+| A1BG        |                         3.876 |                         2.576 |                         2.874 |                         2.533 |                         2.034 |                         2.828 |
+| A1BG-AS1    |                         5.512 |                         4.440 |                         7.725 |                         4.610 |                         6.292 |                         5.336 |
 ```
 
 2) (Optional) Mouse → Human symbol mapping
