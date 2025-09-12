@@ -89,8 +89,7 @@ iobrpy count2tpm \
   -i counts.tsv.gz \
   -o TPM_matrix.csv \
   --idType Ensembl \
-  --org hsa \
-  --source local
+  --org hsa
 # (Optionally provide transcript effective lengths)
 #   --effLength_csv efflen.csv --id id --length eff_length --gene_symbol symbol
 
@@ -356,7 +355,6 @@ GSM1523745  1.478643424                              1.76013689    1.552305282  
   - `--effLength_csv <CSV>`: optional effective-length file with columns `id`, `eff_length`, `symbol`
   - `--idType {Ensembl|entrez|symbol|mgi}` (default: `Ensembl`)
   - `--org {hsa|mmus}` (default: `hsa`)
-  - `--source {local|biomart}` (default: `local`)
   - `--id <str>` (default: `id`): ID column name in `--effLength_csv`
   - `--length <str>` (default: `eff_length`): length column
   - `--gene_symbol <str>` (default: `symbol`): gene symbol column
