@@ -128,7 +128,7 @@ HOXB6       0.716829   0.555838   0.638682   0.971783   0.868208   0.802464
 
 ```
 
-3) **(Optional) Annotate / de‑duplicate**
+3) **Annotate / de‑duplicate**
 ```bash
 iobrpy anno_eset \
   -i TPM_matrix.csv \
@@ -306,12 +306,12 @@ iobrpy nmf \
   --max-iter 10000 \
   --skip_k_2
 
-sample      cluster
-GSM1523727  cluster2
-GSM1523728  cluster3
-GSM1523729  cluster1
-GSM1523744  cluster2
-GSM1523745  cluster3
+sample      cluster   B_cells_naive_CIBERSORT  B_cells_memory_CIBERSORT  Plasma_cells_CIBERSORT  T_cells_CD8_CIBERSORT  T_cells_CD4_naive_CIBERSORT
+GSM1523727  cluster2  0.006101201              0.013615524               0.149377703             0.049747382            0
+GSM1523728  cluster3  0                        0.033869265               0.076470323             0.048364124            0
+GSM1523729  cluster1  0.003348733              0.018252079               0.09392446              0                      0
+GSM1523744  cluster2  0                        0.059386784               0.077266743             0.028845636            0
+GSM1523745  cluster3  0                        0.007379033               0.108739264             0                      0
 
 cluster   top_1                                 top_2                         top_3                                 top_4                             top_5                                   top_6
 cluster1  T_cells_CD4_memory_resting_CIBERSORT  Plasma_cells_CIBERSORT        Macrophages_M2_CIBERSORT              T_cells_gamma_delta_CIBERSORT     Mast_cells_resting_CIBERSORT            T_cells_follicular_helper_CIBERSORT
