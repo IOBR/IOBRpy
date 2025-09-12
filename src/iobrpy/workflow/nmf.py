@@ -28,6 +28,7 @@ from sklearn.metrics import silhouette_score
 from sklearn.preprocessing import normalize
 import matplotlib.pyplot as plt
 from iobrpy.utils.print_colorful_message import print_colorful_message
+from matplotlib.patches import Ellipse
 
 def read_matrix(path):
     # Try comma first, then tab
@@ -38,6 +39,133 @@ def read_matrix(path):
         df = pd.read_csv(path, sep='    ', index_col=0)
         return df
 
+def _sqrt_chi2_quantile(prob: float) -> float:
+    """
+    Return sqrt(chi2.ppf(prob, df=2)) without SciPy.
+    Values are accurate enough for plotting; we snap to nearest key.
+    """
+    table = {0.80: 1.794, 0.85: 1.948, 0.90: 2.146, 0.95: 2.447, 0.99: 3.034}
+    # clamp and pick nearest
+    prob = min(max(prob, 0.80), 0.99)
+    key = min(table.keys(), key=lambda k: abs(k - prob))
+    return table[key]
+
+def _confidence_ellipse(points_2d, ax, q=0.90, method='mcd', trim=0.10, **kwargs):
+    """
+    Draw a covariance-based confidence ellipse for a 2D cluster.
+
+    Parameters
+    ----------
+    points_2d : (n,2) ndarray
+        Cluster points in PCA space.
+    ax : matplotlib Axes
+        Target axes.
+    q : float
+        Coverage probability (e.g., 0.90 -> ~90% ellipse). Smaller -> tighter.
+    method : {'mcd','trim','classic'}
+        'mcd'   : robust covariance via Minimum Covariance Determinant (if available);
+        'trim'  : drop top 'trim' fraction of farthest points (Euclidean) then classic cov;
+        'classic': use all points with classic covariance.
+    trim : float
+        Fraction (0~0.4) of outermost points to drop when method='trim' or MCD fallback.
+
+    Notes
+    -----
+    Ellipse axes = 2 * sqrt(chi2_quantile(q, df=2)) * sqrt(eigenvalues_of_cov).
+    This is robust to outliers when 'mcd' succeeds or after trimming.
+    """
+    n = points_2d.shape[0]
+    if n < 3:
+        return None
+
+    # --- estimate center and covariance robustly ---
+    mu, cov = None, None
+    used_pts = points_2d
+
+    if method == 'mcd':
+        try:
+            # robust covariance (will ignore a subset of outliers automatically)
+            from sklearn.covariance import MinCovDet
+            support_fraction = None if trim <= 0 else max(0.5, 1.0 - float(trim))
+            mcd = MinCovDet(support_fraction=support_fraction, random_state=0).fit(points_2d)
+            mu = mcd.location_
+            cov = mcd.covariance_
+        except Exception:
+            method = 'trim'  # fallback if sklearn not installed or fails
+
+    if method == 'trim':
+        # drop outer 'trim' fraction by Euclidean distance to mean, then recompute
+        mu0 = points_2d.mean(axis=0)
+        d2 = ((points_2d - mu0) ** 2).sum(axis=1)
+        if trim > 0:
+            keep = d2 <= np.quantile(d2, 1.0 - float(trim))
+            used_pts = points_2d[keep]
+        mu = used_pts.mean(axis=0)
+        cov = np.cov(used_pts, rowvar=False)
+
+    if method == 'classic':
+        mu = points_2d.mean(axis=0)
+        cov = np.cov(points_2d, rowvar=False)
+
+    # guard
+    if cov is None or not np.all(np.isfinite(cov)):
+        return None
+
+    # --- build ellipse from eigen-decomposition ---
+    vals, vecs = np.linalg.eigh(cov)
+    order = vals.argsort()[::-1]
+    vals, vecs = vals[order], vecs[:, order]
+    theta = np.degrees(np.arctan2(*vecs[:, 0][::-1]))
+    scale = _sqrt_chi2_quantile(q)
+    width, height = 2 * scale * np.sqrt(np.maximum(vals, 1e-12))
+    ell = Ellipse(xy=mu, width=width, height=height, angle=theta,
+                  fill=False, lw=1.2, **kwargs)
+    ax.add_patch(ell)
+    return ell
+
+def _plot_pca_scatter(pca_coords, cluster_labels, sample_index, out_path,
+                      annotate_mode='centroids',  # 'none' | 'centroids' | 'few' | 'all'
+                      topk_per_cluster=3,         # used when annotate_mode='few'
+                      draw_ellipses=True):
+    fig, ax = plt.subplots(figsize=(7.0, 5.2))
+    clusters = {}
+    for i, c in enumerate(cluster_labels):
+        clusters.setdefault(c, []).append(i)
+    for cname, idxs in clusters.items():
+        pts = pca_coords[np.array(idxs)]
+        ax.scatter(pts[:, 0], pts[:, 1], s=12, alpha=0.55, label=cname)
+    centroids = {}
+    for cname, idxs in clusters.items():
+        pts = pca_coords[np.array(idxs)]
+        ctr = pts.mean(axis=0)
+        centroids[cname] = ctr
+        if annotate_mode in ('centroids', 'all', 'few'):
+            ax.text(ctr[0], ctr[1], f' {cname}', fontsize=9, weight='bold',
+                    va='center', ha='left', zorder=6)
+    if draw_ellipses:
+        # draw tighter, robust ellipses (less spillover at boundaries)
+        for cname, idxs in clusters.items():
+            pts = pca_coords[np.array(idxs)]
+            _confidence_ellipse(pts, ax, q=0.90, method='mcd', trim=0.10)
+    if annotate_mode in ('all', 'few'):
+        for cname, idxs in clusters.items():
+            pts = pca_coords[np.array(idxs)]
+            labels = [sample_index[i] for i in idxs]
+            if annotate_mode == 'all':
+                choose = range(len(labels))
+            else:
+                ctr = centroids[cname]
+                d2 = ((pts - ctr) ** 2).sum(axis=1)
+                choose = np.argsort(d2)[-min(topk_per_cluster, len(labels)):]
+            for k in choose:
+                ax.text(pts[k, 0], pts[k, 1], f' {labels[k]}', fontsize=7, alpha=0.8)
+    ax.set_xlabel('PC1'); ax.set_ylabel('PC2')
+    ax.set_title('Samples in NMF-component space (PCA of W)')
+    ax.legend(title='cluster', frameon=False, fontsize=9)
+    ax.grid(True, linewidth=0.3, alpha=0.3)
+    plt.tight_layout()
+    fig.savefig(out_path, dpi=300, bbox_inches='tight')
+    plt.close(fig)
 
 def parse_features_arg(feat_str, n_cols):
     """Parse --features argument. Support 'm-n' or 'm:n' or single 'm' (1-based, inclusive).
@@ -131,36 +259,45 @@ def try_k_range_nmf_argmax(X, kmin, kmax, random_state=42, max_iter=1000, skip_k
     return results
 
 
-def save_outputs(outdir, sample_index, cluster_labels, pca_coords=None):
+def save_outputs(outdir, sample_index, cluster_labels, features_df=None, pca_coords=None):
+    """
+    Save clustering results and optional PCA plot.
+
+    When `features_df` is provided, write clusters.csv with:
+      - column 1: 'sample' (sample IDs)
+      - column 2: 'cluster' (cluster labels like 'cluster1', 'cluster2', ...)
+      - columns 3+: feature values actually used for clustering
+                   (after preprocessing), keeping original feature names.
+    Otherwise, keep the old behavior (sample as index).
+    """
     os.makedirs(outdir, exist_ok=True)
-    # Save clusters.csv (sample as index)
+
+    # Build the base (sample, cluster) table in the given sample order
     labels_df = pd.DataFrame({'sample': sample_index, 'cluster': cluster_labels})
-    labels_df.set_index('sample', inplace=True)
-    labels_df.to_csv(os.path.join(outdir, 'clusters.csv'))
 
-    # Save PCA plot
+    if features_df is not None:
+        # Reorder features_df to match the provided sample order
+        # and drop its index so that 'sample' remains the only ID column.
+        feats_ordered = features_df.loc[sample_index]
+        out_df = pd.concat([labels_df, feats_ordered.reset_index(drop=True)], axis=1)
+        out_df.to_csv(os.path.join(outdir, 'clusters.csv'), index=False)
+    else:
+        # Fallback to previous format (sample as index)
+        labels_df.set_index('sample', inplace=True)
+        labels_df.to_csv(os.path.join(outdir, 'clusters.csv'))
+
+    # Optional PCA scatter in W-space (unchanged)
     if pca_coords is not None:
-        cat = pd.Categorical(cluster_labels)
-        codes = cat.codes
-        unique_labels = list(cat.categories)
-
-        fig, ax = plt.subplots(figsize=(7, 5))
-        scatter = ax.scatter(pca_coords[:, 0], pca_coords[:, 1], c=codes, s=40)
-        for i, s in enumerate(sample_index):
-            ax.text(pca_coords[i, 0], pca_coords[i, 1], s, fontsize=8, alpha=0.7)
-        ax.set_xlabel('PC1')
-        ax.set_ylabel('PC2')
-        ax.set_title('Samples in NMF-component space (PCA of W)')
-        # Create legend mapping colors to cluster names
-        handles = []
-        for code, name in enumerate(unique_labels):
-            handles.append(plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='k', label=name))
-        ax.legend(handles=handles, title='cluster')
-        plt.tight_layout()
-        fig_path = os.path.join(outdir, 'pca_plot.png')
-        fig.savefig(fig_path, dpi=150)
-        plt.close(fig)
-
+        plot_path = os.path.join(outdir, 'pca_plot.png')
+        _plot_pca_scatter(
+            pca_coords=pca_coords,
+            cluster_labels=cluster_labels,
+            sample_index=sample_index,
+            out_path=plot_path,
+            annotate_mode='none',   # 'none' | 'centroids' | 'few' | 'all'
+            topk_per_cluster=3,
+            draw_ellipses=True
+        )
 
 def main():
     parser = argparse.ArgumentParser(description='Cluster samples using NMF (argmax on W) and auto-select best k by silhouette score (k!=2).')
@@ -212,6 +349,14 @@ def main():
     except ValueError as e:
         print('ERROR:', e)
         sys.exit(1)
+
+    # Keep a DataFrame of the actual feature values used for clustering
+    # (after all preprocessing such as log1p/normalization/shift).
+    used_features_df = pd.DataFrame(
+        X,
+        index=selected_df.index,          # keep the original sample order/index
+        columns=selected_df.columns       # keep the original feature names
+    )
 
     n_samples = X.shape[0]
     if args.kmax >= n_samples:
@@ -265,7 +410,7 @@ def main():
         W2 = None
 
     # 7) Save outputs (clusters.csv, pca_plot.png)
-    save_outputs(args.output, selected_df.index.tolist(), cluster_labels, pca_coords=W2)
+    save_outputs(args.output, selected_df.index.tolist(), cluster_labels, features_df=used_features_df, pca_coords=W2)
 
     print('Outputs saved to:', os.path.abspath(args.output))
     print('Files: clusters.csv, pca_plot.png , top_features_per_cluster.csv')
