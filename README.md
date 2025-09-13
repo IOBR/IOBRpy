@@ -1,4 +1,4 @@
-# iobrpy
+# IOBRpy
 
 A Python **command‑line toolkit** for bulk RNA‑seq analysis of the tumor microenvironment (TME): data prep → signature scoring → immune deconvolution → clustering → ligand–receptor scoring.
 
