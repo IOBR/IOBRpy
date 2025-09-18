@@ -5,62 +5,97 @@ import pandas as pd
 import numpy as np
 from importlib.resources import files
 from pathlib import Path
+from typing import Optional
 try:
     from tqdm.auto import tqdm
 except Exception:
     def tqdm(iterable, **kwargs):
         return iterable
 from iobrpy.utils.print_colorful_message import print_colorful_message
+from iobrpy.utils.remove_version import strip_versions_in_dataframe, deduplicate_after_stripping
+
+def _auto_sep_for_path(path: str, explicit_sep: Optional[str] = None):
+    """
+    Decide separator & engine for pandas.read_csv.
+    - If explicit_sep is given (e.g., via --sep), use it with engine='c'.
+    - If file ends with .tsv or .tsv.gz -> '\t', engine='c'
+    - If file ends with .csv or .csv.gz -> ',', engine='c'
+    - Otherwise (including unusual .gz like .expr.gz) -> sep=None, engine='python' (sniff)
+    """
+    if explicit_sep is not None:
+        return explicit_sep, 'c'
+    low = path.lower()
+    if low.endswith(('.tsv', '.tsv.gz')):
+        return '\t', 'c'
+    if low.endswith(('.csv', '.csv.gz')):
+        return ',', 'c'
+    # Unusual extensions (including .gz): sniff
+    return None, 'python'
 
 def _load_external_annotation(path: Path, key: str = None):
+    # 1) Pickle: support DataFrame or dict-of-DataFrame (select via --annotation-key)
     ext = path.suffix.lower()
     if ext in ('.pkl', '.pickle'):
         with path.open('rb') as f:
             obj = pickle.load(f)
-        # If it's a dict-like pkl, choose key
         if isinstance(obj, dict):
             if key:
                 if key not in obj:
                     raise KeyError(f"Key '{key}' not found in pkl. Available keys: {list(obj.keys())}")
                 df = obj[key]
             else:
-                # if only one df inside, pick it; otherwise error to avoid ambiguity
                 keys = list(obj.keys())
                 if len(keys) == 1:
                     df = obj[keys[0]]
                 else:
                     raise KeyError(f"Pickle contains multiple keys: {keys}. Provide --annotation-key to choose one.")
-        elif isinstance(obj, pd.DataFrame):
-            df = obj
-        else:
-            raise TypeError("Pickle does not contain a pandas DataFrame or dict of DataFrames.")
-    elif ext in ('.csv', '.txt'):
-        df = pd.read_csv(path, sep=',', index_col=None)
-    elif ext in ('.tsv', '.gz'):
-        # let pandas infer compression; try tab first
-        try:
-            df = pd.read_csv(path, sep='\t', index_col=None, compression='infer')
-        except Exception:
-            df = pd.read_csv(path, sep=',', index_col=None, compression='infer')
+    # 2) Excel: xls/xlsx as-is
     elif ext in ('.xls', '.xlsx'):
         df = pd.read_excel(path, index_col=None)
     else:
-        # try pickle as fallback
-        with path.open('rb') as f:
-            obj = pickle.load(f)
-        if isinstance(obj, dict):
-            if key:
-                df = obj[key]
-            else:
-                keys = list(obj.keys())
-                if len(keys) == 1:
-                    df = obj[keys[0]]
+        # 3) Delimited text (csv/tsv/txt and ANY .gz suffix)
+        #    Use auto sep sniffing for unusual .gz (e.g., .expr.gz)
+        sep_infer, eng = _auto_sep_for_path(str(path), explicit_sep=None)
+        try:
+            read_kwargs = dict(
+                filepath_or_buffer=path,
+                sep=sep_infer,
+                engine=eng,
+                index_col=None,
+                compression='infer',
+                chunksize=200_000
+            )
+            if eng != 'python':
+                read_kwargs['low_memory'] = False
+
+            chunks = []
+            for chunk in tqdm(pd.read_csv(**read_kwargs), desc="Loading annotation", unit="rows"):
+                chunks.append(chunk)
+            df = pd.concat(chunks, axis=0)
+        except Exception as e:
+            # Fallback: try pickle if user handed a pickled object with odd suffix
+            try:
+                with path.open('rb') as f:
+                    obj = pickle.load(f)
+                if isinstance(obj, dict):
+                    if key:
+                        if key not in obj:
+                            raise KeyError(f"Key '{key}' not found in fallback pkl. Keys: {list(obj.keys())}")
+                        df = obj[key]
+                    else:
+                        keys = list(obj.keys())
+                        if len(keys) == 1:
+                            df = obj[keys[0]]
+                        else:
+                            raise KeyError(f"Fallback pickle has multiple keys: {keys}. Provide --annotation-key.")
+                elif isinstance(obj, pd.DataFrame):
+                    df = obj
                 else:
-                    raise KeyError(f"File ambiguous; provide --annotation-key. Keys: {keys}")
-        elif isinstance(obj, pd.DataFrame):
-            df = obj
-        else:
-            raise TypeError(f"Unsupported annotation file format: {ext}")
+                    raise TypeError("Fallback pickle is not a DataFrame or dict of DataFrames.")
+            except Exception as e2:
+                raise TypeError(f"Unsupported/failed to parse annotation file '{path}'. "
+                                f"Tried CSV/TSV (auto sep) and pickle fallback. Last errors: {e!r} / {e2!r}")
+
     if not isinstance(df, pd.DataFrame):
         raise TypeError("Loaded annotation is not a pandas DataFrame.")
     return df
@@ -216,15 +251,37 @@ def main():
     parser.add_argument('--probe', default='id', help='Annotation probe column name (in the annotation dataframe)')
     parser.add_argument('--method', default='mean', choices=['mean','sd','sum'], help='Dup handling method')
     parser.add_argument('--sep', default=None, help='Input sep; if omitted, infer from extension')
+    parser.add_argument('--remove_version', action='store_true',
+                        help='Strip Ensembl version suffix from row index before annotation')
     args = parser.parse_args()
 
     # Determine input separator
     sep = args.sep if args.sep is not None else ('\t' if args.eset.endswith(('.tsv','.tsv.gz')) else ',')
-    print(f"Input sep: '{sep}'")
 
     # Read input
-    df = pd.read_csv(args.eset, sep=sep, index_col=0, compression='infer')
+    sep_infer, eng = _auto_sep_for_path(args.eset, getattr(args, 'sep', None))
+    read_kwargs = dict(
+        filepath_or_buffer=args.eset,
+        sep=sep_infer,
+        engine=eng,
+        index_col=0,
+        compression='infer',
+        chunksize=100_000
+    )
+    if eng != 'python':
+        read_kwargs['low_memory'] = False
+
+    chunks = []
+    for chunk in tqdm(pd.read_csv(**read_kwargs), desc="Loading input", unit="rows"):
+        chunks.append(chunk)
+    df = pd.concat(chunks, axis=0)
+
     print(f"Loaded df shape: {df.shape}")
+
+    if args.remove_version:
+        df, n_stripped = strip_versions_in_dataframe(df, on_index=True, also_refseq=False)
+        print(f"[anno_eset] stripped {n_stripped} versioned IDs from index")
+
 
     # Prepare annotation object (either DataFrame or built-in key)
     annotation_obj = None
