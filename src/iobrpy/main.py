@@ -21,7 +21,7 @@ from iobrpy.workflow.nmf import main as nmf_main
 from iobrpy.workflow.mouse2human_eset import main as mouse2human_eset_main
 from iobrpy.utils.print_colorful_message import print_colorful_message
 
-VERSION = "0.1.2"
+VERSION = "0.1.3"
 
 def main():
     parser = argparse.ArgumentParser(prog='iobrpy', description="Immuno-Oncology Biological Research using Python")
@@ -62,6 +62,8 @@ def main():
                     help='Check and remove missing values in count matrix')
     p2.add_argument('-o', '--output', dest='output_path', required=True,
                     help='Path to save TPM matrix')
+    p2.add_argument('--remove_version', action='store_true',
+                    help='Remove version suffix from gene IDs before processing')
 
     # Step 3: anno_eset
     p3 = subparsers.add_parser('anno_eset', help='Annotate expression set and remove duplicates')
@@ -82,6 +84,8 @@ def main():
                     help='Annotation probe column')
     p3.add_argument('--method', default='mean', choices=['mean','sd','sum'],
                     help='Dup handling method')
+    p3.add_argument('--remove_version', action='store_true',
+                    help='Remove version suffix from gene IDs before annotation')
 
     # Step 4: calculate_sig_score
     p4 = subparsers.add_parser('calculate_sig_score', help='Calculate signature scores')
@@ -309,6 +313,7 @@ def main():
             idType=args.idType,
             org=args.org,
             source=args.source,
+            remove_version=args.remove_version,
             effLength_df=eff_df,
             id_col=args.id_col,
             length_col=args.length_col,
@@ -341,6 +346,8 @@ def main():
                '--symbol', args.symbol,
                '--probe', args.probe,
                '--method', args.method]
+        if args.remove_version:
+            cli += ['--remove_version']
         if args.annotation_file:
             cli += ['--annotation-file', args.annotation_file]
         if args.annotation_key:
