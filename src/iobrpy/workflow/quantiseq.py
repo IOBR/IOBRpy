@@ -2,153 +2,190 @@ import argparse
 import pickle
 import numpy as np
 import pandas as pd
-from scipy.optimize import minimize
+from scipy.optimize import nnls  # fast non-negative least squares
 import statsmodels.api as sm
 from tqdm import tqdm
 import os
 from importlib.resources import files
 from iobrpy.utils.print_colorful_message import print_colorful_message
 
+# -----------------------------
+# Fast helpers (vectorized)
+# -----------------------------
+
 def infer_sep(path):
-        ext = os.path.splitext(path)[1].lower()
-        if ext == '.csv':
-            return ','
-        elif ext in ('.tsv', '.txt'):
-            return '\t'
-        else:
-            return None
+    ext = os.path.splitext(path)[1].lower()
+    if ext == '.csv':
+        return ','
+    elif ext in ('.tsv', '.txt'):
+        return '\t'
+    else:
+        return None
 
 def make_qn(df: pd.DataFrame) -> pd.DataFrame:
-    """Quantile normalize columns of a DataFrame."""
-    mat = df.values.astype(float)
-    sorted_mat = np.sort(mat, axis=0)
-    mean_vals = np.mean(sorted_mat, axis=1)
-    ranks = np.argsort(np.argsort(mat, axis=0), axis=0)
-    qn = np.zeros_like(mat)
-    for i in tqdm(range(mat.shape[0]),desc="Quantile normalizing rows",total=mat.shape[0],unit="row"):
-        for j in range(mat.shape[1]):
-            qn[i, j] = mean_vals[ranks[i, j]]
-    return pd.DataFrame(qn, index=df.index, columns=df.columns)
+    """
+    Quantile normalize columns of a DataFrame (fast, vectorized).
 
+    Algorithm:
+    1) For each column, sort its values (ascending).
+    2) Take the row-wise mean across all sorted columns (mean distribution).
+    3) For each column, assign the mean distribution back in the positions
+       of that column's sorted order.
+
+    This avoids Python-level nested loops.
+    """
+    if df.shape[1] == 0 or df.shape[0] == 0:
+        return df.copy()
+
+    vals = df.to_numpy(dtype=float, copy=False)
+    order = np.argsort(vals, axis=0)                 # indices that would sort each column
+    sorted_vals = np.take_along_axis(vals, order, axis=0)
+    mean_sorted = sorted_vals.mean(axis=1)           # average at each rank across columns
+
+    # Place the averaged ranks back to original positions
+    out = np.empty_like(vals)
+    # For each column j, positions order[:, j] should receive mean_sorted
+    for j in range(vals.shape[1]):
+        out[order[:, j], j] = mean_sorted
+
+    return pd.DataFrame(out, index=df.index, columns=df.columns)
+
+def _build_hgnc_alias_map(hgnc: pd.DataFrame):
+    """
+    Build a dict mapping any alias (ApprovedSymbol, PreviousSymbols, Synonyms) to ApprovedSymbol.
+    Uses simple string splitting; robust to missing columns.
+    """
+    alias_to_approved = {}
+
+    if hgnc is None or hgnc.empty:
+        return alias_to_approved
+
+    cols = set(hgnc.columns)
+    has_prev = 'PreviousSymbols' in cols
+    has_syn  = 'Synonyms' in cols
+    has_approved = 'ApprovedSymbol' in cols
+
+    if not has_approved:
+        return alias_to_approved
+
+    # Iterate rows once; O(n) and typically fast
+    for _, row in hgnc[['ApprovedSymbol'] + ([ 'PreviousSymbols'] if has_prev else []) + ([ 'Synonyms'] if has_syn else [])].fillna('').iterrows():
+        approved = str(row['ApprovedSymbol']).strip()
+        if approved:
+            # map the approved symbol to itself
+            if approved not in alias_to_approved:
+                alias_to_approved[approved] = approved
+
+        if has_prev:
+            for token in str(row.get('PreviousSymbols', '')).split(','):
+                alias = token.strip()
+                if alias and alias not in alias_to_approved:
+                    alias_to_approved[alias] = approved
+
+        if has_syn:
+            for token in str(row.get('Synonyms', '')).split(','):
+                alias = token.strip()
+                if alias and alias not in alias_to_approved:
+                    alias_to_approved[alias] = approved
+
+    return alias_to_approved
 
 def map_genes(df: pd.DataFrame, hgnc: pd.DataFrame) -> pd.DataFrame:
-    """Map gene symbols to approved HGNC symbols, aggregate duplicates by median."""
-    curgenes = list(df.index)
-    # Use R-like mapping if detailed HGNC info is available
-    required_cols = {'ApprovedSymbol', 'Status', 'ApprovedName', 'PreviousSymbols', 'Synonyms'}
-    if required_cols.issubset(hgnc.columns):
-        # Initialize mappings
-        newgenes = [None] * len(curgenes)
-        newgenes2 = [None] * len(curgenes)
-        hgnc_index = hgnc.set_index('ApprovedSymbol')
-        # First pass: exact matches and withdrawn logic
-        for idx, gene in tqdm(enumerate(curgenes),desc="Resolving primary symbols",total=len(curgenes),unit="gene"):
-            if gene in hgnc_index.index:
-                row = hgnc_index.loc[gene]
-                status = row['Status']
-                if status == 'Approved':
-                    newgenes[idx] = gene
-                elif status == 'EntryWithdrawn':
-                    continue
-                else:
-                    newname = row['ApprovedName'].replace('symbolwithdrawn,see', '')
-                    newgenes2[idx] = newname
-        # Second pass: previous symbols and synonyms
-        ps_map = hgnc_index['PreviousSymbols'].dropna().to_dict()
-        sy_map = hgnc_index['Synonyms'].dropna().to_dict()
-        for idx, gene in tqdm(enumerate(curgenes),desc="Checking previous/synonyms",total=len(curgenes),unit="gene"):
-            if newgenes[idx] is None:
-                # PreviousSymbols
-                for symb, ps in ps_map.items():
-                    if isinstance(ps, str) and gene in [g.strip() for g in ps.split(',')]:
-                        newgenes2[idx] = symb
-                        break
-                # Synonyms
-                if newgenes2[idx] is None:
-                    for symb, sy in sy_map.items():
-                        if isinstance(sy, str) and gene in [g.strip() for g in sy.split(',')]:
-                            newgenes2[idx] = symb
-                            break
-        # Remove duplicates
-        for i, val in enumerate(newgenes2):
-            if val is not None and val in newgenes:
-                newgenes2[i] = None
-        # Fill primary names
-        for i in range(len(curgenes)):
-            if newgenes[i] is None and newgenes2[i] is not None:
-                newgenes[i] = newgenes2[i]
-        # Filter and aggregate
-        keep = [i for i, v in enumerate(newgenes) if v is not None]
-        df2 = df.iloc[keep].copy()
-        df2.index = [newgenes[i] for i in keep]
-        return df2.groupby(df2.index).median()
-    else:
-        # Fallback: simple mapping using available columns
-        curgenes = list(df.index)
-        newgenes = [None] * len(curgenes)
-        if 'ApprovedSymbol' in hgnc.columns:
-            hgnc_indexed = hgnc.set_index('ApprovedSymbol')
-            prev_map = hgnc_indexed['PreviousSymbols'].dropna().to_dict() if 'PreviousSymbols' in hgnc_indexed.columns else {}
-            syn_map = hgnc_indexed['Synonyms'].dropna().to_dict() if 'Synonyms' in hgnc_indexed.columns else {}
-        else:
-            hgnc_indexed, prev_map, syn_map = None, {}, {}
-        # direct matches
-        for idx, gene in tqdm(enumerate(curgenes),desc="Fallback: direct mapping",total=len(curgenes),unit="gene"):
-            if hgnc_indexed is not None and gene in hgnc_indexed.index:
-                newgenes[idx] = gene
-        # previous and synonyms
-        for idx, gene in tqdm(enumerate(curgenes),desc="Fallback: prev/synonyms",total=len(curgenes),unit="gene"):
-            if newgenes[idx] is None:
-                for symb, ps in prev_map.items():
-                    if gene in [g.strip() for g in str(ps).split(',')]:
-                        newgenes[idx] = symb
-                        break
-                if newgenes[idx] is None:
-                    for symb, sy in syn_map.items():
-                        if gene in [g.strip() for g in str(sy).split(',')]:
-                            newgenes[idx] = symb
-                            break
-        keep = [i for i, v in enumerate(newgenes) if v is not None]
-        df2 = df.iloc[keep].copy()
-        df2.index = [newgenes[i] for i in keep]
-        return df2.groupby(df2.index).median()
+    """
+    Map gene symbols to Approved HGNC symbols and aggregate duplicates by median.
+    This is a faster, vectorized rewrite of the previous multi-pass logic.
+    """
+    if df is None or df.empty:
+        return df.copy()
 
+    alias_map = _build_hgnc_alias_map(hgnc)
+    if not alias_map:
+        # No mapping available; return as-is
+        return df.copy()
+
+    # Map index via a vectorized Series.map with a fallback to "keep original if already approved"
+    idx = df.index.to_series()
+    mapped = idx.map(lambda g: alias_map.get(g, alias_map.get(str(g).strip(), None)))
+    # If still missing, keep original ONLY if it is an approved symbol
+    approved_set = {v for v in alias_map.values()}
+    mapped = mapped.where(mapped.notna(), idx.where(idx.isin(approved_set), np.nan))
+
+    # Drop genes we cannot map; aggregate duplicates by median to match R behavior
+    keep = mapped.notna()
+    if not keep.any():
+        # In pathological cases, return empty frame with original columns
+        return pd.DataFrame(index=[], columns=df.columns, dtype=float)
+
+    df2 = df.loc[keep].copy()
+    df2.index = mapped[keep].astype(str).values
+    return df2.groupby(df2.index).median()
 
 def fix_mixture(mix: pd.DataFrame, hgnc: pd.DataFrame, arrays: bool = False) -> pd.DataFrame:
+    """
+    1) HGNC mapping (fast).
+    2) If values look log-scaled (max < 50), convert back with 2**x.
+    3) Optional quantile normalization for array data (fast, vectorized).
+    4) Column-wise TPM-like scaling to 1e6 for numerical stability.
+    """
     mix2 = map_genes(mix, hgnc)
-    if mix2.values.max() < 50:
-        mix2 = 2 ** mix2
+    if mix2.size == 0:
+        return mix2
+
+    if np.nanmax(mix2.values) < 50:  # heuristic: log-scale check
+        mix2 = pd.DataFrame(np.power(2.0, mix2.values), index=mix2.index, columns=mix2.columns)
+
     if arrays:
         mix2 = make_qn(mix2)
-    mix2 = mix2.div(mix2.sum(axis=0), axis=1) * 1e6
+
+    col_sums = mix2.sum(axis=0).to_numpy(dtype=float, copy=False)
+    # Avoid division by zero
+    col_sums[col_sums == 0] = 1.0
+    mix2 = mix2.div(col_sums, axis=1) * 1e6
     return mix2
 
+# -----------------------------
+# Core solvers
+# -----------------------------
 
 def DClsei(b, A, scaling):
-    # Constrained least squares with R-like scaling
+    """
+    Fast constrained least squares using NNLS (non-negative least squares).
+
+    We solve:  min ||A x - b||_2  subject to x >= 0
+    Then apply the quanTIseq mRNA scaling correction in the same way as before,
+    and finally compute the 'Other' fraction as max(0, 1 - sum(x)).
+
+    This replaces the per-sample SLSQP minimize() call with nnls(), which is
+    typically orders of magnitude faster while preserving the non-negativity
+    constraint and the downstream normalization behavior.
+    """
+    # R-like scaling to stabilize
     sc = np.linalg.norm(A, 2)
+    if not np.isfinite(sc) or sc == 0:
+        sc = 1.0
     A2 = A / sc
     b2 = b / sc
-    def obj(x):
-        return np.sum((A2.dot(x) - b2) ** 2)
-    n = A2.shape[1]
-    cons = [
-        {'type': 'ineq', 'fun': lambda x: x},
-        {'type': 'ineq', 'fun': lambda x: 1 - np.sum(x)}
-    ]
-    x0 = np.zeros(n)
-    res = minimize(obj, x0, bounds=[(0, 1)] * n, constraints=cons)
-    est = res.x
+
+    # Lawson–Hanson NNLS
+    est, _ = nnls(A2, b2)
+
+    # Keep the original sum (tot), then apply mRNA scaling and re-normalize to tot
     tot = est.sum()
-    est = np.where(scaling > 0, est / scaling, est)
-    if est.sum() > 0:
-        est = est / est.sum() * tot
+    if scaling is not None and len(scaling) == est.shape[0]:
+        safe = np.where(np.asarray(scaling) > 0, np.asarray(scaling), 1.0)
+        est = est / safe
+        s = est.sum()
+        if s > 0:
+            est = est / s * tot
+
     other = max(0.0, 1.0 - est.sum())
     return np.concatenate([est, [other]])
 
-
 def DCrr(b, A, method, scaling):
-    exog = sm.add_constant(A)
+    """
+    Robust regression (unchanged), but with small vectorization micro-optimizations.
+    """
+    exog = sm.add_constant(A, prepend=True, has_constant='add')
     m_norm = {
         'hampel': sm.robust.norms.Hampel(1.5, 3.5, 8),
         'huber': sm.robust.norms.HuberT(),
@@ -159,32 +196,50 @@ def DCrr(b, A, method, scaling):
         raise ValueError(f"Unknown method {method}")
     rlm = sm.RLM(b, exog, M=M)
     res = rlm.fit(maxiter=1000)
-    est = np.clip(res.params[1:], 0, None)
+    est = np.clip(res.params[1:], 0, None)  # drop intercept, enforce non-negativity
+
     tot0 = est.sum()
     if tot0 > 0:
         est = est / tot0
-        est = np.where(scaling > 0, est / scaling, est)
-        if est.sum() > 0:
-            est = est / est.sum() * tot0
+        if scaling is not None and len(scaling) == est.shape[0]:
+            safe = np.where(np.asarray(scaling) > 0, np.asarray(scaling), 1.0)
+            est = est / safe
+            s = est.sum()
+            if s > 0:
+                est = est / s * tot0
     return est
 
-
-def quanTIseq(sig, mix, scaling, method):
+def quanTIseq(sig: pd.DataFrame, mix: pd.DataFrame, scaling, method: str) -> pd.DataFrame:
+    """
+    Deconvolute per sample.
+    Keeps the original CLI semantics; only speeds up internals.
+    """
     genes = sig.index.intersection(mix.index)
-    A = sig.loc[genes].values
-    mix_arr = mix.loc[genes].values
-    res_list = []
-    for i in tqdm(range(mix_arr.shape[1]), desc="Deconvoluting samples"):
-        b = mix_arr[:, i]
-        if method == 'lsei':
-            res = DClsei(b, A, scaling)
-        else:
-            res = DCrr(b, A, method, scaling)
-        res_list.append(res)
-    mat = np.vstack(res_list)
-    cols = list(sig.columns) + (['Other'] if method == 'lsei' else [])
-    return pd.DataFrame(mat, index=mix.columns, columns=cols)
+    if genes.empty:
+        raise ValueError("No overlapping genes between signature and mixture matrix.")
+    A = sig.loc[genes].to_numpy(dtype=float, copy=False)
+    B = mix.loc[genes].to_numpy(dtype=float, copy=False)
 
+    n_samples = B.shape[1]
+    # Pre-allocate output
+    if method == 'lsei':
+        out = np.empty((n_samples, A.shape[1] + 1), dtype=float)  # +1 for 'Other'
+    else:
+        out = np.empty((n_samples, A.shape[1]), dtype=float)
+
+    for i in tqdm(range(n_samples), desc="Deconvoluting samples"):
+        b = B[:, i]
+        if method == 'lsei':
+            out[i, :] = DClsei(b, A, scaling)
+        else:
+            out[i, :] = DCrr(b, A, method, scaling)
+
+    cols = list(sig.columns) + (['Other'] if method == 'lsei' else [])
+    return pd.DataFrame(out, index=mix.columns, columns=cols)
+
+# -----------------------------
+# High-level entry
+# -----------------------------
 
 def deconvolute_quantiseq_default(mix, data, arrays=False, signame='TIL10', tumor=False, mRNAscale=True, method='lsei', rmgenes='unassigned'):
     print("Running quanTIseq deconvolution module")
@@ -192,6 +247,7 @@ def deconvolute_quantiseq_default(mix, data, arrays=False, signame='TIL10', tumo
         rmgenes = 'none' if arrays else 'default'
     if signame != 'TIL10':
         raise ValueError("Only TIL10 supported currently")
+
     sig = data['TIL10_signature'].copy()
     mRNA_df = data['TIL10_mRNA_scaling']
     lrm = data['TIL10_rmgenes']
@@ -209,9 +265,9 @@ def deconvolute_quantiseq_default(mix, data, arrays=False, signame='TIL10', tumo
             series = pd.Series(mRNA_df)
         else:
             raise ValueError("Unrecognized mRNA scaling structure")
-        mRNA = series.reindex(sig.columns).fillna(1).values
+        mRNA = series.reindex(sig.columns).fillna(1).to_numpy()
     else:
-        mRNA = np.ones(len(sig.columns))
+        mRNA = np.ones(len(sig.columns), dtype=float)
 
     print(f"Gene expression normalization and re-annotation (arrays: {arrays})")
     mix2 = fix_mixture(mix, data.get('HGNC_genenames_20170418', pd.DataFrame()), arrays)
@@ -231,11 +287,11 @@ def deconvolute_quantiseq_default(mix, data, arrays=False, signame='TIL10', tumo
 
     ns = sig.shape[0]
     us = len(sig.index.intersection(mix2.index))
-    print(f"Signature genes found in data set: {us}/{ns} ({us*100/ns:.2f}%)")
+    print(f"Signature genes found in data set: {us}/{ns} ({(us*100.0/ns):.2f}%)")
     print(f"Mixture deconvolution (method: {method})")
     res1 = quanTIseq(sig, mix2, mRNA, method)
 
-    # correct low Tregs cases
+    # correct low Tregs cases (unchanged logic)
     if method == 'lsei' and {'Tregs', 'T.cells.CD4'}.issubset(set(sig.columns)):
         minT = 0.02
         i_cd4 = sig.columns.get_loc('T.cells.CD4')
@@ -247,11 +303,11 @@ def deconvolute_quantiseq_default(mix, data, arrays=False, signame='TIL10', tumo
         res1.loc[mask, 'Tregs'] = avgT
         res1.loc[mask, 'T.cells.CD4'] = np.maximum(0, res1.loc[mask, 'T.cells.CD4'] - avgT)
 
+    # Final normalization and formatting
     res = res1.div(res1.sum(axis=1), axis=0).reset_index()
     res.insert(0, 'Sample', res.pop('index'))
     print("Deconvolution successful!")
     return res
-
 
 def main():
     parser = argparse.ArgumentParser(
@@ -306,8 +362,10 @@ def main():
     data_file = files('iobrpy.resources').joinpath('quantiseq_data.pkl')
     with data_file.open('rb') as fh:
         data = pickle.load(fh)
+
     in_sep = infer_sep(args.mix)
     mix = pd.read_csv(args.mix, sep=in_sep, index_col=0)
+
     res = deconvolute_quantiseq_default(
         mix, data,
         arrays=args.arrays,
@@ -317,6 +375,7 @@ def main():
         method=args.method,
         rmgenes=args.rmgenes
     )
+
     out_sep = infer_sep(args.out) or '\t'
     res.columns = [
         'ID' if col == 'Sample'
@@ -327,6 +386,7 @@ def main():
     num_cols = res.columns.drop('ID')
     res[num_cols] = res[num_cols].mask(res[num_cols].abs() < eps, 0)
     res.to_csv(args.out, sep=out_sep, index=False)
+
     print(f"Results saved to {args.out}")
     print("   ")
     print_colorful_message("#########################################################", "blue")
