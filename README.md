@@ -93,7 +93,8 @@ iobrpy count2tpm \
   -i counts.tsv.gz \
   -o TPM_matrix.csv \
   --idType Ensembl \
-  --org hsa
+  --org hsa \
+  --remove_version
 # (Optionally provide transcript effective lengths)
 #   --effLength_csv efflen.csv --id id --length eff_length --gene_symbol symbol
 ```
@@ -139,10 +140,20 @@ HOXB6       0.716829   0.555838   0.638682   0.971783   0.868208   0.802464
 iobrpy anno_eset \
   -i TPM_matrix.csv \
   -o TPM_anno.csv \
+  --annotation anno_grch38 \
+  --symbol symbol \
+  --probe id \
+  --method mean \
+  --remove_version
+```
+```bash
+iobrpy anno_eset \
+  -i TPM_matrix.csv \
+  -o TPM_anno.csv \
   --annotation anno_hug133plus2 \
   --symbol symbol \
   --probe id \
-  --method mean  
+  --method mean
 # You can also use: --annotation-file my_anno.csv --annotation-key gene_id
 ```
 ```
@@ -384,6 +395,7 @@ GSM1523745  1.478643424                              1.76013689    1.552305282  
   - `--length <str>` (default: `eff_length`): length column
   - `--gene_symbol <str>` (default: `symbol`): gene symbol column
   - `--check_data`: check & drop missing/invalid entries before conversion
+  - `--remove_version`: strip version suffix from gene IDs
 
 - **mouse2human\_eset**
   - `-i/--input <CSV|TSV|TXT[.gz]>` (required): input expression **matrix** or **table**
@@ -403,6 +415,7 @@ GSM1523745  1.478643424                              1.76013689    1.552305282  
   - `--symbol <str>` (default: `symbol`): column used as gene symbol
   - `--probe  <str>` (default: `id`): column used as probe/feature ID
   - `--method {mean|sd|sum}` (default: `mean`): duplicate-ID aggregation
+  - `--remove_version`: strip version suffix from gene IDs
 
 ### Signature scoring
 - **calculate_sig_score**
