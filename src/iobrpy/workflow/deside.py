@@ -14,6 +14,7 @@ from deside.plot import plot_predicted_result
 from deside.utility.read_file import read_gene_set
 from importlib.resources import files
 import matplotlib.pyplot as plt
+import re
 from iobrpy.utils.print_colorful_message import print_colorful_message
 
 base_font = 21
@@ -129,6 +130,16 @@ def main():
 
     # Run prediction
     model.predict(**predict_args)
+
+    # === iobrpy: post-process output column names (spaces and '-' -> '_', then add '_deside') ===
+    try:
+        out_ext = os.path.splitext(args.output)[1].lower()
+        sep = ',' if out_ext == '.csv' else '\t'
+        df = pd.read_csv(args.output, sep=sep, index_col=0)
+        df.columns = [re.sub(r'[ \-]', '_', str(c)) + '_deside' for c in df.columns]
+        df.to_csv(args.output, sep=sep)
+    except Exception as e:
+        sys.stderr.write(f"[iobrpy] Warning: failed to post-process column names: {e}\n")
 
     # Optional plotting
     if args.result_dir:
