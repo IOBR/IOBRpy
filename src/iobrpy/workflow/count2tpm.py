@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 from importlib.resources import files
 from iobrpy.utils.print_colorful_message import print_colorful_message
+from iobrpy.utils.remove_version import strip_versions_in_dataframe, deduplicate_after_stripping
 
 try:
     from tqdm.auto import tqdm
@@ -109,6 +110,13 @@ def count2tpm(count_mat: pd.DataFrame,
 
     countMat = count_mat.copy().astype(float)
     print(f"initial countMat.shape: {countMat.shape}")
+    # Optionally strip Ensembl version suffixes in index (ENSG / ENSMUSG)
+    if remove_version:
+        idx = countMat.index.astype(str)
+        looks_ensembl = (idx.str.startswith('ENSG') | idx.str.startswith('ENSMUSG')).any()
+        if looks_ensembl:
+            countMat, n_stripped = strip_versions_in_dataframe(countMat, on_index=True, also_refseq=False)
+            print(f"[count2tpm] stripped {n_stripped} Ensembl-versioned IDs (ENSG/ENSMUSG)")
     if countMat.isna().sum().sum() > 0 or check_data:
         n_na = countMat.isna().sum().sum()
         print(f"There are {n_na} missing or bad values; filtering genes via feature_manipulation.")
@@ -267,6 +275,8 @@ def main():
                         help="Column name for gene symbol in effLength CSV.")
     parser.add_argument('--check_data', action='store_true',
                         help="Check and remove missing values in count matrix.")
+    parser.add_argument('--remove_version', action='store_true',
+                        help='Strip gene version suffix from row index before processing.')
     args = parser.parse_args()
 
     # Load count matrix
