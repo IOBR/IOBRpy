@@ -19,6 +19,11 @@ from iobrpy.workflow.tme_cluster import main as tme_cluster_main
 from iobrpy.workflow.LR_cal import main as LR_cal_main
 from iobrpy.workflow.nmf import main as nmf_main
 from iobrpy.workflow.mouse2human_eset import main as mouse2human_eset_main
+from iobrpy.workflow.batch_salmon import main as batch_salmon_main
+from iobrpy.workflow.merge_salmon import main as merge_salmon_main
+from iobrpy.workflow.merge_star_count import main as merge_star_count_main
+from iobrpy.workflow.batch_star_count import main as batch_star_count_main
+from iobrpy.workflow.fastq_qc import main as fastq_qc_main
 from iobrpy.utils.print_colorful_message import print_colorful_message
 
 VERSION = "0.1.3"
@@ -287,6 +292,46 @@ def main():
                  help="Output separator (',' or '\\t'). If omitted, infer by output extension.")
     p15.add_argument('--progress', action='store_true',default=True,
                  help='Show a progress bar during saving.')
+
+    # Step 16: batch_salmon2
+    p16 = subparsers.add_parser('batch_salmon', help='Batch-run Salmon quantification over paired-end FASTQs')
+    p16.add_argument('--index', required=True, help='Path to Salmon index')
+    p16.add_argument('--path_fq', required=True, help='Directory containing FASTQ files')
+    p16.add_argument('--path_out', required=True, help='Output directory for per-sample results')
+    p16.add_argument('--suffix1', default='_1.fastq.gz', help="R1 suffix; R2 inferred by replacing '1' with '2'")
+    p16.add_argument('--batch_size', type=int, default=1, help='Number of concurrent samples (processes)')
+    p16.add_argument('--num_threads', type=int, default=8, help='Threads per Salmon process')
+    p16.add_argument('--gtf', default=None, help='Optional GTF file path for Salmon (-g)')
+
+    # Step 17: merge_salmon
+    p17 = subparsers.add_parser('merge_salmon', help='Merge Salmon quant.sf into TPM & NumReads matrices')
+    p17.add_argument('--path_salmon', required=True, help='Root folder searched recursively for quant.sf')
+    p17.add_argument('--project', required=True, help='Output file prefix')
+    p17.add_argument('--num_processes', type=int, default=None, help='Threads for loading quant.sf (I/O bound)')
+
+    # Step 18: merge_star_count
+    p18 = subparsers.add_parser('merge_star_count', help='Merge STAR *_ReadsPerGene.out.tab into one matrix')
+    p18.add_argument('--path', required=True, help='Folder containing STAR outputs')
+    p18.add_argument('--project', required=True, help='Output name prefix')
+    
+    # Step 19: batch_star_count
+    p19 = subparsers.add_parser('batch_star_count', help='Run STAR on paired FASTQs in batches (with GeneCounts)')
+    p19.add_argument('--index', required=True, help='STAR genome index directory')
+    p19.add_argument('--path_fq', required=True, help='Folder containing FASTQs (R1 endswith suffix1)')
+    p19.add_argument('--path_out', required=True, help='Output folder for STAR results')
+    p19.add_argument('--suffix1', default='_1.fastq.gz', help='R1 suffix; R2 is inferred by 1→2')
+    p19.add_argument('--batch_size', type=int, default=1, help='#samples per batch (sequential batches)')
+    p19.add_argument('--num_threads',type=int, default=8, help='Threads for STAR and BAM sorting')
+
+    # Step 0: fastq_qc
+    p20 = subparsers.add_parser('fastq_qc', help='FASTQ QC using fastp (with progress bar)')
+    p20.add_argument('--path1_fastq', required=True, help='Directory containing raw FASTQ files')
+    p20.add_argument('--path2_fastp', required=True, help='Output directory for cleaned FASTQ files')
+    p20.add_argument('--num_threads', type=int, default=8, help='Threads per fastp process')
+    p20.add_argument('--suffix1', default='_1.fastq.gz', help="R1 suffix; R2 inferred by replacing '1' with '2'")
+    p20.add_argument('--batch_size', type=int, default=5, help='Number of concurrent samples (processes)')
+    p20.add_argument('--se', action='store_true', help='Single-end sequencing; omit for paired-end')
+    p20.add_argument('--length_required', type=int, default=50, help='Minimum read length to keep')
 
     args = parser.parse_args()
 
@@ -579,6 +624,87 @@ def main():
 
         _sys.argv = cli
         mouse2human_eset_main()
+        _sys.argv = _sys_argv_orig
+    elif args.command == 'batch_salmon':
+        _sys_argv_orig = _sys.argv[:]
+        _sys.argv = [
+            _sys_argv_orig[0],
+            '--index', args.index,
+            '--path_fq', args.path_fq,
+            '--path_out', args.path_out,
+            '--suffix1', args.suffix1,
+            '--batch_size', str(args.batch_size),
+            '--num_threads', str(args.num_threads),
+            *(['--gtf', args.gtf] if args.gtf else []),
+        ]
+        batch_salmon_main()
+        _sys.argv = _sys_argv_orig
+        print("   ")
+        print_colorful_message("#########################################################", "blue")
+        print_colorful_message(" IOBRpy: Immuno-Oncology Biological Research using Python ", "cyan")
+        print_colorful_message(" If you encounter any issues, please report them at ", "cyan")
+        print_colorful_message(" https://github.com/IOBR/IOBRpy/issues ", "cyan")
+        print_colorful_message("#########################################################", "blue")
+        print(" Author: Haonan Huang, Dongqiang Zeng")
+        print(" Email: interlaken@smu.edu.cn ")
+        print_colorful_message("#########################################################", "blue")
+        print("   ")
+    elif args.command == 'merge_salmon':
+        _sys_argv_orig = _sys.argv[:]
+        _sys.argv = [
+            _sys_argv_orig[0],
+            '--path_salmon', args.path_salmon,
+            '--project', args.project,
+            *(['--num_processes', str(args.num_processes)] if args.num_processes is not None else []),
+        ]
+        merge_salmon_main()
+        _sys.argv = _sys_argv_orig
+    elif args.command == 'merge_star_count':
+        _sys_argv_orig = _sys.argv[:]
+        _sys.argv = [
+            _sys_argv_orig[0],
+            '--path', args.path,
+            '--project', args.project,
+        ]
+        merge_star_count_main()
+        _sys.argv = _sys_argv_orig
+    elif args.command == 'batch_star_count':
+        _sys_argv_orig = _sys.argv[:]
+        _sys.argv = [
+            _sys_argv_orig[0],
+            '--index', args.index,
+            '--path_fq', args.path_fq,
+            '--path_out', args.path_out,
+            '--suffix1', args.suffix1,
+            '--batch_size', str(args.batch_size),
+            '--num_threads', str(args.num_threads),
+        ]
+        batch_star_count_main()
+        _sys.argv = _sys_argv_orig
+
+        print("   ")
+        print_colorful_message("#########################################################", "blue")
+        print_colorful_message(" IOBRpy: Immuno-Oncology Biological Research using Python ", "cyan")
+        print_colorful_message(" If you encounter any issues, please report them at ", "cyan")
+        print_colorful_message(" https://github.com/IOBR/IOBRpy/issues ", "cyan")
+        print_colorful_message("#########################################################", "blue")
+        print(" Author: Haonan Huang, Dongqiang Zeng")
+        print(" Email: interlaken@smu.edu.cn ")
+        print_colorful_message("#########################################################", "blue")
+        print("   ")
+    if args.command == 'fastq_qc':
+        _sys_argv_orig = _sys.argv[:]
+        _sys.argv = [
+            _sys_argv_orig[0],
+            '--path1_fastq', args.path1_fastq,
+            '--path2_fastp', args.path2_fastp,
+            '--num_threads', str(args.num_threads),
+            '--suffix1', args.suffix1,
+            '--batch_size', str(args.batch_size),
+            *(['--se'] if args.se else []),
+            '--length_required', str(args.length_required),
+        ]
+        fastq_qc_main()
         _sys.argv = _sys_argv_orig
 
 if __name__ == "__main__":
