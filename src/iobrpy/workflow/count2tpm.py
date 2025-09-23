@@ -101,7 +101,8 @@ def count2tpm(count_mat: pd.DataFrame,
               id_col: str = "id",
               gene_symbol_col: str = "symbol",
               length_col: str = "eff_length",
-              check_data: bool = False) -> pd.DataFrame:
+              check_data: bool = False,
+              remove_version: bool = False) -> pd.DataFrame:
     # Debug: entry
     print(f"Enter count2tpm with idType={idType}, org={org}, source={source}")
 
@@ -294,7 +295,7 @@ def main():
                         idType=args.idType, org=args.org,
                         source=args.source, effLength_df=eff_df,
                         id_col=args.id_col, gene_symbol_col=args.gene_symbol_col,
-                        length_col=args.length_col, check_data=args.check_data)
+                        length_col=args.length_col, check_data=args.check_data,remove_version=args.remove_version)
 
     cols = list(tpm_df.columns)
     cols[0] = ""
