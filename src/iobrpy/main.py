@@ -25,6 +25,7 @@ from iobrpy.workflow.merge_star_count import main as merge_star_count_main
 from iobrpy.workflow.batch_star_count import main as batch_star_count_main
 from iobrpy.workflow.fastq_qc import main as fastq_qc_main
 from iobrpy.utils.print_colorful_message import print_colorful_message
+from iobrpy.workflow import runall as runall_mod
 
 VERSION = "0.1.3"
 
@@ -323,7 +324,7 @@ def main():
     p19.add_argument('--batch_size', type=int, default=1, help='#samples per batch (sequential batches)')
     p19.add_argument('--num_threads',type=int, default=8, help='Threads for STAR and BAM sorting')
 
-    # Step 0: fastq_qc
+    # Step 20: fastq_qc
     p20 = subparsers.add_parser('fastq_qc', help='FASTQ QC using fastp (with progress bar)')
     p20.add_argument('--path1_fastq', required=True, help='Directory containing raw FASTQ files')
     p20.add_argument('--path2_fastp', required=True, help='Output directory for cleaned FASTQ files')
@@ -333,7 +334,14 @@ def main():
     p20.add_argument('--se', action='store_true', help='Single-end sequencing; omit for paired-end')
     p20.add_argument('--length_required', type=int, default=50, help='Minimum read length to keep')
 
-    args = parser.parse_args()
+    p_runall = subparsers.add_parser('runall', help='Run the end-to-end pipeline (salmon/star)')
+    p_runall.add_argument('--mode', choices=['salmon','star'], required=True)
+    p_runall.add_argument('--outdir', required=True)
+    p_runall.add_argument('--fastq', required=True)
+    p_runall.add_argument('--resume', action='store_true')
+    p_runall.add_argument('--dry_run', action='store_true')
+
+    args, unknown = parser.parse_known_args()
 
     if args.command == 'prepare_salmon':
         prepare_salmon_tpm_main(
@@ -706,6 +714,14 @@ def main():
         ]
         fastq_qc_main()
         _sys.argv = _sys_argv_orig
+    elif args.command == 'runall':
+        sub_argv = ['--mode', args.mode, '--outdir', args.outdir, '--fastq', args.fastq]
+        if args.resume: 
+            sub_argv.append('--resume')
+        if args.dry_run: 
+            sub_argv.append('--dry_run')
+        runall_mod.main(sub_argv + unknown)
+        return
 
 if __name__ == "__main__":
     main()
