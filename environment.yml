@@ -16,6 +16,7 @@ dependencies:
   - salmon>=1.10.3
   - star>=2.7.11b
   - fastp>=0.23.4
+  - multiqc>=1.31
   - gzip
   - pip
   - pip:
