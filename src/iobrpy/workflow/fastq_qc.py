@@ -86,6 +86,44 @@ def _worker(args_tuple):
     """Unpack arguments for Pool.imap_unordered -> process_sample."""
     return process_sample(*args_tuple)
 
+def _run_multiqc(path2_fastp: str):
+    """
+    Generate a MultiQC report that summarizes all fastp JSON results.
+    Output directory: {path2_fastp}/multiqc_report
+    Output file:      multiqc_fastp_report.html (+ multiqc_data/)
+    """
+    # collect fastp JSONs; if none, skip quietly
+    json_reports = [f for f in os.listdir(path2_fastp) if f.endswith("_fastp.json")]
+    if not json_reports:
+        print("No fastp JSON files found; skipping MultiQC.")
+        return None
+
+    out_dir = os.path.join(path2_fastp, "multiqc_report")
+    os.makedirs(out_dir, exist_ok=True)
+
+    cmd = [
+        "multiqc",
+        "--module", "fastp",          # restrict to fastp module
+        "--force",                    # overwrite existing outputs
+        "--outdir", out_dir,
+        "--filename", "multiqc_fastp_report",
+        path2_fastp                   # scan the fastp output directory
+    ]
+    try:
+        completed = subprocess.run(
+            cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
+        report_html = os.path.join(out_dir, "multiqc_fastp_report.html")
+        data_dir = os.path.join(out_dir, "multiqc_data")
+        print("\nMultiQC report saved to:")
+        print(report_html)
+        return report_html
+    except FileNotFoundError:
+        print("MultiQC not found. Please install it, e.g.: conda install -c bioconda multiqc")
+    except subprocess.CalledProcessError as e:
+        print(f"MultiQC failed: {e.stderr.decode()}")
+    return None
+
 def step1_fastq_qc(path1_fastq, path2_fastp, num_threads=8, suffix1="_1.fastq.gz", batch_size=5, se=False, length_required=50):
     """
     Preprocess FASTQ files using fastp in parallel.
@@ -132,6 +170,8 @@ def step1_fastq_qc(path1_fastq, path2_fastp, num_threads=8, suffix1="_1.fastq.gz
             print(p)
     else:
         print("(No outputs produced or files already present.)")
+
+    _run_multiqc(path2_fastp)
 
     # ------- Then print the IOBRpy banner specified by user -------
     print("   ")
