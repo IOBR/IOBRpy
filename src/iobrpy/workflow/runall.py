@@ -288,7 +288,7 @@ def main(argv: Optional[List[str]] = None) -> None:
         else:
             print("[resume] merge_star_count skipped.")
 
-        merged_star_counts = _find_latest(d_star, ["*_star_ReadsPerGene.tsv", "*_star_ReadsPerGene.tsv.gz"])
+        merged_star_counts = _find_latest(d_star, ["*.STAR.count.tsv", "*.STAR.count.tsv.gz", "*_star_ReadsPerGene.tsv", "*_star_ReadsPerGene.tsv.gz"])
         if merged_star_counts is None:
             print("[ERROR] Cannot find merged STAR ReadsPerGene in '02-star/' (pattern '*_star_ReadsPerGene.tsv*').")
             sys.exit(2)
@@ -301,7 +301,7 @@ def main(argv: Optional[List[str]] = None) -> None:
             cmd = ["iobrpy", "count2tpm",
                    "--input", str(merged_star_counts),
                    "--output", str(tpm_matrix),
-                   "--idType", "Ensembl",
+                   "--idtype", "ensembl",
                    "--org", "hsa",
                    "--source", "local",
                    "--remove_version"]
