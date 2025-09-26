@@ -259,8 +259,8 @@ def main():
                         help="Path to input count matrix (CSV/TSV/GZ) with gene IDs as index.")
     parser.add_argument('--output', type=str, required=True,
                         help="Path (including filename) to save TPM output, e.g. /path/to/TPM.csv")
-    parser.add_argument('--idType', type=str, default="Ensembl",
-                        choices=["Ensembl","entrez","symbol","mgi"],
+    parser.add_argument('--idtype', type=str, default="ensembl",
+                        choices=["ensembl","entrez","symbol","mgi"],
                         help="Gene ID type.")
     parser.add_argument('--org', type=str, default="hsa", choices=["hsa","mmus"],
                         help="Organism: hsa or mmus.")
@@ -292,7 +292,7 @@ def main():
 
     # Run conversion
     tpm_df = count2tpm(count_mat,None,None,
-                        idType=args.idType, org=args.org,
+                        idType=args.idtype, org=args.org,
                         source=args.source, effLength_df=eff_df,
                         id_col=args.id_col, gene_symbol_col=args.gene_symbol_col,
                         length_col=args.length_col, check_data=args.check_data,remove_version=args.remove_version)
