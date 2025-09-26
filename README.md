@@ -107,7 +107,7 @@ iobrpy runall --mode salmon --outdir "/path/to/outdir" --fastq "/path/to/fastq" 
 #### STAR mode
 ```bash
 iobrpy runall --mode star --outdir "/path/to/outdir" --fastq "/path/to/fastq" \
-  fastq_qc --num_threads 16 --batch_size 4 --suffix1 _1.fastq.gz \
+  fastq_qc --num_threads 16 --batch_size 4 \
   batch_star_count --index "/path/to/star/index" --num_threads 16 --batch_size 1 \
   merge_star_count --project MyProj \
   count2tpm --idtype ensembl --org hsa --remove_version \ \
@@ -579,6 +579,15 @@ GSM1523745  1.478643424                              1.76013689    1.552305282  
 ---
 
 ## Commands & common options
+
+### `runall` — From FASTQ to TME
+- **runall**
+  - `--mode {salmon|star}` (required)
+  - `--outdir <DIR>` (required): root output directory
+  - `--fastq <DIR>` (required): forwarded to `fastq_qc --path1_fastq`
+  - `--resume`: skip steps if outputs already exist
+  - `--dry_run`: print planned commands without executing
+  *In the `runall` pipeline, tme_cluster now includes a new `--pattern` option. Set it to `cibersort` to automatically pick up `05-tme/cibersort_results.csv`. The other five immune-infiltration outputs use the same procedure and format as `cibersort`*
 
 ### FASTQ → FASTQ Quality Control → Salmon/STAR →TPM
 - **fastq_qc**
