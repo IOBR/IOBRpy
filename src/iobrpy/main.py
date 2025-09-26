@@ -52,7 +52,7 @@ def main():
                     help='Path to input count matrix (CSV/TSV, genes×samples)')
     p2.add_argument('--effLength_csv', type=str,
                     help='Optional CSV with id, eff_length, and gene_symbol columns')
-    p2.add_argument('--idType', choices=["Ensembl","entrez","symbol","mgi"], default="Ensembl",
+    p2.add_argument('--idtype', choices=["ensembl","entrez","symbol","mgi"], default="ensembl",
                     help='Gene ID type')
     p2.add_argument('--org', choices=["hsa","mmus"], default="hsa",
                     help='Organism: hsa or mmus')
@@ -363,7 +363,7 @@ def main():
             count_mat=count_mat,
             anno_grch38=None,
             anno_gc_vm32=None,
-            idType=args.idType,
+            idType=args.idtype,
             org=args.org,
             source=args.source,
             remove_version=args.remove_version,
