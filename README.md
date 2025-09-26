@@ -196,7 +196,7 @@ iobrpy runall --mode star --outdir "/path/to/outdir" --fastq "/path/to/fastq" \
 
 ### Typical end‑to‑end workflow — output file structure examples
 
-1) **FASTQ quality control**
+1) **FASTQ Quality Control**
 ```bash
 iobrpy fastq_qc \
   --path1_fastq "/path/to/fastq" \
