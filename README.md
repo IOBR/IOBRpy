@@ -587,7 +587,7 @@ GSM1523745  1.478643424                              1.76013689    1.552305282  
   - `--fastq <DIR>` (required): forwarded to `fastq_qc --path1_fastq`
   - `--resume`: skip steps if outputs already exist
   - `--dry_run`: print planned commands without executing
-  *In the `runall` pipeline, tme_cluster now includes a new `--pattern` option. Set it to `cibersort` to automatically pick up `05-tme/cibersort_results.csv`. The other five immune-infiltration outputs use the same procedure and format as `cibersort`*
+  - In the `runall` pipeline, tme_cluster now includes a new `--pattern` option. Set it to `cibersort` to automatically pick up `05-tme/cibersort_results.csv`. The other five immune-infiltration outputs use the same procedure and format as `cibersort`
 
 ### FASTQ → FASTQ Quality Control → Salmon/STAR →TPM
 - **fastq_qc**
