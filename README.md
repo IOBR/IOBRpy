@@ -89,9 +89,9 @@ Below are **two fully wired workflows** handled by `iobrpy runall`.
 
 #### Salmon mode
 ```bash
-iobrpy runall --mode salmon --outdir /path/to/outdir --fastq /path/to/fastq \
+iobrpy runall --mode salmon --outdir "/path/to/outdir" --fastq "/path/to/fastq" \
   fastq_qc --num_threads 16 --batch_size 4 \
-  batch_salmon --index /path/to/salmon/index --num_threads 16 --batch_size 4 \
+  batch_salmon --index "/path/to/salmon/index" --num_threads 16 --batch_size 4 \
   merge_salmon --project MyProj --num_processes 16 \
   prepare_salmon --return_feature symbol --remove_version \
   calculate_sig_score --method integration --signature all --mini_gene_count 2 --parallel_size 1 --adjust_eset \
@@ -106,9 +106,9 @@ iobrpy runall --mode salmon --outdir /path/to/outdir --fastq /path/to/fastq \
 ```
 #### STAR mode
 ```bash
-iobrpy runall --mode star --outdir /path/to/outdir --fastq /path/to/fastq \
+iobrpy runall --mode star --outdir "/path/to/outdir" --fastq "/path/to/fastq" \
   fastq_qc --num_threads 16 --batch_size 4 --suffix1 _1.fastq.gz \
-  batch_star_count --index /path/to/star/index --num_threads 16 --batch_size 1 \
+  batch_star_count --index "/path/to/star/index" --num_threads 16 --batch_size 1 \
   merge_star_count --project MyProj \
   count2tpm --idtype ensembl --org hsa --remove_version \ \
   calculate_sig_score --method integration --signature all --mini_gene_count 2 --parallel_size 1 --adjust_eset \
@@ -124,7 +124,7 @@ iobrpy runall --mode star --outdir /path/to/outdir --fastq /path/to/fastq \
 ```
 # Expected layout:
 # Salmon mode：
-/path/to/outdir
+/path/to/outdir/
   01-qc/
     <sample>_1.fastq.gz
     <sample>_2.fastq.gz
@@ -153,7 +153,7 @@ iobrpy runall --mode star --outdir /path/to/outdir --fastq /path/to/fastq \
   07-LR_cal/
     lr_cal.csv
 # STAR mode：
-/path/to/outdir
+/path/to/outdir/
   01-qc/
     <sample>_1.fastq.gz
     <sample>_2.fastq.gz
@@ -196,11 +196,52 @@ iobrpy runall --mode star --outdir /path/to/outdir --fastq /path/to/fastq \
 
 ### Typical end‑to‑end workflow — output file structure examples
 
-1) **Prepare an expression matrix**
+1) **FASTQ quality control**
 ```bash
-# a) From Salmon outputs → TPM
+iobrpy fastq_qc \
+  --path1_fastq "/path/to/fastq" \
+  --path2_fastp "/path/to/fastp" \
+  --num_threads 16 \
+  --batch_size 4
+```
+```
+/path/to/fastp/
+  <sample>_1.fastq.gz
+  <sample>_2.fastq.gz
+  <sample>_fastp.html
+  <sample>_fastp.json
+  <sample>.task.complete
+  multiqc_report/multiqc_fastp_report.html
+```
+2) **Prepare TPM**
+```bash
+# From FASTQ_QC → Salmon
+iobrpy batch_salmon \
+  --index "/path/to/salmon/index" \
+  --path_fq "/path/to/fastp" \
+  --path_out "/path/to/salmon" \
+  --num_threads 16 \
+  --batch_size 4
+```
+```
+/path/to/salmon/
+  <sample>/quant.sf
+```
+```bash
+iobrpy merge_salmon \
+  --project MyProj \
+  --path_salmon "/path/to/salmon" \
+  --num_processes 16
+```
+```
+/path/to/salmon/
+  MyProj_salmon_count.tsv.gz
+  MyProj_salmon_tpm.tsv.gz
+```
+```bash
+# From Salmon → TPM
 iobrpy prepare_salmon \
-  -i salmon_tpm.tsv.gz \
+  -i MyProj_salmon_tpm.tsv.gz \
   -o TPM_matrix.csv \
   --return_feature symbol \
   --remove_version
@@ -214,11 +255,45 @@ A1BG        0.479      1.717      1.844      0.382      1.676      1.126
 A1BG-AS1    0.149      0.348      0.755      0.000      0.314      0.400
 ```
 ```bash
-# b) From raw gene counts → TPM
+# From FASTQ_QC → STAR
+iobrpy batch_star_count \
+  --index "/path/to/star/index" \
+  --path_fq "/path/to/fastp" \
+  --path_out "/path/to/star" \
+  --num_threads 16 \
+  --batch_size 1
+```
+```
+/path/to/star/
+  <sample>/
+  <sample>__STARgenome/
+  <sample>__STARpass1/
+  <sample>_STARtmp/
+  <sample>_Aligned.sortedByCoord.out.bam
+  <sample>_Log.final.out
+  <sample>_Log.out
+  <sample>_Log.progress.out
+  <sample>_ReadsPerGene.out.tab
+  <sample>_SJ.out.tab
+  <sample>.task.complete
+  .batch_star_count.done
+  .merge_star_count.done
+```
+```bash
+iobrpy merge_star_count \
+  --project MyProj \
+  --path "/path/to/star"
+```
+```
+/path/to/star/
+  MyProj.STAR.count.tsv.gz
+```
+```bash
+# b) From STAR → TPM
 iobrpy count2tpm \
-  -i counts.tsv.gz \
+  -i MyProj.STAR.count.tsv.gz \
   -o TPM_matrix.csv \
-  --idType Ensembl \
+  --idtype ensembl \
   --org hsa \
   --remove_version
 # (Optionally provide transcript effective lengths)
@@ -234,7 +309,7 @@ A1BG-AS1   5.512                         4.440                         7.725    
 
 ```
 
-2) **(Optional) Mouse → Human symbol mapping**
+3) **(Optional) Mouse → Human symbol mapping**
 ```bash
 # Matrix mode: rows are mouse gene symbols, columns are samples
 iobrpy mouse2human_eset \
@@ -261,7 +336,7 @@ HOXB6       0.716829   0.555838   0.638682   0.971783   0.868208   0.802464
 
 ```
 
-3) **Annotate / de‑duplicate**
+4) **(Optional) Annotate / de‑duplicate**
 ```bash
 iobrpy anno_eset \
   -i TPM_matrix.csv \
@@ -292,7 +367,7 @@ LOC1019288  4.2193027    4.2196698    4.2132521    4.1819267    4.2345738    4.2
 
 ```
 
-4) **Signature scoring**
+5) **Signature scoring**
 ```bash
 iobrpy calculate_sig_score \
   -i TPM_anno.csv \
@@ -314,7 +389,7 @@ GSM1523745  -1.358852             4.754705   -2.215926  -1.086041               
 
 ```
 
-5) **Immune deconvolution (choose one or many)**
+6) **Immune deconvolution (choose one or many)**
 ```bash
 # CIBERSORT
 iobrpy cibersort \
@@ -434,7 +509,7 @@ TCGA-91-7771-01A  0.032                  0.014                      0.032       
 TCGA-91-6849-01A  0.07                   0.011                      0.007         0.001                  0.014                       0
 ```
 
-6) **TME clustering / NMF clustering**
+7) **TME clustering / NMF clustering**
 ```bash
 # KL index auto‑select k (k‑means)
 iobrpy tme_cluster \
@@ -481,7 +556,7 @@ cluster3  T_cells_CD4_memory_resting_CIBERSORT  Neutrophils_CIBERSORT         Ma
 
 ```
 
-7) **Ligand–receptor scoring (optional)**
+8) **Ligand–receptor scoring (optional)**
 ```bash
 iobrpy LR_cal \
   -i TPM_anno.csv \
@@ -505,12 +580,55 @@ GSM1523745  1.478643424                              1.76013689    1.552305282  
 
 ## Commands & common options
 
-### Data preparation
+### FASTQ → FASTQ Quality Control → Salmon/STAR →TPM
+- **fastq_qc**
+  - `--path1_fastq <DIR>` (required): raw FASTQ directory
+  - `--path2_fastp <DIR>` (required): output directory for fastp results (`01-qc/`)
+  - `--num_threads <int>` (default: `8`)
+  - `--suffix1 <str>` (default: `_1.fastq.gz`): forward read suffix
+  - `--batch_size <int>` (default: `5`)
+  - `--se`: single-end mode
+  - `--length_required <int>` (default: `50`)
+  - Notes: Writes per-sample `*_fastp.html/json`; if **multiqc** is present, also writes `01-qc/multiqc_report/multiqc_fastp_report.html`.  
+  *(Implementation: automatic MultiQC invocation and output path)*
+
+#### Salmon mode
+- **batch_salmon**
+  - `--index <DIR>` (required): salmon index
+  - `--path_fq <DIR>` (required): directory of FASTQs (after `fastq_qc`)
+  - `--path_out <DIR>` (required): output root (e.g., `02-salmon/`)
+  - `--suffix1 <str>` (default: `_1.fastq.gz`)
+  - `--batch_size <int>` (default: `1`): concurrent samples (processes)
+  - `--num_threads <int>` (default: `8`): threads per salmon
+  - `--gtf <FILE>`: optional GTF for `-g` gene-level quant
+  - Behavior: safe R1→R2 inference; per-sample `task.complete`; progress; preflight prints salmon version & index meta keys.
+
+- **merge_salmon**
+  - `--path_salmon <DIR>` (required): root containing per-sample salmon outputs (searched recursively)
+  - `--project <STR>` (required): prefix for outputs
+  - `--num_processes <int>`: I/O threads (default: CPU count)
+  - Output: `<project>_salmon_tpm.tsv.gz`, `<project>_salmon_count.tsv.gz` under `--path_salmon` with progress and head preview.
+
 - **prepare_salmon**
   - `-i/--input <TSV|TSV.GZ>` (required): Salmon-combined gene TPM table
   - `-o/--output <CSV/TSV>` (required): cleaned TPM matrix (genes × samples)
   - `-r/--return_feature {ENST|ENSG|symbol}` (default: `symbol`): which identifier to keep
   - `--remove_version`: strip version suffix from gene IDs (e.g., `ENSG000001.12 → ENSG000001`)
+
+#### STAR mode
+- **batch_star_count**
+  - `--index <DIR>` (required): STAR genomeDir
+  - `--path_fq <DIR>` (required): directory of FASTQs (after `fastq_qc`)
+  - `--path_out <DIR>` (required): outputs (e.g., `02-star/`)
+  - `--suffix1 <str>` (default: `_1.fastq.gz`)
+  - `--batch_size <int>` (default: `1`)
+  - `--num_threads <int>` (default: `8`)
+  - Notes: generates sorted BAM and `_ReadsPerGene.out.tab` per sample and a summary of paths.
+
+- **merge_star_count**
+  - `--path <DIR>` (required): directory containing multiple `*_ReadsPerGene.out.tab`
+  - `--project <STR>` (required): output prefix
+  - Output: `<project>.STAR.count.tsv.gz` (gzipped TSV with gene IDs as rows and samples as columns)
 
 - **count2tpm**
   - `-i/--input <CSV/TSV[.gz]>` (required): raw count matrix (genes × samples)
@@ -524,6 +642,7 @@ GSM1523745  1.478643424                              1.76013689    1.552305282  
   - `--check_data`: check & drop missing/invalid entries before conversion
   - `--remove_version`: strip version suffix from gene IDs
 
+### (Optional) Mouse → Human symbol mapping
 - **mouse2human\_eset**
   - `-i/--input <CSV|TSV|TXT[.gz]>` (required): input expression **matrix** or **table**
   - `-o/--output <CSV|TSV|TXT[.gz]>` (required): converted matrix indexed by **human** symbols (genes × samples)
@@ -533,6 +652,7 @@ GSM1523745  1.478643424                              1.76013689    1.552305282  
   - `--out_sep <,|\t>`: override output separator; if omitted, inferred by **output** path extension
   - `--verbose`: print shapes and basic run info
 
+### (Optional) Annotate / de‑duplicate
 - **anno_eset**
   - `-i/--input <CSV/TSV/TXT>` (required)
   - `-o/--output <CSV/TSV/TXT>` (required)
