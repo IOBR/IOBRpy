@@ -8,9 +8,24 @@ A Python **command‑line toolkit** for bulk RNA‑seq analysis of the tumor mic
 
 ## Features
 
-**Data preparation**
+**End-to-End Pipeline Runner**
+- `runall` — A single command that wires the full Salmon or STAR pipeline end-to-end and writes the standardized layout:
+  `01-qc/ → 02-salmon|02-star/ → 03-tpm/ → 04-signatures/ → 05-tme/ → 06-tme_cluster/ → 07-LR_cal/`.
+
+**Preprocessing**
+- `fastq_qc` — Parallel FASTQ QC/trimming via **fastp**, with per-sample HTML/JSON and an optional **MultiQC** summary report under `01-qc/multiqc_report/`. Resume-friendly and prints output paths first.
+
+**Salmon submodule (quantification → merge → TPM)**
+- `batch_salmon` — Batch **salmon quant** on paired-end FASTQs; safe R1/R2 inference; per-sample `quant.sf`; progress and preflight checks (salmon version, index meta).  
+- `merge_salmon` — Recursively collect per-sample `quant.sf` and produce two matrices: **TPM** and **NumReads**.  
 - `prepare_salmon` — Clean up Salmon outputs into a TPM matrix; strip version suffixes; keep `symbol`/`ENSG`/`ENST` identifiers.
-- `count2tpm` — Convert read counts to TPM (supports Ensembl/Entrez/Symbol/MGI; biomart/local annotation; effective length CSV).
+
+**STAR submodule (alignment → counts → TPM)**
+- `batch_star_count` — Batch **STAR** alignment with `--quantMode GeneCounts`, sorted BAM + `_ReadsPerGene.out.tab`; resume-friendly summary.  
+- `merge_star_count` — Merge multiple `_ReadsPerGene.out.tab` into one wide count matrix.  
+- `count2tpm` — Convert counts to TPM (supports Ensembl/Entrez/Symbol/MGI; optional effective length CSV).
+
+**Expression Annotation & Mouse→Human Mapping(Optional)**
 - `anno_eset` — Harmonize/annotate an expression matrix (choose symbol/probe columns; deduplicate; aggregation method).
 - `mouse2human_eset` — Convert mouse gene symbols to human gene symbols. Supports two modes: **matrix mode** (rows = genes) or **table mode** (input contains a symbol column). 
 
@@ -68,6 +83,117 @@ iobrpy count2tpm --help
 - **Separators**: auto‑detected from file extension (`.csv` vs `.tsv`/`.txt`); you can override via command options where available.
 - **Outputs**: CSV/TSV/TXT
 
+### `runall` — From FASTQ to TME
+
+Below are **two fully wired workflows** handled by `iobrpy runall`.  
+
+#### Salmon mode
+```bash
+iobrpy runall --mode salmon --outdir /path/to/outdir --fastq /path/to/fastq \
+  fastq_qc --num_threads 16 --batch_size 4 \
+  batch_salmon --index /path/to/salmon/index --num_threads 16 --batch_size 4 \
+  merge_salmon --project MyProj --num_processes 16 \
+  prepare_salmon --return_feature symbol --remove_version \
+  calculate_sig_score --method integration --signature all --mini_gene_count 2 --parallel_size 1 --adjust_eset \
+  cibersort --perm 1000 --QN true --threads 8 \
+  IPS \
+  estimate --platform affymetrix \
+  mcpcounter --features HUGO_symbols \
+  quantiseq --arrays --tumor --scale_mrna \
+  epic --reference TRef \
+  tme_cluster --pattern cibersort --features 1:22 --id "ID" --max_nc 5 --print_result --scale \
+  LR_cal --data_type tpm --id_type "symbol" --verbose
+```
+#### STAR mode
+```bash
+iobrpy runall --mode star --outdir /path/to/outdir --fastq /path/to/fastq \
+  fastq_qc --num_threads 16 --batch_size 4 --suffix1 _1.fastq.gz \
+  batch_star_count --index /path/to/star/index --num_threads 16 --batch_size 1 \
+  merge_star_count --project MyProj \
+  count2tpm --idtype ensembl --org hsa --remove_version \ \
+  calculate_sig_score --method integration --signature all --mini_gene_count 2 --parallel_size 1 --adjust_eset \
+  cibersort --perm 1000 --QN true --threads 8 \
+  IPS \
+  estimate --platform affymetrix \
+  mcpcounter --features HUGO_symbols \
+  quantiseq --arrays --tumor --scale_mrna \
+  epic --reference TRef \
+  tme_cluster --pattern cibersort --features 1:22 --id "ID" --max_nc 5 --print_result --scale \
+  LR_cal --data_type tpm --id_type "symbol" --verbose
+```
+```
+# Expected layout:
+# Salmon mode：
+/path/to/outdir
+  01-qc/
+    <sample>_1.fastq.gz
+    <sample>_2.fastq.gz
+    <sample>_fastp.html
+    <sample>_fastp.json
+    <sample>.task.complete
+    multiqc_report/multiqc_fastp_report.html
+  02-salmon/
+    <sample>/quant.sf
+    MyProj_salmon_count.tsv.gz
+    MyProj_salmon_tpm.tsv.gz
+  03-tpm/
+    tpm_matrix.csv
+  04-signatures/
+    calculate_sig_score.csv
+  05-tme/
+    cibersort_results.csv
+    epic_results.csv
+    quantiseq_results.csv
+    IPS_results.csv
+    estimate_results.csv
+    mcpcounter_results.csv
+    deconvo_merged.csv
+  06-tme_cluster/
+    tme_cluster.csv
+  07-LR_cal/
+    lr_cal.csv
+# STAR mode：
+/path/to/outdir
+  01-qc/
+    <sample>_1.fastq.gz
+    <sample>_2.fastq.gz
+    <sample>_fastp.html
+    <sample>_fastp.json
+    <sample>.task.complete
+    multiqc_report/multiqc_fastp_report.html
+  02-star/
+    <sample>/
+    <sample>__STARgenome/
+    <sample>__STARpass1/
+    <sample>_STARtmp/
+    <sample>_Aligned.sortedByCoord.out.bam
+    <sample>_Log.final.out
+    <sample>_Log.out
+    <sample>_Log.progress.out
+    <sample>_ReadsPerGene.out.tab
+    <sample>_SJ.out.tab
+    <sample>.task.complete
+    .batch_star_count.done
+    .merge_star_count.done
+    MyProj.STAR.count.tsv.gz
+  03-tpm/
+    tpm_matrix.csv
+  04-signatures/
+    calculate_sig_score.csv
+  05-tme/
+    cibersort_results.csv
+    epic_results.csv
+    quantiseq_results.csv
+    IPS_results.csv
+    estimate_results.csv
+    mcpcounter_results.csv
+    deconvo_merged.csv
+  06-tme_cluster/
+    tme_cluster.csv
+  07-LR_cal/
+    lr_cal.csv
+```
+
 ### Typical end‑to‑end workflow — output file structure examples
 
 1) **Prepare an expression matrix**
@@ -108,7 +234,7 @@ A1BG-AS1   5.512                         4.440                         7.725    
 
 ```
 
-2) (Optional) Mouse → Human symbol mapping
+2) **(Optional) Mouse → Human symbol mapping**
 ```bash
 # Matrix mode: rows are mouse gene symbols, columns are samples
 iobrpy mouse2human_eset \
@@ -174,7 +300,8 @@ iobrpy calculate_sig_score \
   --signature signature_collection \
   --method pca \
   --mini_gene_count 2 \
-  --parallel_size 1
+  --parallel_size 1 \
+  --adjust_eset
 # Accepts space‑separated or comma‑separated groups; use "all" for a full merge.
 ```
 ```
