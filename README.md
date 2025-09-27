@@ -188,7 +188,7 @@ iobrpy runall \
 | `--platform <str>` | ESTIMATE platform |
 | `--features HUGO_symbols` | MCPcounter features |
 | `--arrays` `--tumor` `--scale_mrna` | quanTIseq options |
-| `--reference {TRef|BRef|both}` | EPIC reference profile |
+| `--reference {TRef / BRef / both}` | EPIC reference profile |
 
 #### Ligand–receptor
 | Flag | Purpose |
