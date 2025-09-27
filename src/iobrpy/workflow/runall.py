@@ -2,80 +2,73 @@
 # -*- coding: utf-8 -*-
 
 """
-runall.py — End-to-end orchestrator for IOBRpy (salmon/star only, no deside).
+runall.py — End-to-end orchestrator for IOBRpy
 
-Pipeline:
-  mode=salmon:
-    fastq_qc -> batch_salmon -> merge_salmon -> prepare_salmon -> calculate_sig_score
-      -> deconv(6) -> merge (CSV) -> tme_cluster -> LR_cal
-
-  mode=star:
-    fastq_qc -> batch_star_count -> merge_star_count -> count2tpm -> calculate_sig_score
-      -> deconv(6) -> merge (CSV) -> tme_cluster -> LR_cal
-
-Output layout under --outdir (CSV everywhere):
-  01-qc/                    # fastq_qc outputs
-  02-salmon/ or 02-star/    # batch_* + merge_* outputs (depending on --mode)
-  03-tpm/                   # prepare_salmon OR count2tpm -> tpm_matrix.csv
-  04-signatures/            # calculate_sig_score.csv
-  05-tme/                   # <method>_results.csv + deconvo_merged.csv
-  06-tme_cluster/           # tme_cluster.csv
-  07-LR_cal/                # lr_cal.csv
-
-tme_cluster behavior in runall:
-- Default: use 05-tme/deconvo_merged.csv.
-- If 'tme_cluster --pattern <regex>' is provided, use the single file in 05-tme that matches <regex>.
-- If you also pass 'tme_cluster --pattern_cols <regex>', it is forwarded to tme_cluster's own '--pattern' to filter columns.
-- Example:
-    tme_cluster --pattern cibersort --features 1:22 --id ID --max_nc 3 --print_result --scale
-    # uses 05-tme/cibersort_results.csv
-
-Notes:
-- Long flags in passthrough are normalized: '--id-type' -> '--id_type' (values unchanged).
-- Top-level --fastq feeds fastq_qc --path1_fastq.
-- No log files; commands stream to console.
+What this revision does (key points):
+- No need to type per-step module names (e.g., fastq_qc, batch_salmon). Long flags are auto-routed.
+- 'tme_cluster' step removed. Final directory renamed from '07-LR_cal' to '06-LR_cal'.
+- Unified concurrency/batch:
+  * Top-level --threads propagates to:
+    fastq_qc.num_threads, batch_salmon.num_threads, batch_star_count.num_threads,
+    merge_salmon.num_processes, cibersort.threads, calculate_sig_score.parallel_size
+  * Top-level --batch_size propagates to:
+    fastq_qc.batch_size, batch_salmon.batch_size, batch_star_count.batch_size
+  Legacy flags (--num_threads / --parallel_size / --num_processes) are absorbed and normalized into --threads.
+- NEW: --remove_version is now OPTIONAL in both modes.
+  * salmon: if provided, routed to prepare_salmon
+  * star:   if provided, routed to count2tpm
+  Defaults do NOT force remove_version anymore.
+- Output layout:
+    01-qc/                 # fastp outputs
+    02-salmon/ or 02-star/ # quantification / align counts
+    03-tpm/                # unified TPM matrix (tpm_matrix.csv)
+    04-signatures/         # calculate_sig_score outputs
+    05-tme/                # deconvolution outputs (+ deconvo_merged.csv)
+    06-LR_cal/             # LR_cal outputs (renamed from 07-LR_cal)
 """
 
-from __future__ import annotations
 import argparse
 import shlex
 import subprocess
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 import sys
-import time
-import re
 
 try:
     import pandas as pd
 except Exception:
-    pd = None
+    pd = None  # pandas is optional; used only for merging deconvolution results
 
-# Supported block names that can follow their own arguments
+# Known step names (kept for backward-compatible "sectioned" command style)
 METHOD_SECTIONS = {
-    # step-specific
     "fastq_qc", "batch_salmon", "merge_salmon", "batch_star_count", "merge_star_count",
-    # generic fallbacks
-    "fastq", "salmon", "star", "prepare_salmon", "count2tpm",
-    # scoring
+    "prepare_salmon", "count2tpm",
     "calculate_sig_score", "sig_score",
-    # deconvolution (6 methods; no deside)
     "cibersort", "IPS", "estimate", "mcpcounter", "quantiseq", "epic",
-    # finals
-    "tme_cluster", "LR_cal",
+    # "tme_cluster",  # removed
+    "LR_cal",
 }
 
+# --------------------- Utilities ---------------------
+
 def _ensure_dir(p: Path) -> None:
+    """Create a directory if it doesn't exist."""
     p.mkdir(parents=True, exist_ok=True)
 
-def _run(cmd: List[str], _unused_logf: Path, cwd: Optional[Path] = None, dry: bool = False) -> int:
-    """Execute a command and stream output to console (no log files)."""
+def _nonempty(p: Path) -> bool:
+    """Return True if the path exists and is a non-empty file or directory."""
+    return p.exists() and ((p.is_file() and p.stat().st_size > 0) or (p.is_dir() and any(p.iterdir())))
+
+def _run(cmd: List[str], cwd: Optional[Path] = None, dry: bool = False) -> int:
+    """Run a subprocess, streaming output to console."""
     line = " ".join(shlex.quote(x) for x in cmd)
-    header = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] CMD: {line} (cwd={cwd or Path.cwd()})"
-    if dry:
-        print(f"[DRY-RUN] {header}")
-        return 0
+    header = f"[run] {line}"
+    print("=" * len(header))
     print(header)
+    print("=" * len(header))
+    if dry:
+        print("[dry-run] skipped execution")
+        return 0
     rc = subprocess.run(cmd, stdout=sys.stdout, stderr=sys.stderr, cwd=str(cwd) if cwd else None).returncode
     if rc != 0:
         print(f"[ERROR] {cmd[1]} failed (rc={rc}).")
@@ -84,77 +77,45 @@ def _run(cmd: List[str], _unused_logf: Path, cwd: Optional[Path] = None, dry: bo
     return rc
 
 def _normalize_flag_token(tok: str) -> str:
-    """Normalize long flags by replacing '-' with '_' (values unchanged)."""
+    """Normalize a long flag token by replacing '-' with '_' in its name."""
     if tok.startswith("--") and len(tok) > 2:
         return f"--{tok[2:].replace('-', '_')}"
     return tok
 
+def _flag_name(tok: str) -> Optional[str]:
+    """Return normalized flag name (lowercase, '_' instead of '-') or None if not a long flag."""
+    if tok.startswith("--") and len(tok) > 2:
+        return tok[2:].replace("-", "_").lower()
+    return None
+
 def _parse_passthrough_blocks(tokens: List[str]) -> Dict[str, List[str]]:
     """
-    Parse unknown argv tokens into blocks keyed by section name.
-
-    Fix: if the previous token was a flag ('--xxx'), the very next non-flag token
-    is treated as its VALUE even if it equals a method name (to avoid mis-parsing
-    like: 'tme_cluster --pattern cibersort' where 'cibersort' is also a block name).
+    Parse the legacy "sectioned" style:
+      fastq_qc --num_threads 8 ... batch_salmon --index ...
+    If the user did not provide module name sections, this returns {}.
     """
     blocks: Dict[str, List[str]] = {}
     cur: Optional[str] = None
     expect_value = False
 
     for tok in tokens:
-        if expect_value and not tok.startswith("--"):
-            if cur is not None:
-                blocks[cur].append(_normalize_flag_token(tok))
-            expect_value = False
-            continue
-
-        name = tok[2:] if (tok.startswith("--") and len(tok) > 2) else tok
-
-        # Start a new block only when not expecting a value and token is a bare method name
-        if not expect_value and not tok.startswith("--") and name in METHOD_SECTIONS:
+        name = tok[2:] if tok.startswith("--") else tok
+        # Switch section when encountering a bare step name
+        if not tok.startswith("--") and name in METHOD_SECTIONS and not expect_value:
             cur = name
             blocks.setdefault(cur, [])
             continue
-
+        # Collect tokens into the current section
         if cur is not None:
             ntok = _normalize_flag_token(tok)
             blocks[cur].append(ntok)
             expect_value = ntok.startswith("--")
-        # else: ignore stray tokens
-
+        else:
+            expect_value = False
     return blocks
 
-def _append_passthrough(cmd: List[str], blocks: Dict[str, List[str]], *sections: str) -> None:
-    """Append passthrough args for the first existing section among 'sections'."""
-    for s in sections:
-        extra = blocks.get(s)
-        if extra:
-            cmd += extra
-            return
-
-def _pop_opt(blocks: Dict[str, List[str]], section: str, opt_name: str, has_value: bool = True):
-    """
-    Pop an option from blocks[section] and return its value (or True if flag-like).
-    'opt_name' must be the normalized long-form, e.g., '--pattern' or '--pattern_cols'.
-    """
-    lst = blocks.get(section)
-    if not lst:
-        return None
-    i = 0
-    while i < len(lst):
-        if lst[i] == opt_name:
-            if has_value:
-                val = lst[i + 1] if i + 1 < len(lst) else None
-                del lst[i:i + 2]
-                return val
-            else:
-                del lst[i]
-                return True
-        i += 1
-    return None
-
 def _find_latest(dirpath: Path, globs: List[str]) -> Optional[Path]:
-    """Find the most recently modified file matching any of the glob patterns."""
+    """Return the most recently modified file in dirpath matching any pattern, or None."""
     cand: List[Path] = []
     for pat in globs:
         cand += list(dirpath.glob(pat))
@@ -163,41 +124,187 @@ def _find_latest(dirpath: Path, globs: List[str]) -> Optional[Path]:
     cand.sort(key=lambda p: p.stat().st_mtime, reverse=True)
     return cand[0]
 
-def _nonempty(p: Path) -> bool:
-    """True if path exists and is a non-empty file or a non-empty directory."""
-    return p.exists() and (p.is_file() and p.stat().st_size > 0 or (p.is_dir() and any(p.iterdir())))
+def _append_passthrough(cmd: List[str], buckets: Dict[str, List[str]], key: str, alt_key: Optional[str] = None) -> None:
+    """Append auto/sectioned-routed args for a given step into the subcommand list."""
+    for k in filter(None, [key, alt_key]):
+        if k in buckets and buckets[k]:
+            cmd += buckets[k]
+
+# ------------------ Auto-routing of flags ------------------
+
+# Per-step known long flags (normalized names without '--')
+FLAG_BUCKETS: Dict[str, set] = {
+    # fastq_qc: threads and batch_size will be injected at top-level
+    "fastq_qc": {"se", "length_required", "suffix1"},
+    # salmon
+    "batch_salmon": {"index", "suffix1", "gtf"},
+    "merge_salmon": {"project"},  # num_processes injected from --threads
+    # star
+    "batch_star_count": {"index", "suffix1"},
+    "merge_star_count": {"project"},
+    # TPM conversion
+    "prepare_salmon": {"return_feature", "remove_version"},
+    "count2tpm": {"idtype", "org", "source", "id", "length", "gene_symbol", "check_data", "efflength_csv", "remove_version"},
+    # signature scores
+    "calculate_sig_score": {"signature", "method", "mini_gene_count", "adjust_eset"},
+    # deconvolution
+    "cibersort": {"perm", "qn", "absolute", "abs_method"},  # cibersort.threads comes from --threads
+    "IPS": set(),
+    "estimate": {"platform"},
+    "mcpcounter": {"features"},
+    "quantiseq": {"arrays", "signame", "tumor", "scale_mrna", "method"},
+    "epic": {"reference"},
+    # ligand-receptor
+    "LR_cal": {"data_type", "id_type", "cancer_type", "verbose"},
+}
+
+def _consume_top_level_scalars(unknown: List[str]) -> Tuple[List[str], Optional[int], Optional[int]]:
+    """
+    Pull legacy concurrency flags out of 'unknown' and promote them to top-level:
+      threads: threads / num_threads / parallel_size / num_processes
+      batch:   batch_size
+    Returns (remaining_unknown, threads_val, batch_val).
+    """
+    tokens = list(unknown)
+    threads_val: Optional[int] = None
+    batch_val: Optional[int] = None
+
+    def pop_int(names: List[str]) -> Optional[int]:
+        nonlocal tokens
+        got: Optional[int] = None
+        i = 0
+        names_set = {n.lower() for n in names}
+        while i < len(tokens):
+            name = _flag_name(tokens[i]) or ""
+            if name in names_set:
+                # If next token is a value, capture and remove both
+                if i + 1 < len(tokens) and not tokens[i + 1].startswith("--"):
+                    try:
+                        got = int(tokens[i + 1])
+                    except Exception:
+                        pass
+                    del tokens[i:i + 2]
+                    continue
+                else:
+                    # Flag without value -> remove flag token and continue
+                    del tokens[i:i + 1]
+                    continue
+            i += 1
+        return got
+
+    # The last occurrence wins
+    v_threads = pop_int(["threads", "num_threads", "parallel_size", "num_processes"])
+    if v_threads is not None:
+        threads_val = v_threads
+    v_batch = pop_int(["batch_size"])
+    if v_batch is not None:
+        batch_val = v_batch
+
+    return tokens, threads_val, batch_val
+
+def _autobucket(tokens: List[str], mode: str) -> Dict[str, List[str]]:
+    """
+    Route long flags to steps when the user does NOT provide section names.
+    Special-cases:
+      - --index targets batch_salmon (salmon) or batch_star_count (star)
+      - --project targets merge_salmon (salmon) or merge_star_count (star)
+      - --remove_version is routed by mode:
+          salmon -> prepare_salmon
+          star   -> count2tpm
+      - --method is disambiguated between calculate_sig_score and quantiseq by value
+    """
+    buckets: Dict[str, List[str]] = {}
+    i = 0
+    while i < len(tokens):
+        tok = tokens[i]
+        name = _flag_name(tok)
+        if not name:
+            i += 1
+            continue
+
+        val: Optional[str] = None
+        if i + 1 < len(tokens) and not tokens[i + 1].startswith("--"):
+            val = tokens[i + 1]
+
+        # Mode-aware routing
+        if name == "index":
+            target = "batch_salmon" if mode == "salmon" else "batch_star_count"
+        elif name == "project":
+            target = "merge_salmon" if mode == "salmon" else "merge_star_count"
+        elif name == "remove_version":
+            target = "prepare_salmon" if mode == "salmon" else "count2tpm"
+        else:
+            # Generic mapping via FLAG_BUCKETS
+            target = None
+            for mod, flags in FLAG_BUCKETS.items():
+                if name in flags:
+                    # Disambiguate 'method' between calc_sig_score and quantiseq
+                    if name == "method" and mod in ("calculate_sig_score", "quantiseq") and val:
+                        v = str(val).lower()
+                        if v in {"integration", "pca", "zscore", "ssgsea"}:
+                            target = "calculate_sig_score"
+                        elif v in {"lsei", "hampel", "huber", "bisquare"}:
+                            target = "quantiseq"
+                        else:
+                            target = "calculate_sig_score"
+                        break
+                    target = mod
+                    break
+
+        if target:
+            buckets.setdefault(target, []).append(_normalize_flag_token(tok))
+            if val is not None:
+                buckets[target].append(val)
+        else:
+            print(f"[warn] Unrecognized flag (ignored by router): {tok}{(' ' + val) if val else ''}")
+
+        i += 1 if val is None else 2
+    return buckets
+
+# --------------------- Main pipeline ---------------------
 
 def main(argv: Optional[List[str]] = None) -> None:
-    parser = argparse.ArgumentParser(prog="iobrpy runall", description="End-to-end orchestrator (salmon/star only).")
+    parser = argparse.ArgumentParser(prog="iobrpy runall", description="End-to-end orchestrator (salmon/star) with auto routing.")
     parser.add_argument("--mode", choices=["salmon", "star"], required=True)
     parser.add_argument("--outdir", required=True)
-    parser.add_argument("--fastq", required=True, help="Path to raw FASTQ directory for fastq_qc --path1_fastq")
-    parser.add_argument("--resume", action="store_true")
-    parser.add_argument("--dry_run", action="store_true")
+    parser.add_argument("--fastq", required=True, help="Path to raw FASTQ directory (used as fastq_qc --path1_fastq)")
+    parser.add_argument("--threads", type=int, default=None, help="Unified concurrency for multiple steps")
+    parser.add_argument("--batch_size", type=int, default=None, help="Unified batch size for fastq_qc/salmon/star")
+    parser.add_argument("--resume", action="store_true", help="Skip steps if outputs already exist")
+    parser.add_argument("--dry_run", action="store_true", help="Print commands without executing")
     ns, unknown = parser.parse_known_args(argv)
 
     outdir = Path(ns.outdir).resolve()
 
-    # Numbered directories (RENAMED per your request)
+    # Numbered directories (tme_cluster removed; LR_cal renamed to 06)
     d_fastp    = outdir / "01-qc"
     d_tpm      = outdir / "03-tpm"
     d_sigscore = outdir / "04-signatures"
     d_deconv   = outdir / "05-tme"
-    d_tmeclust = outdir / "06-tme_cluster"
-    d_lrcal    = outdir / "07-LR_cal"
-    for d in [d_fastp, d_tpm, d_sigscore, d_deconv, d_tmeclust, d_lrcal]:
+    d_lrcal    = outdir / "06-LR_cal"
+    d_salmon   = outdir / "02-salmon"
+    d_star     = outdir / "02-star"
+    for d in [d_fastp, d_tpm, d_sigscore, d_deconv, d_lrcal, d_salmon, d_star]:
         _ensure_dir(d)
 
-    # Mode-specific directory (02-salmon OR 02-star)
-    d_salmon = d_star = None
-    if ns.mode == "salmon":
-        d_salmon = outdir / "02-salmon"
-        _ensure_dir(d_salmon)
-    else:  # star
-        d_star = outdir / "02-star"
-        _ensure_dir(d_star)
+    # Legacy "sectioned" style (optional)
+    blocks_named = _parse_passthrough_blocks([_normalize_flag_token(t) for t in unknown])
+    using_named = any(blocks_named.values())
 
-    blocks = _parse_passthrough_blocks(unknown)
+    # Consume legacy concurrency and batch flags
+    unknown, legacy_threads, legacy_batch = _consume_top_level_scalars(unknown)
+
+    # Auto-route long flags if no sections were provided
+    blocks_auto = {} if using_named else _autobucket([_normalize_flag_token(t) for t in unknown], ns.mode)
+
+    # Merge routes from both sources
+    blocks: Dict[str, List[str]] = {}
+    for k in set(list(blocks_named.keys()) + list(blocks_auto.keys())):
+        blocks[k] = (blocks_named.get(k) or []) + (blocks_auto.get(k) or [])
+
+    # Final unified values (explicit top-level overrides legacy)
+    threads = ns.threads if ns.threads is not None else (legacy_threads if legacy_threads is not None else 8)
+    batch_size = ns.batch_size if ns.batch_size is not None else (legacy_batch if legacy_batch is not None else 4)
 
     # 1) fastq_qc -> 01-qc/
     fastp_done_flag = d_fastp / ".fastq_qc.done"
@@ -206,22 +313,26 @@ def main(argv: Optional[List[str]] = None) -> None:
     else:
         cmd = ["iobrpy", "fastq_qc",
                "--path1_fastq", str(Path(ns.fastq).resolve()),
-               "--path2_fastp", str(d_fastp)]
+               "--path2_fastp", str(d_fastp),
+               "--num_threads", str(threads),
+               "--batch_size", str(batch_size)]
         _append_passthrough(cmd, blocks, "fastq_qc", "fastq")
-        rc = _run(cmd, Path(), dry=ns.dry_run)
+        rc = _run(cmd, dry=ns.dry_run)
         if rc != 0:
             sys.exit(rc)
         fastp_done_flag.write_text("done\n", encoding="utf-8")
 
-    # 2/3/4) quant + merge + TPM -> 02-*/ + 03-tpm/
+    # 2/3/4) Quantify & merge -> 02-*/ and 03-tpm/
     if ns.mode == "salmon":
         # 2a) batch_salmon -> 02-salmon/
-        if not (ns.resume and _nonempty((d_salmon / ".batch_salmon.done")) and _nonempty(d_salmon)):
+        if not (ns.resume and _nonempty(d_salmon / ".batch_salmon.done") and _nonempty(d_salmon)):
             cmd = ["iobrpy", "batch_salmon",
                    "--path_fq", str(d_fastp),
-                   "--path_out", str(d_salmon)]
+                   "--path_out", str(d_salmon),
+                   "--num_threads", str(threads),
+                   "--batch_size", str(batch_size)]
             _append_passthrough(cmd, blocks, "batch_salmon", "salmon")
-            rc = _run(cmd, Path(), dry=ns.dry_run)
+            rc = _run(cmd, dry=ns.dry_run)
             if rc != 0:
                 sys.exit(rc)
             (d_salmon / ".batch_salmon.done").write_text("done\n", encoding="utf-8")
@@ -232,9 +343,10 @@ def main(argv: Optional[List[str]] = None) -> None:
         if not (ns.resume and _nonempty(d_salmon / ".merge_salmon.done")):
             cmd = ["iobrpy", "merge_salmon",
                    "--path_salmon", str(d_salmon),
-                   "--project", "runall"]
+                   "--project", "runall",
+                   "--num_processes", str(threads)]
             _append_passthrough(cmd, blocks, "merge_salmon", "salmon")
-            rc = _run(cmd, Path(), cwd=d_salmon, dry=ns.dry_run)
+            rc = _run(cmd, cwd=d_salmon, dry=ns.dry_run)
             if rc != 0:
                 sys.exit(rc)
             (d_salmon / ".merge_salmon.done").write_text("done\n", encoding="utf-8")
@@ -253,22 +365,27 @@ def main(argv: Optional[List[str]] = None) -> None:
         else:
             cmd = ["iobrpy", "prepare_salmon",
                    "--input", str(merged_salmon_tpm),
-                   "--output", str(tpm_matrix),
-                   "--return_feature", "symbol",
-                   "--remove_version"]
+                   "--output", str(tpm_matrix)]
+            # Apply default return_feature only if user didn't provide one
+            ps_args = blocks.get("prepare_salmon") or []
+            if not any(a.startswith("--return_feature") for a in ps_args):
+                cmd += ["--return_feature", "symbol"]
             _append_passthrough(cmd, blocks, "prepare_salmon")
-            rc = _run(cmd, Path(), dry=ns.dry_run)
+            # Do NOT force --remove_version; it is passed only if the user provided it.
+            rc = _run(cmd, dry=ns.dry_run)
             if rc != 0:
                 sys.exit(rc)
 
-    else:  # star
+    else:
         # 2b) batch_star_count -> 02-star/
-        if not (ns.resume and _nonempty((d_star / ".batch_star_count.done")) and _nonempty(d_star)):
+        if not (ns.resume and _nonempty(d_star / ".batch_star_count.done") and _nonempty(d_star)):
             cmd = ["iobrpy", "batch_star_count",
                    "--path_fq", str(d_fastp),
-                   "--path_out", str(d_star)]
+                   "--path_out", str(d_star),
+                   "--num_threads", str(threads),
+                   "--batch_size", str(batch_size)]
             _append_passthrough(cmd, blocks, "batch_star_count", "star")
-            rc = _run(cmd, Path(), dry=ns.dry_run)
+            rc = _run(cmd, dry=ns.dry_run)
             if rc != 0:
                 sys.exit(rc)
             (d_star / ".batch_star_count.done").write_text("done\n", encoding="utf-8")
@@ -281,14 +398,14 @@ def main(argv: Optional[List[str]] = None) -> None:
                    "--path", str(d_star),
                    "--project", "runall"]
             _append_passthrough(cmd, blocks, "merge_star_count", "star")
-            rc = _run(cmd, Path(), cwd=d_star, dry=ns.dry_run)
+            rc = _run(cmd, cwd=d_star, dry=ns.dry_run)
             if rc != 0:
                 sys.exit(rc)
             (d_star / ".merge_star_count.done").write_text("done\n", encoding="utf-8")
         else:
             print("[resume] merge_star_count skipped.")
 
-        merged_star_counts = _find_latest(d_star, ["*.STAR.count.tsv", "*.STAR.count.tsv.gz", "*_star_ReadsPerGene.tsv", "*_star_ReadsPerGene.tsv.gz"])
+        merged_star_counts = _find_latest(d_star, ["*_star_ReadsPerGene.tsv", "*_star_ReadsPerGene.tsv.gz", "*.STAR.count*.gz"])
         if merged_star_counts is None:
             print("[ERROR] Cannot find merged STAR ReadsPerGene in '02-star/' (pattern '*_star_ReadsPerGene.tsv*').")
             sys.exit(2)
@@ -303,27 +420,28 @@ def main(argv: Optional[List[str]] = None) -> None:
                    "--output", str(tpm_matrix),
                    "--idtype", "ensembl",
                    "--org", "hsa",
-                   "--source", "local",
-                   "--remove_version"]
+                   "--source", "local"]
+            # Do NOT force --remove_version; it is passed only if the user provided it.
             _append_passthrough(cmd, blocks, "count2tpm")
-            rc = _run(cmd, Path(), dry=ns.dry_run)
+            rc = _run(cmd, dry=ns.dry_run)
             if rc != 0:
                 sys.exit(rc)
 
-    # 5) calculate_sig_score -> 04-signatures/calculate_sig_score.csv
+    # 5) calculate_sig_score -> 04-signatures/
     sig_out = d_sigscore / "calculate_sig_score.csv"
     if ns.resume and _nonempty(sig_out):
         print("[resume] calculate_sig_score skipped.")
     else:
         cmd = ["iobrpy", "calculate_sig_score",
                "--input", str(tpm_matrix),
-               "--output", str(sig_out)]
+               "--output", str(sig_out),
+               "--parallel_size", str(threads)]
         _append_passthrough(cmd, blocks, "calculate_sig_score", "sig_score")
-        rc = _run(cmd, Path(), dry=ns.dry_run)
+        rc = _run(cmd, dry=ns.dry_run)
         if rc != 0:
             sys.exit(rc)
 
-    # 6) deconvolution(6) -> 05-tme/<method>_results.csv
+    # 6) Deconvolution (6 methods) -> 05-tme/
     if not _nonempty(tpm_matrix):
         print("[ERROR] TPM matrix missing. Abort before deconvolution.")
         sys.exit(2)
@@ -335,8 +453,10 @@ def main(argv: Optional[List[str]] = None) -> None:
             print(f"[resume] {m} skipped.")
             produced.append(out_file)
             continue
+
         if m == "cibersort":
-            cmd = ["iobrpy", "cibersort", "--input", str(tpm_matrix), "--output", str(out_file)]
+            cmd = ["iobrpy", "cibersort", "--input", str(tpm_matrix), "--output", str(out_file),
+                   "--threads", str(threads)]
         elif m == "IPS":
             cmd = ["iobrpy", "IPS", "--input", str(tpm_matrix), "--output", str(out_file)]
         elif m == "estimate":
@@ -347,78 +467,37 @@ def main(argv: Optional[List[str]] = None) -> None:
             cmd = ["iobrpy", "quantiseq", "--input", str(tpm_matrix), "--output", str(out_file)]
         else:
             cmd = ["iobrpy", "epic", "--input", str(tpm_matrix), "--reference", "TRef", "--output", str(out_file)]
+
         _append_passthrough(cmd, blocks, m)
-        rc = _run(cmd, Path(), dry=ns.dry_run)
+        rc = _run(cmd, dry=ns.dry_run)
         if rc != 0:
             sys.exit(rc)
         produced.append(out_file)
 
-    # 7) Merge deconvolution results -> 05-tme/deconvo_merged.csv (always produced)
+    # 7) Merge deconvolution results -> 05-tme/deconvo_merged.csv
     merged_path = d_deconv / "deconvo_merged.csv"
     if ns.resume and _nonempty(merged_path):
-        print("[resume] merge deconv skipped.")
+        print("[resume] merge deconvolution skipped.")
     else:
         if pd is None:
-            print("[WARN] pandas not available; skip merged deconvolution table (needed by tme_cluster default).")
+            print("[WARN] pandas not available; skip merged deconvolution table.")
         else:
             df_all = None
             for f in produced:
                 try:
-                    df = pd.read_csv(f)  # CSV
+                    df = pd.read_csv(f)
                 except Exception:
                     df = pd.read_csv(f, engine="python")
-                if df.shape[1] < 2:
-                    print(f"[WARN] skip malformed file: {f}")
-                    continue
-                df = df.rename(columns={df.columns[0]: "ID"})
-                df_all = df if df_all is None else pd.merge(df_all, df, on="ID", how="outer")
+                if "method" not in df.columns:
+                    df.insert(0, "method", f.stem.replace("_results", ""))
+                df_all = df if df_all is None else pd.concat([df_all, df], ignore_index=True)
             if df_all is None:
                 print("[ERROR] No valid deconvolution results to merge.")
                 sys.exit(2)
             df_all.to_csv(merged_path, index=False)
             print(f"[ok] merged deconvolution -> {merged_path}")
 
-    # 8) tme_cluster -> 06-tme_cluster/tme_cluster.csv
-    #    Default: use merged CSV. If 'tme_cluster --pattern <regex>' is provided,
-    #    use the single matching *_results.csv in 05-tme instead.
-    tme_out = d_tmeclust / "tme_cluster.csv"
-    if ns.resume and _nonempty(tme_out):
-        print("[resume] tme_cluster skipped.")
-    else:
-        # Extract file regex (runall-level) and optional column regex
-        file_pattern = _pop_opt(blocks, 'tme_cluster', '--pattern', has_value=True)
-        pattern_cols = _pop_opt(blocks, 'tme_cluster', '--pattern_cols', has_value=True)
-
-        input_for_cluster = merged_path
-        if file_pattern:
-            all_files = list(d_deconv.glob("*_results.csv"))
-            rex = re.compile(file_pattern, re.IGNORECASE)
-            matches = [f for f in all_files if rex.search(f.name)]
-            if not matches:
-                print(f"[ERROR] No deconvolution result matches pattern '{file_pattern}' in {d_deconv}")
-                sys.exit(2)
-            if len(matches) > 1:
-                names = ", ".join(f.name for f in matches)
-                print(f"[ERROR] Pattern '{file_pattern}' matched multiple files: {names}. Please be more specific.")
-                sys.exit(2)
-            input_for_cluster = matches[0]
-
-        cmd = ["iobrpy", "tme_cluster",
-               "--input", str(input_for_cluster),
-               "--output", str(tme_out)]
-        if pattern_cols:
-            cmd += ["--pattern", pattern_cols]  # forward as column regex to tme_cluster
-
-        # Pass all other tme_cluster args (e.g., --features, --id, --scale, --max_nc, etc.)
-        extra = blocks.get("tme_cluster", [])
-        if extra:
-            cmd += extra
-
-        rc = _run(cmd, Path(), dry=ns.dry_run)
-        if rc != 0:
-            sys.exit(rc)
-
-    # 9) LR_cal -> 07-LR_cal/lr_cal.csv
+    # 8) LR_cal -> 06-LR_cal/
     lr_out = d_lrcal / "lr_cal.csv"
     if ns.resume and _nonempty(lr_out):
         print("[resume] LR_cal skipped.")
@@ -430,8 +509,11 @@ def main(argv: Optional[List[str]] = None) -> None:
                "--id_type", "ensembl",
                "--cancer_type", "pancan"]
         _append_passthrough(cmd, blocks, "LR_cal")
-        rc = _run(cmd, Path(), dry=ns.dry_run)
+        rc = _run(cmd, dry=ns.dry_run)
         if rc != 0:
             sys.exit(rc)
 
     print("\n[done] runall finished.")
+
+if __name__ == "__main__":
+    main()
