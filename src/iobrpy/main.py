@@ -257,7 +257,7 @@ def main():
     p13.add_argument('-o','--output', required=True, help='Path to save LR scores')
     p13.add_argument('--data_type', choices=['count','tpm'], default='tpm',
                      help='Type of input data: count or tpm')
-    p13.add_argument('--id_type', default='ensembl', help='Gene ID type')
+    p13.add_argument('--id_type', default='ensembl', help='Gene ID type.Choices: ensembl, entrez, symbol, mgi.')
     p13.add_argument('--cancer_type', default='pancan', help='Cancer type network')
     p13.add_argument('--verbose', action='store_true', help='Enable verbose output')
 
