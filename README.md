@@ -161,7 +161,7 @@ iobrpy runall \
 |---|---|
 | `--index <DIR>` | Salmon index for `batch_salmon` |
 | `--project <STR>` | Prefix for merged outputs in `merge_salmon` |
-| `--return_feature {symbol&#124;ENSG&#124;ENST}` | Output gene ID type in `prepare_salmon` |
+| `--return_feature {symbol / ENSG / ENST}` | Output gene ID type in `prepare_salmon` |
 | `--remove_version` | Strip version suffix in `prepare_salmon` |
 
 #### STAR-only
@@ -169,8 +169,8 @@ iobrpy runall \
 |---|---|
 | `--index <DIR>` | STAR genomeDir for `batch_star_count` |
 | `--project <STR>` | Prefix for merged counts in `merge_star_count` |
-| `--idtype {ensembl&#124;entrez&#124;symbol&#124;mgi}` | Gene ID type for `count2tpm` |
-| `--org {hsa&#124;mmus}` | Organism for `count2tpm` |
+| `--idtype {ensembl / entrez / symbol / mgi}` | Gene ID type for `count2tpm` |
+| `--org {hsa / mmus}` | Organism for `count2tpm` |
 | `--remove_version` | Strip version suffix before `count2tpm` |
 
 #### Signature scoring
@@ -184,7 +184,7 @@ iobrpy runall \
 #### Deconvolution
 | Flag | Purpose |
 |---|---|
-| `--perm <INT>` / `--QN {true&#124;false}` | CIBERSORT permutations / quantile normalization |
+| `--perm <INT>` / `--QN {true / false}` | CIBERSORT permutations / quantile normalization |
 | `--platform <str>` | ESTIMATE platform |
 | `--features HUGO_symbols` | MCPcounter features |
 | `--arrays` `--tumor` `--scale_mrna` | quanTIseq options |
@@ -193,8 +193,8 @@ iobrpy runall \
 #### Ligand–receptor
 | Flag | Purpose |
 |---|---|
-| `--data_type {tpm&#124;count}` | Input matrix type for `LR_cal` |
-| `--id_type {symbol&#124;ensembl&#124;...}` | Gene ID type for `LR_cal` |
+| `--data_type {tpm / count}` | Input matrix type for `LR_cal` |
+| `--id_type {symbol / ensembl / ...}` | Gene ID type for `LR_cal` |
 | `--verbose` | Verbose logging |
 
 ### Expected layout
