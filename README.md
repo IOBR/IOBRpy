@@ -10,7 +10,7 @@ A Python **command‑line toolkit** for bulk RNA‑seq analysis of the tumor mic
 
 **End-to-End Pipeline Runner**
 - `runall` — A single command that wires the full Salmon or STAR pipeline end-to-end and writes the standardized layout:
-  `01-qc/ → 02-salmon|02-star/ → 03-tpm/ → 04-signatures/ → 05-tme/ → 06-tme_cluster/ → 07-LR_cal/`.
+  `01-qc/ → 02-salmon|02-star/ → 03-tpm/ → 04-signatures/ → 05-tme/ → 06-LR_cal/`.
 
 **Preprocessing**
 - `fastq_qc` — Parallel FASTQ QC/trimming via **fastp**, with per-sample HTML/JSON and an optional **MultiQC** summary report under `01-qc/multiqc_report/`. Resume-friendly and prints output paths first.
@@ -89,37 +89,60 @@ Below are **two fully wired workflows** handled by `iobrpy runall`.
 
 #### Salmon mode
 ```bash
-iobrpy runall --mode salmon --outdir "/path/to/outdir" --fastq "/path/to/fastq" \
-  fastq_qc --num_threads 16 --batch_size 4 \
-  batch_salmon --index "/path/to/salmon/index" --num_threads 16 --batch_size 4 \
-  merge_salmon --project MyProj --num_processes 16 \
-  prepare_salmon --return_feature symbol --remove_version \
-  calculate_sig_score --method integration --signature all --mini_gene_count 2 --parallel_size 1 --adjust_eset \
-  cibersort --perm 1000 --QN true --threads 8 \
-  IPS \
-  estimate --platform affymetrix \
-  mcpcounter --features HUGO_symbols \
-  quantiseq --arrays --tumor --scale_mrna \
-  epic --reference TRef \
-  tme_cluster --pattern cibersort --features 1:22 --id "ID" --max_nc 5 --print_result --scale \
-  LR_cal --data_type tpm --id_type "symbol" --verbose
+iobrpy runall \
+  --mode salmon \
+  --outdir "/path/to/outdir" \
+  --fastq "/path/to/fastq" \
+  --threads 16 \
+  --batch_size 4 \
+  --index "/path/to/salmon/index" \
+  --project MyProj \
+  --return_feature symbol \
+  --remove_version \
+  --method integration \
+  --signature all \
+  --mini_gene_count 2 \
+  --adjust_eset \
+  --perm 1000 \
+  --QN true \
+  --platform affymetrix \
+  --features HUGO_symbols \
+  --arrays \
+  --tumor \
+  --scale_mrna \
+  --reference TRef \
+  --data_type tpm \
+  --id_type "symbol" \
+  --verbose
 ```
 #### STAR mode
 ```bash
-iobrpy runall --mode star --outdir "/path/to/outdir" --fastq "/path/to/fastq" \
-  fastq_qc --num_threads 16 --batch_size 4 \
-  batch_star_count --index "/path/to/star/index" --num_threads 16 --batch_size 1 \
-  merge_star_count --project MyProj \
-  count2tpm --idtype ensembl --org hsa --remove_version \ \
-  calculate_sig_score --method integration --signature all --mini_gene_count 2 --parallel_size 1 --adjust_eset \
-  cibersort --perm 1000 --QN true --threads 8 \
-  IPS \
-  estimate --platform affymetrix \
-  mcpcounter --features HUGO_symbols \
-  quantiseq --arrays --tumor --scale_mrna \
-  epic --reference TRef \
-  tme_cluster --pattern cibersort --features 1:22 --id "ID" --max_nc 5 --print_result --scale \
-  LR_cal --data_type tpm --id_type "symbol" --verbose
+iobrpy runall \
+  --mode star \
+  --outdir "/path/to/outdir" \
+  --fastq "/path/to/fastq" \
+  --threads 16 \
+  --batch_size 1 \
+  --index "/path/to/star/index" \
+  --project MyProj \
+  --idtype ensembl \
+  --org hsa \
+  --remove_version \
+  --method integration \
+  --signature all \
+  --mini_gene_count 2 \
+  --adjust_eset \
+  --perm 100 \
+  --QN true \
+  --platform affymetrix \
+  --features HUGO_symbols \
+  --arrays \
+  --tumor \
+  --scale_mrna \
+  --reference TRef \
+  --data_type tpm \
+  --id_type "symbol" \
+  --verbose
 ```
 ```
 # Expected layout:
@@ -585,9 +608,10 @@ GSM1523745  1.478643424                              1.76013689    1.552305282  
   - `--mode {salmon|star}` (required)
   - `--outdir <DIR>` (required): root output directory
   - `--fastq <DIR>` (required): forwarded to `fastq_qc --path1_fastq`
+  - `--threads <INT>` (per-block): CPU/concurrency control set via block-level flags (e.g., fastq_qc --num_threads, batch_salmon --num_threads, batch_star_count --num_threads, merge_salmon --num_processes, cibersort --threads, calculate_sig_score --parallel_size).
+  - `--batch_size <INT>` (per-block): batching size set via block-level flags (e.g., fastq_qc --batch_size, batch_salmon --batch_size, batch_star_count --batch_size).
   - `--resume`: skip steps if outputs already exist
   - `--dry_run`: print planned commands without executing
-  - In the `runall` pipeline, tme_cluster now includes a new `--pattern` option. Set it to `cibersort` to automatically pick up `05-tme/cibersort_results.csv`. The other five immune-infiltration outputs use the same procedure and format as `cibersort`
 
 ### FASTQ → FASTQ Quality Control → Salmon/STAR →TPM
 - **fastq_qc**
@@ -681,7 +705,7 @@ GSM1523745  1.478643424                              1.76013689    1.552305282  
   - `--method {pca|zscore|ssgsea|integration}` (default: `pca`)
   - `--mini_gene_count <int>` (default: `3`)
   - `--adjust_eset`: apply extra filtering after log2 transform
-  - `--parallel_size <int>` (default: `1`; threads for `ssgsea`)
+  - `--parallel_size <int>` (default: `1`; threads for scoring (`PCA`/`zscore`/`ssGSEA`))
 
 ### Deconvolution / scoring
 - **cibersort**
