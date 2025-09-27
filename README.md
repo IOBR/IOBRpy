@@ -144,77 +144,129 @@ iobrpy runall \
   --id_type "symbol" \
   --verbose
 ```
+### Option legend for the `runall` examples
+
+#### Common options
+| Flag | Purpose |
+|---|---|
+| `--mode {salmon|star}` | Select backend (Salmon quant vs. STAR align+count) |
+| `--outdir <DIR>` | Root output directory (creates the standardized layout) |
+| `--fastq <DIR>` | Raw FASTQ dir, forwarded to `fastq_qc --path1_fastq` |
+| `--threads <INT>` / `--batch_size <INT>` | Global concurrency/batching **if supported**; otherwise set per step |
+| `--resume` | Skip steps whose outputs already exist |
+| `--dry_run` | Print planned commands without executing |
+
+#### Salmon-only
+| Flag | Purpose |
+|---|---|
+| `--index <DIR>` | Salmon index for `batch_salmon` |
+| `--project <STR>` | Prefix for merged outputs in `merge_salmon` |
+| `--return_feature {symbol|ENSG|ENST}` | Output gene ID type in `prepare_salmon` |
+| `--remove_version` | Strip version suffix in `prepare_salmon` |
+
+#### STAR-only
+| Flag | Purpose |
+|---|---|
+| `--index <DIR>` | STAR genomeDir for `batch_star_count` |
+| `--project <STR>` | Prefix for merged counts in `merge_star_count` |
+| `--idtype {ensembl|entrez|symbol|mgi}` | Gene ID type for `count2tpm` |
+| `--org {hsa|mmus}` | Organism for `count2tpm` |
+| `--remove_version` | Strip version suffix before `count2tpm` |
+
+#### Signature scoring
+| Flag | Purpose |
+|---|---|
+| `--method {integration|pca|zscore|ssgsea}` | Scoring method for `calculate_sig_score` |
+| `--signature <set>` | Which signature set to use (`all`, etc.) |
+| `--mini_gene_count <INT>` | Min genes per signature |
+| `--adjust_eset` | Extra filtering after log transform |
+
+#### Deconvolution
+| Flag | Purpose |
+|---|---|
+| `--perm <INT>` / `--QN {true|false}` | CIBERSORT permutations / quantile normalization |
+| `--platform <str>` | ESTIMATE platform |
+| `--features HUGO_symbols` | MCPcounter features |
+| `--arrays` `--tumor` `--scale_mrna` | quanTIseq options |
+| `--reference {TRef|BRef|both}` | EPIC reference profile |
+
+#### Ligand–receptor
+| Flag | Purpose |
+|---|---|
+| `--data_type {tpm|count}` | Input matrix type for `LR_cal` |
+| `--id_type {symbol|ensembl|...}` | Gene ID type for `LR_cal` |
+| `--verbose` | Verbose logging |
+
+### Expected layout
 ```
-# Expected layout:
 # Salmon mode：
-/path/to/outdir/
-  01-qc/
-    <sample>_1.fastq.gz
-    <sample>_2.fastq.gz
-    <sample>_fastp.html
-    <sample>_fastp.json
-    <sample>.task.complete
-    multiqc_report/multiqc_fastp_report.html
-  02-salmon/
-    <sample>/quant.sf
-    MyProj_salmon_count.tsv.gz
-    MyProj_salmon_tpm.tsv.gz
-  03-tpm/
-    tpm_matrix.csv
-  04-signatures/
-    calculate_sig_score.csv
-  05-tme/
-    cibersort_results.csv
-    epic_results.csv
-    quantiseq_results.csv
-    IPS_results.csv
-    estimate_results.csv
-    mcpcounter_results.csv
-    deconvo_merged.csv
-  06-tme_cluster/
-    tme_cluster.csv
-  07-LR_cal/
-    lr_cal.csv
+/path/to/outdir
+|-- 01-qc
+|   |-- <sample>_1.fastq.gz
+|   |-- <sample>_2.fastq.gz
+|   |-- <sample>_fastp.html
+|   |-- <sample>_fastp.json
+|   |-- <sample>.task.complete
+|   `-- multiqc_report
+|       `-- multiqc_fastp_report.html
+|-- 02-salmon
+|   |-- <sample>
+|   |   `-- quant.sf
+|   |-- MyProj_salmon_count.tsv.gz
+|   `-- MyProj_salmon_tpm.tsv.gz
+|-- 03-tpm
+|   `-- tpm_matrix.csv
+|-- 04-signatures
+|   `-- calculate_sig_score.csv
+|-- 05-tme
+|   |-- cibersort_results.csv
+|   |-- epic_results.csv
+|   |-- quantiseq_results.csv
+|   |-- IPS_results.csv
+|   |-- estimate_results.csv
+|   |-- mcpcounter_results.csv
+|   `-- deconvo_merged.csv
+`-- 06-LR_cal
+    `-- lr_cal.csv
 # STAR mode：
-/path/to/outdir/
-  01-qc/
-    <sample>_1.fastq.gz
-    <sample>_2.fastq.gz
-    <sample>_fastp.html
-    <sample>_fastp.json
-    <sample>.task.complete
-    multiqc_report/multiqc_fastp_report.html
-  02-star/
-    <sample>/
-    <sample>__STARgenome/
-    <sample>__STARpass1/
-    <sample>_STARtmp/
-    <sample>_Aligned.sortedByCoord.out.bam
-    <sample>_Log.final.out
-    <sample>_Log.out
-    <sample>_Log.progress.out
-    <sample>_ReadsPerGene.out.tab
-    <sample>_SJ.out.tab
-    <sample>.task.complete
-    .batch_star_count.done
-    .merge_star_count.done
-    MyProj.STAR.count.tsv.gz
-  03-tpm/
-    tpm_matrix.csv
-  04-signatures/
-    calculate_sig_score.csv
-  05-tme/
-    cibersort_results.csv
-    epic_results.csv
-    quantiseq_results.csv
-    IPS_results.csv
-    estimate_results.csv
-    mcpcounter_results.csv
-    deconvo_merged.csv
-  06-tme_cluster/
-    tme_cluster.csv
-  07-LR_cal/
-    lr_cal.csv
+/path/to/outdir
+|-- 01-qc
+|   |-- <sample>_1.fastq.gz
+|   |-- <sample>_2.fastq.gz
+|   |-- <sample>_fastp.html
+|   |-- <sample>_fastp.json
+|   |-- <sample>.task.complete
+|   `-- multiqc_report
+|       `-- multiqc_fastp_report.html
+|-- 02-star
+|   |-- <sample>/
+|   |-- <sample>__STARgenome/
+|   |-- <sample>__STARpass1/
+|   |-- <sample>_STARtmp/
+|   |-- <sample>_Aligned.sortedByCoord.out.bam
+|   |-- <sample>_Log.final.out
+|   |-- <sample>_Log.out
+|   |-- <sample>_Log.progress.out
+|   |-- <sample>_ReadsPerGene.out.tab
+|   |-- <sample>_SJ.out.tab
+|   |-- <sample>.task.complete
+|   |-- .batch_star_count.done
+|   |-- .merge_star_count.done
+|   `-- MyProj.STAR.count.tsv.gz
+|-- 03-tpm
+|   `-- tpm_matrix.csv
+|-- 04-signatures
+|   `-- calculate_sig_score.csv
+|-- 05-tme
+|   |-- cibersort_results.csv
+|   |-- epic_results.csv
+|   |-- quantiseq_results.csv
+|   |-- IPS_results.csv
+|   |-- estimate_results.csv
+|   |-- mcpcounter_results.csv
+|   `-- deconvo_merged.csv
+`-- 06-LR_cal
+    `-- lr_cal.csv
 ```
 
 ### Typical end‑to‑end workflow — output file structure examples
