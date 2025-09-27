@@ -176,7 +176,7 @@ iobrpy runall \
 #### Signature scoring
 | Flag | Purpose |
 |---|---|
-| `--method {integration|pca|zscore|ssgsea}` | Scoring method for `calculate_sig_score` |
+| `--method {integration / pca / zscore / ssgsea}` | Scoring method for `calculate_sig_score` |
 | `--signature <set>` | Which signature set to use (`all`, etc.) |
 | `--mini_gene_count <INT>` | Min genes per signature |
 | `--adjust_eset` | Extra filtering after log transform |
