@@ -117,7 +117,7 @@ def main():
     p4.add_argument('--adjust_eset', action='store_true',
                     help='Apply additional filtering after log2 transform')
     p4.add_argument('--parallel_size', type=int, default=1,
-                    help='Threads for ssGSEA')
+                    help='Threads for scoring (PCA/zscore/ssGSEA)')
 
     # Step 5: cibersort
     p5 = subparsers.add_parser('cibersort', help='Run CIBERSORT deconvolution')
