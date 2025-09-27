@@ -152,7 +152,7 @@ iobrpy runall \
 | `--mode {salmon|star}` | Select backend (Salmon quant vs. STAR align+count) |
 | `--outdir <DIR>` | Root output directory (creates the standardized layout) |
 | `--fastq <DIR>` | Raw FASTQ dir, forwarded to `fastq_qc --path1_fastq` |
-| `--threads <INT>` / `--batch_size <INT>` | Global concurrency/batching **if supported**; otherwise set per step |
+| `--threads <INT>` / `--batch_size <INT>` | Global concurrency/batching |
 | `--resume` | Skip steps whose outputs already exist |
 | `--dry_run` | Print planned commands without executing |
 
@@ -161,7 +161,7 @@ iobrpy runall \
 |---|---|
 | `--index <DIR>` | Salmon index for `batch_salmon` |
 | `--project <STR>` | Prefix for merged outputs in `merge_salmon` |
-| `--return_feature {symbol|ENSG|ENST}` | Output gene ID type in `prepare_salmon` |
+| `--return_feature {symbol&#124;ENSG&#124;ENST}` | Output gene ID type in `prepare_salmon` |
 | `--remove_version` | Strip version suffix in `prepare_salmon` |
 
 #### STAR-only
@@ -169,8 +169,8 @@ iobrpy runall \
 |---|---|
 | `--index <DIR>` | STAR genomeDir for `batch_star_count` |
 | `--project <STR>` | Prefix for merged counts in `merge_star_count` |
-| `--idtype {ensembl|entrez|symbol|mgi}` | Gene ID type for `count2tpm` |
-| `--org {hsa|mmus}` | Organism for `count2tpm` |
+| `--idtype {ensembl&#124;entrez&#124;symbol&#124;mgi}` | Gene ID type for `count2tpm` |
+| `--org {hsa&#124;mmus}` | Organism for `count2tpm` |
 | `--remove_version` | Strip version suffix before `count2tpm` |
 
 #### Signature scoring
@@ -184,7 +184,7 @@ iobrpy runall \
 #### Deconvolution
 | Flag | Purpose |
 |---|---|
-| `--perm <INT>` / `--QN {true|false}` | CIBERSORT permutations / quantile normalization |
+| `--perm <INT>` / `--QN {true&#124;false}` | CIBERSORT permutations / quantile normalization |
 | `--platform <str>` | ESTIMATE platform |
 | `--features HUGO_symbols` | MCPcounter features |
 | `--arrays` `--tumor` `--scale_mrna` | quanTIseq options |
@@ -193,8 +193,8 @@ iobrpy runall \
 #### Ligand–receptor
 | Flag | Purpose |
 |---|---|
-| `--data_type {tpm|count}` | Input matrix type for `LR_cal` |
-| `--id_type {symbol|ensembl|...}` | Gene ID type for `LR_cal` |
+| `--data_type {tpm&#124;count}` | Input matrix type for `LR_cal` |
+| `--id_type {symbol&#124;ensembl&#124;...}` | Gene ID type for `LR_cal` |
 | `--verbose` | Verbose logging |
 
 ### Expected layout
@@ -719,7 +719,7 @@ GSM1523745  1.478643424                              1.76013689    1.552305282  
   - `-i/--input <CSV/TSV[.gz]>` (required): raw count matrix (genes × samples)
   - `-o/--output <CSV/TSV>` (required): output TPM matrix
   - `--effLength_csv <CSV>`: optional effective-length file with columns `id`, `eff_length`, `symbol`
-  - `--idType {Ensembl|entrez|symbol|mgi}` (default: `Ensembl`)
+  - `--idtype {ensembl|entrez|symbol|mgi}` (default: `ensembl`)
   - `--org {hsa|mmus}` (default: `hsa`)
   - `--id <str>` (default: `id`): ID column name in `--effLength_csv`
   - `--length <str>` (default: `eff_length`): length column
@@ -852,7 +852,7 @@ GSM1523745  1.478643424                              1.76013689    1.552305282  
   - `-i/--input <CSV/TSV>` (required): expression matrix (genes × samples).
   - `-o/--output <CSV/TSV>` (required): file to save LR scores.
   - `--data_type {count|tpm}` (default: `tpm`): type of the input matrix.
-  - `--id_type <str>` (default: `ensembl`): gene ID type expected by the LR backend.
+  - `--id_type <str>` (default: `ensembl`): gene ID type expected by the LR backend.Choices: `ensembl`, `entrez`, `symbol`, `mgi`.
   - `--cancer_type <str>` (default: `pancan`): cancer-type network to use.
   - `--verbose`: verbose logging.
 
