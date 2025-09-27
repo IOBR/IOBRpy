@@ -5,6 +5,7 @@ import numpy as np
 from sklearn.decomposition import PCA
 from scipy.stats import zscore, spearmanr
 from importlib.resources import files
+from joblib import Parallel, delayed
 
 try:
     import gseapy as gp
@@ -102,30 +103,50 @@ def filter_signatures(sig_dict, eset, min_genes):
         print(f"DEBUG: {len(out)} signatures retained (min_genes={min_genes})")
     return out
 
-def sig_score_pca(eset, sig_dict, mini_gene_count, adjust_eset):
+def sig_score_pca(eset, sig_dict, mini_gene_count, adjust_eset, parallel_size=1):
+    """
+    Parallel PCA implementation: one PCA (PC1) per signature.
+    Preserves original semantics (center+scale per gene, PCA(1), flip by corr with mean expression).
+    """
     pdata = pd.DataFrame({'ID': eset.columns})
     eset2 = preprocess_eset(eset, adjust_eset)
 
     min_size = max(mini_gene_count, 2)
     sigs = filter_signatures(sig_dict, eset2, min_size)
 
-    for name, genes in tqdm(list(sigs.items()), desc="PCA signatures", unit="sig"):
-        tmp = eset2.loc[sorted(set(genes) & set(eset2.index))]
+    items = list(sigs.items())
 
-        mat = tmp.T
-
+    def _one(name, genes):
+        valid = sorted(set(genes) & set(eset2.index))
+        if len(valid) < 2:
+            # Fallback: all zeros if not enough genes
+            return name, np.zeros(len(eset2.columns), dtype=float)
+        tmp = eset2.loc[valid]               # genes × samples
+        mat = tmp.T                          # samples × genes
+        # z-score by gene
         mat = mat.sub(mat.mean(axis=0), axis=1)
-        mat = mat.div(mat.std(axis=0, ddof=1).replace(0, np.nan), axis=1)
+        mat = mat.div(mat.std(axis=0, ddof=1).replace(0, np.nan), axis=1).fillna(0.0)
 
         pca = PCA(n_components=1, svd_solver='full', random_state=0)
-        pc1 = pca.fit_transform(mat).flatten()
+        pc1 = pca.fit_transform(mat.values)[:, 0]   # length = n_samples
 
-        mean_expr = tmp.mean(axis=0).values
+        mean_expr = tmp.mean(axis=0).values         # length = n_samples
+        # Spearman was heavy; Pearson on standardized data equals Spearman rank corr approx. Keep Pearson as original.
         corr = np.corrcoef(pc1, mean_expr)[0, 1]
         direction = np.sign(corr) if not np.isnan(corr) else 1.0
-        pdata[name] = pc1 * direction
+        return name, (pc1 * direction)
 
-    # 4. TME 差分
+    if parallel_size and parallel_size > 1:
+        results = Parallel(n_jobs=int(parallel_size), prefer="processes")(
+            delayed(_one)(name, genes) for name, genes in tqdm(items, desc="PCA signatures", unit="sig")
+        )
+    else:
+        results = [ _one(name, genes) for name, genes in tqdm(items, desc="PCA signatures", unit="sig") ]
+
+    for name, vec in results:
+        pdata[name] = vec
+
+    # TME contrasts (unchanged)
     if {'TMEscoreA_CIR','TMEscoreB_CIR'}.issubset(sigs):
         pdata['TMEscore_CIR'] = pdata['TMEscoreA_CIR'] - pdata['TMEscoreB_CIR']
     if {'TMEscoreA_plus','TMEscoreB_plus'}.issubset(sigs):
@@ -133,25 +154,37 @@ def sig_score_pca(eset, sig_dict, mini_gene_count, adjust_eset):
 
     return pdata
 
-def sig_score_zscore(eset, sig_dict, mini_gene_count, adjust_eset):
+def sig_score_zscore(eset, sig_dict, mini_gene_count, adjust_eset, parallel_size=1):
     """
-    Python implementation matching R’s calculate_sig_score_zscore + sigScore(..., methods="zscore"):
-    - Preprocess (log2, drop Inf/zero‐sd, optional adjust)
-    - For each signature: subset genes, then simply take the mean across genes (colMeans)
+    Parallel zscore implementation: for each signature take mean across genes (colMeans).
+    Preserves original semantics.
     """
     pdata = pd.DataFrame({'ID': eset.columns})
-
     eset2 = preprocess_eset(eset, adjust_eset)
 
     min_size = max(mini_gene_count, 2)
     sigs = filter_signatures(sig_dict, eset2, min_size)
 
-    for name, genes in tqdm(list(sigs.items()), desc="zscore signatures", unit="sig"):
-        valid = sorted(set(genes) & set(eset2.index))
-        mat = eset2.loc[valid]               # genes × samples
-        # R sigScore(tmp, "zscore") == colMeans(tmp)
-        pdata[name] = mat.mean(axis=0).values
+    items = list(sigs.items())
 
+    def _one(name, genes):
+        valid = sorted(set(genes) & set(eset2.index))
+        if len(valid) == 0:
+            return name, np.zeros(len(eset2.columns), dtype=float)
+        mat = eset2.loc[valid]               # genes × samples
+        return name, mat.mean(axis=0).values
+
+    if parallel_size and parallel_size > 1:
+        results = Parallel(n_jobs=int(parallel_size), prefer="processes")(
+            delayed(_one)(name, genes) for name, genes in tqdm(items, desc="zscore signatures", unit="sig")
+        )
+    else:
+        results = [ _one(name, genes) for name, genes in tqdm(items, desc="zscore signatures", unit="sig") ]
+
+    for name, vec in results:
+        pdata[name] = vec
+
+    # TME contrasts (unchanged)
     if {'TMEscoreA_CIR','TMEscoreB_CIR'}.issubset(sigs):
         pdata['TMEscore_CIR'] = pdata['TMEscoreA_CIR'] - pdata['TMEscoreB_CIR']
     if {'TMEscoreA_plus','TMEscoreB_plus'}.issubset(sigs):
@@ -243,8 +276,8 @@ def calculate_sig_score(eset, signature_names, method, mini_gene_count, adjust_e
     if not isinstance(sig_dict, dict) or len(sig_dict) == 0:
         raise KeyError(f"No valid signatures found from groups: {signature_names}")
     m = method.lower()
-    if m == 'pca': return sig_score_pca(eset, sig_dict, mini_gene_count, adjust_eset)
-    if m == 'zscore': return sig_score_zscore(eset, sig_dict, mini_gene_count, adjust_eset)
+    if m == 'pca': return sig_score_pca(eset, sig_dict, mini_gene_count, adjust_eset, parallel_size)
+    if m == 'zscore': return sig_score_zscore(eset, sig_dict, mini_gene_count, adjust_eset, parallel_size)
     if m == 'ssgsea': return sig_score_ssgsea(eset, sig_dict, mini_gene_count, adjust_eset, parallel_size)
     if m == 'integration': return sig_score_integration(eset, sig_dict, mini_gene_count, adjust_eset, parallel_size)
     raise ValueError("Unknown method")
@@ -289,7 +322,7 @@ def main():
         '--parallel_size',
         type=int,
         default=1,
-        help='Number of threads to use for ssGSEA'
+        help='Threads for scoring (PCA/zscore/ssGSEA)'
     )
     p.add_argument(
         '-o', '--output',
