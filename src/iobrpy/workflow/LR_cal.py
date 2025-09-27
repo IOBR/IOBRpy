@@ -180,7 +180,7 @@ def main():
     parser.add_argument('-i','--input', required=True, help='Path to input expression matrix (genes x samples)')
     parser.add_argument('-o','--output', required=True, help='Path to save LR scores')
     parser.add_argument('--data_type', choices=['count','tpm'], default='tpm',help='Type of input data: count or tpm')
-    parser.add_argument('--id_type', default='ensembl', help='Gene ID type')
+    parser.add_argument('--id_type', default='ensembl', help='Gene ID type.Choices: ensembl, entrez, symbol, mgi.')
     parser.add_argument('--cancer_type', default='pancan', help='Cancer type network')
     parser.add_argument('--verbose', action='store_true', help='Enable verbose output')
     args = parser.parse_args()
