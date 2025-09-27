@@ -284,8 +284,12 @@ def main(argv: Optional[List[str]] = None) -> None:
     d_lrcal    = outdir / "06-LR_cal"
     d_salmon   = outdir / "02-salmon"
     d_star     = outdir / "02-star"
-    for d in [d_fastp, d_tpm, d_sigscore, d_deconv, d_lrcal, d_salmon, d_star]:
+    # Create common directories (shared across modes)
+    for d in [d_fastp, d_tpm, d_sigscore, d_deconv, d_lrcal]:
         _ensure_dir(d)
+
+    # Create the mode-specific directory only
+    _ensure_dir(d_salmon if ns.mode == "salmon" else d_star)
 
     # Legacy "sectioned" style (optional)
     blocks_named = _parse_passthrough_blocks([_normalize_flag_token(t) for t in unknown])
