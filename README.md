@@ -1,6 +1,6 @@
 # IOBRpy
 
-A Python **command‑line toolkit** for bulk RNA‑seq analysis of the tumor microenvironment (TME): data prep → signature scoring → immune deconvolution → clustering → ligand–receptor scoring.
+A Python **command‑line toolkit** for bulk RNA‑seq analysis of the tumor microenvironment (TME): FASTQ quality control , Salmon/STAR quantification, TPM or count matrix assembly and annotation, signature scoring, immune deconvolution, clustering, and ligand–receptor scoring.
 
 ![IOBRpy logo](./IOBRpy.png)
 
@@ -10,22 +10,22 @@ A Python **command‑line toolkit** for bulk RNA‑seq analysis of the tumor mic
 
 **End-to-End Pipeline Runner**
 - `runall` — A single command that wires the full Salmon or STAR pipeline end-to-end and writes the standardized layout:
-  `01-qc/ → 02-salmon|02-star/ → 03-tpm/ → 04-signatures/ → 05-tme/ → 06-LR_cal/`.
+  The pipeline creates the following directories, in order: `01-qc/`, `02-salmon/` or `02-star/`, `03-tpm/`, `04-signatures/`, `05-tme/`, and `06-LR_cal/`.
 
 **Preprocessing**
 - `fastq_qc` — Parallel FASTQ QC/trimming via **fastp**, with per-sample HTML/JSON and an optional **MultiQC** summary report under `01-qc/multiqc_report/`. Resume-friendly and prints output paths first.
 
-**Salmon submodule (quantification → merge → TPM)**
+**Salmon submodule (quantification, merge, and TPM)**
 - `batch_salmon` — Batch **salmon quant** on paired-end FASTQs; safe R1/R2 inference; per-sample `quant.sf`; progress and preflight checks (salmon version, index meta).  
 - `merge_salmon` — Recursively collect per-sample `quant.sf` and produce two matrices: **TPM** and **NumReads**.  
 - `prepare_salmon` — Clean up Salmon outputs into a TPM matrix; strip version suffixes; keep `symbol`/`ENSG`/`ENST` identifiers.
 
-**STAR submodule (alignment → counts → TPM)**
+**STAR submodule (alignment, counts, and TPM)**
 - `batch_star_count` — Batch **STAR** alignment with `--quantMode GeneCounts`, sorted BAM + `_ReadsPerGene.out.tab`; resume-friendly summary.  
 - `merge_star_count` — Merge multiple `_ReadsPerGene.out.tab` into one wide count matrix.  
 - `count2tpm` — Convert counts to TPM (supports Ensembl/Entrez/Symbol/MGI; optional effective length CSV).
 
-**Expression Annotation & Mouse→Human Mapping(Optional)**
+**Expression Annotation & Mouse to Human Mapping(Optional)**
 - `anno_eset` — Harmonize/annotate an expression matrix (choose symbol/probe columns; deduplicate; aggregation method).
 - `mouse2human_eset` — Convert mouse gene symbols to human gene symbols. Supports two modes: **matrix mode** (rows = genes) or **table mode** (input contains a symbol column). 
 
@@ -290,7 +290,7 @@ iobrpy fastq_qc \
 ```
 2) **Prepare TPM**
 ```bash
-# From FASTQ_QC → Salmon
+# From FASTQ_QC to Salmon
 iobrpy batch_salmon \
   --index "/path/to/salmon/index" \
   --path_fq "/path/to/fastp" \
@@ -314,7 +314,7 @@ iobrpy merge_salmon \
   MyProj_salmon_tpm.tsv.gz
 ```
 ```bash
-# From Salmon → TPM
+# From Salmon to TPM
 iobrpy prepare_salmon \
   -i MyProj_salmon_tpm.tsv.gz \
   -o TPM_matrix.csv \
@@ -330,7 +330,7 @@ A1BG        0.479      1.717      1.844      0.382      1.676      1.126
 A1BG-AS1    0.149      0.348      0.755      0.000      0.314      0.400
 ```
 ```bash
-# From FASTQ_QC → STAR
+# From FASTQ_QC to STAR
 iobrpy batch_star_count \
   --index "/path/to/star/index" \
   --path_fq "/path/to/fastp" \
@@ -364,7 +364,7 @@ iobrpy merge_star_count \
   MyProj.STAR.count.tsv.gz
 ```
 ```bash
-# b) From STAR → TPM
+# b) From STAR to TPM
 iobrpy count2tpm \
   -i MyProj.STAR.count.tsv.gz \
   -o TPM_matrix.csv \
@@ -384,7 +384,7 @@ A1BG-AS1   5.512                         4.440                         7.725    
 
 ```
 
-3) **(Optional) Mouse → Human symbol mapping**
+3) **(Optional) Mouse to Human symbol mapping**
 ```bash
 # Matrix mode: rows are mouse gene symbols, columns are samples
 iobrpy mouse2human_eset \
@@ -665,7 +665,7 @@ GSM1523745  1.478643424                              1.76013689    1.552305282  
   - `--resume`: skip steps if outputs already exist
   - `--dry_run`: print planned commands without executing
 
-### FASTQ → FASTQ Quality Control → Salmon/STAR →TPM
+### From FASTQ through FASTQ Quality Control and Salmon/STAR to TPM
 - **fastq_qc**
   - `--path1_fastq <DIR>` (required): raw FASTQ directory
   - `--path2_fastp <DIR>` (required): output directory for fastp results (`01-qc/`)
@@ -686,7 +686,7 @@ GSM1523745  1.478643424                              1.76013689    1.552305282  
   - `--batch_size <int>` (default: `1`): concurrent samples (processes)
   - `--num_threads <int>` (default: `8`): threads per salmon
   - `--gtf <FILE>`: optional GTF for `-g` gene-level quant
-  - Behavior: safe R1→R2 inference; per-sample `task.complete`; progress; preflight prints salmon version & index meta keys.
+  - Behavior: safe R1 to R2 inference; per-sample `task.complete`; progress; preflight prints salmon version & index meta keys.
 
 - **merge_salmon**
   - `--path_salmon <DIR>` (required): root containing per-sample salmon outputs (searched recursively)
@@ -698,7 +698,7 @@ GSM1523745  1.478643424                              1.76013689    1.552305282  
   - `-i/--input <TSV|TSV.GZ>` (required): Salmon-combined gene TPM table
   - `-o/--output <CSV/TSV>` (required): cleaned TPM matrix (genes × samples)
   - `-r/--return_feature {ENST|ENSG|symbol}` (default: `symbol`): which identifier to keep
-  - `--remove_version`: strip version suffix from gene IDs (e.g., `ENSG000001.12 → ENSG000001`)
+  - `--remove_version`: strip version suffix from gene IDs (e.g., `ENSG000001.12 to ENSG000001`)
 
 #### STAR mode
 - **batch_star_count**
@@ -727,7 +727,7 @@ GSM1523745  1.478643424                              1.76013689    1.552305282  
   - `--check_data`: check & drop missing/invalid entries before conversion
   - `--remove_version`: strip version suffix from gene IDs
 
-### (Optional) Mouse → Human symbol mapping
+### (Optional) Mouse to Human symbol mapping
 - **mouse2human\_eset**
   - `-i/--input <CSV|TSV|TXT[.gz]>` (required): input expression **matrix** or **table**
   - `-o/--output <CSV|TSV|TXT[.gz]>` (required): converted matrix indexed by **human** symbols (genes × samples)
@@ -793,11 +793,11 @@ GSM1523745  1.478643424                              1.76013689    1.552305282  
   - `-i/--input <TSV>` (required; genes × samples)
   - `-f/--features {affy133P2_probesets|HUGO_symbols|ENTREZ_ID|ENSEMBL_ID}` (required)
   - `-o/--output <CSV/TSV>` (required)  
-  *Output: columns normalized (spaces → `_`) and suffixed with `_MCPcounter`; index label `ID`; separator inferred from extension.*
+  *Output: suffixed with `_MCPcounter`; index label `ID`; separator inferred from extension.*
 
 - **IPS**
   - `-i/--input <matrix>` (required), `-o/--output <file>` (required)  
-  *No extra flags (expression matrix → IPS sub-scores + total).*
+  *No extra flags (the expression matrix yields IPS sub-scores and a total score).*
 
 - **deside** (deep learning–based deconvolution)
   - `-m/--model_dir <dir>` (required): path to the pre-downloaded DeSide model directory
