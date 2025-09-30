@@ -1,6 +1,6 @@
 # IOBRpy
 
-A Python **command‑line toolkit** for bulk RNA‑seq analysis of the tumor microenvironment (TME): FASTQ quality control , Salmon/STAR quantification, TPM or count matrix assembly and annotation, signature scoring, immune deconvolution, clustering, and ligand–receptor scoring.
+**IOBRpy** is a **command-line toolkit** for bulk RNA-seq tumor microenvironment (TME) analysis. It wires together FASTQ QC, quantification (Salmon or STAR), matrix assembly, signature scoring, immune deconvolution, clustering, and ligand–receptor scoring.
 
 ![IOBRpy logo](./IOBRpy.png)
 
