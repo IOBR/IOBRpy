@@ -479,27 +479,66 @@ def main(argv: Optional[List[str]] = None) -> None:
         produced.append(out_file)
 
     # 7) Merge deconvolution results -> 05-tme/deconvo_merged.csv
-    merged_path = d_deconv / "deconvo_merged.csv"
-    if ns.resume and _nonempty(merged_path):
+    merged_wide_path = d_deconv / "deconvo_merged.csv"
+
+    if ns.resume and _nonempty(merged_wide_path):
         print("[resume] merge deconvolution skipped.")
     else:
         if pd is None:
-            print("[WARN] pandas not available; skip merged deconvolution table.")
+            print("[WARN] pandas is not available; skip merged deconvolution table.")
         else:
-            df_all = None
-            for f in produced:
+            def _read_csv_any(p: Path):
+                """Read a CSV with a safe fallback parser."""
                 try:
-                    df = pd.read_csv(f)
+                    return pd.read_csv(p)
                 except Exception:
-                    df = pd.read_csv(f, engine="python")
-                if "method" not in df.columns:
-                    df.insert(0, "method", f.stem.replace("_results", ""))
-                df_all = df if df_all is None else pd.concat([df_all, df], ignore_index=True)
-            if df_all is None:
-                print("[ERROR] No valid deconvolution results to merge.")
-                sys.exit(2)
-            df_all.to_csv(merged_path, index=False)
-            print(f"[ok] merged deconvolution -> {merged_path}")
+                    return pd.read_csv(p, engine="python")
+
+            def _normalize_id(df: pd.DataFrame) -> pd.DataFrame:
+                """
+                Standardize the sample identifier column to 'ID' and cleanup.
+                - Accept 'ID' or 'Unnamed: 0' as the sample column; otherwise use the first column.
+                - Drop redundant 'Unnamed:*' columns.
+                - Ensure 'ID' is string type and appears as the first column.
+                """
+                if "ID" in df.columns:
+                    pass
+                elif "Unnamed: 0" in df.columns:
+                    df = df.rename(columns={"Unnamed: 0": "ID"})
+                else:
+                    df = df.rename(columns={df.columns[0]: "ID"})
+
+                drop_cols = [c for c in df.columns if c.startswith("Unnamed:") and c != "ID"]
+                if drop_cols:
+                    df = df.drop(columns=drop_cols)
+
+                df["ID"] = df["ID"].astype(str)
+                cols = ["ID"] + [c for c in df.columns if c != "ID"]
+                return df[cols]
+
+            # Read all produced method outputs (paths are assumed in `produced`)
+            frames = []
+            for f in produced:
+                df = _read_csv_any(f)
+                df = _normalize_id(df)
+                # Drop columns that are entirely NaN
+                df = df.dropna(axis=1, how="all")
+                frames.append(df)
+
+            # Outer-join on 'ID' to build a single wide matrix per sample
+            wide = frames[0]
+            for df in frames[1:]:
+                # If different methods accidentally share identical column names,
+                # suffix the incoming duplicates to avoid collisions.
+                overlap = (set(wide.columns) & set(df.columns)) - {"ID"}
+                if overlap:
+                    df = df.rename(columns={c: f"{c}_dup" for c in overlap})
+                wide = pd.merge(wide, df, on="ID", how="outer")
+
+            # Sort by ID and write the final wide table
+            wide = wide.sort_values("ID").reset_index(drop=True)
+            wide.to_csv(merged_wide_path, index=False)
+            print(f"[ok] merged deconvolution -> {merged_wide_path}")
 
     # 8) LR_cal -> 06-LR_cal/
     lr_out = d_lrcal / "lr_cal.csv"
