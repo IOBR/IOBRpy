@@ -1,3 +1,0 @@
-# Limit build & test matrix to Python 3.9 for reproducible local builds.
-python:
-  - 3.9
