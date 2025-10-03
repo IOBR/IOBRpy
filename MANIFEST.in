@@ -1,6 +1,15 @@
 include README.md
 include LICENSE
+include IOBRpy.png
 
 recursive-include src/iobrpy/resources *.pkl *.gmt *.txt
 
-global-exclude *.py[cod] __pycache__ .DS_Store
+prune recipe
+prune build
+prune dist
+prune src/iobrpy.egg-info
+prune iobrpy.egg-info
+prune .eggs
+
+global-exclude *.py[cod] .DS_Store
+recursive-exclude * __pycache__
