@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.9"
 license = { file = "LICENSE" }
 authors = [
-  { name = "Haonan Huang" },
+  { name = "Haonan Huang" , email = "2905611068@qq.com" },
   { name = "Dongqiang Zeng" , email = "interlaken@smu.edu.cn" }
 ]
 
