@@ -1019,4 +1019,4 @@ SOFTWARE.
 
 ## Contact / Support
 - Issues: https://github.com/IOBR/IOBRpy/issues
-- Maintainers: <Haonan Huang> (email = 2905611068@qq.com); <Dongqiang Zeng> (email = interlaken@smu.edu.cn)
+- Maintainers: [ Haonan Huang ] (email = 2905611068@qq.com); [ Dongqiang Zeng ] (email = interlaken@smu.edu.cn)
