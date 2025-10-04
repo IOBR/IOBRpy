@@ -57,14 +57,74 @@
 ## Installation
 
 ```bash
-# creating a virtual environment is recommended
-conda create -n iobrpy python=3.9
+# Creating a virtual environment is recommended
+conda create -n iobrpy python=3.9 -y
 conda activate iobrpy
-# update pip
-python3 -m pip install --upgrade pip
-# install deside
+
+# Update pip
+python -m pip install --upgrade pip
+
+# Install iobrpy
 pip install iobrpy
+
+#Install fastp, salmon, STAR and MultiQC
+# Recommended: use mamba for faster solves (if available)
+# Channels order matters: conda-forge first, then bioconda
+mamba install -y -c conda-forge -c bioconda \
+  fastp \
+  salmon \
+  star \
+  multiqc
+
+# If you don't have mamba, use conda instead
+# (slower dependency solving; otherwise equivalent)
+conda install -y -c conda-forge -c bioconda \
+  fastp \
+  salmon \
+  star \
+  multiqc
+
+# (Optional) Verify tools are available
+fastp --version
+salmon --version
+STAR --version
+multiqc --version
 ```
+
+---
+
+## Quick Start
+
+```bash
+# 1) Minimal end-to-end example (Salmon mode)
+iobrpy runall \
+  --mode salmon \
+  --outdir /path/to/outdir \
+  --fastq /path/to/fastq \
+  --index /path/to/salmon/index \
+  --threads 16 \
+  --batch_size 4 \
+  --project MyProj
+# Alternative: STAR mode
+iobrpy runall \
+  --mode star \
+  --outdir /path/to/outdir \
+  --fastq /path/to/fastq \
+  --index /path/to/star/index \
+  --threads 8 \
+  --batch_size 1 \
+  --project MyProj
+
+# 2) Inspect results
+tree -L 2 /path/to/outdir
+```
+
+---
+
+## Input Requirements
+- **FASTQ layout**: paired-end by default. Filenames end with `*_1.fastq.gz` / `*_2.fastq.gz` (configurable via `--suffix1`). Use `--se` for single-end in `fastq_qc`.
+- **Expression matrix orientation**: **genes × samples** by default.
+- **Output file delimiters**: automatically inferred from the file extension; .csv and .tsv/.txt are recommended.
 
 ---
 
@@ -78,12 +138,12 @@ iobrpy <command> --help
 iobrpy count2tpm --help
 ```
 
-### General I/O conventions
-- **Input orientation**: genes × samples by default.
-- **Separators**: auto‑detected from file extension (`.csv` vs `.tsv`/`.txt`); you can override via command options where available.
-- **Outputs**: CSV/TSV/TXT
+---
 
 ### `runall` — From FASTQ to TME
+
+#### How `runall` passes options
+`runall` defines a small set of top-level options (e.g., `--mode/--outdir/--fastq/--threads/--batch_size`). Any unrecognized options are forwarded to the corresponding sub-steps. This keeps `runall` flexible as sub-commands evolve.
 
 Below are **two fully wired workflows** handled by `iobrpy runall`.  
 
@@ -144,6 +204,9 @@ iobrpy runall \
   --id_type "symbol" \
   --verbose
 ```
+
+---
+
 ### Option legend for the `runall` examples
 
 #### Common options
@@ -196,6 +259,8 @@ iobrpy runall \
 | `--data_type {tpm / count}` | Input matrix type for `LR_cal` |
 | `--id_type {symbol / ensembl / ...}` | Gene ID type for `LR_cal` |
 | `--verbose` | Verbose logging |
+
+---
 
 ### Expected layout
 ```
@@ -268,6 +333,53 @@ iobrpy runall \
 `-- 06-LR_cal
     `-- lr_cal.csv
 ```
+
+---
+
+### Output Reference
+
+#### Standard layout (produced by `iobrpy runall`)
+- `01-qc/` — fastp outputs; a resume flag `.fastq_qc.done` is written when the step completes.
+- `02-salmon/` **or** `02-star/` — quantification/alignment + merged matrices; resume flags like `.batch_salmon.done`, `.merge_salmon.done`, or `.merge_star_count.done`.
+- `03-tpm/` — unified TPM matrix `tpm_matrix.csv`. For Salmon mode it comes from `prepare_salmon`; for STAR mode it comes from `count2tpm`.
+- `04-signatures/` — signature scoring results (file: `calculate_sig_score.csv`).
+- `05-tme/` — deconvolution outputs from multiple methods + `deconvo_merged.csv`.
+- `06-LR_cal/` — ligand–receptor results `lr_cal.csv`.
+
+#### Salmon mode (`02-salmon/`)
+- Per-sample Salmon folders containing `quant.sf` (from `batch_salmon`). A `.batch_salmon.done` flag is written after completion.
+- Merged matrices (from `merge_salmon`):
+  - `<PROJECT>_salmon_tpm.tsv[.gz]`
+  - `<PROJECT>_salmon_count.tsv[.gz]`  
+  A `.merge_salmon.done` flag is written after completion.
+- `03-tpm/tpm_matrix.csv` — cleaned **genes × samples** TPM matrix produced by `prepare_salmon` (default `--return_feature symbol` unless overridden).
+
+#### STAR mode (`02-star/`)
+- Per-sample STAR outputs (BAM, logs, `*_ReadsPerGene.out.tab`, etc.).
+- Merged counts (from `merge_star_count`):
+  - `<PROJECT>.STAR.count.tsv.gz` . A `.merge_star_count.done` flag is written after completion.
+- `03-tpm/tpm_matrix.csv` — produced by `count2tpm` from the merged STAR ReadPerGene matrix.
+
+#### Signatures (`04-signatures/`)
+- `calculate_sig_score.csv` — per-sample pathway/signature scores. Columns correspond to the selected signature set and method (`integration`, `pca`, `zscore`, or `ssgsea`). 
+
+#### Deconvolution (`05-tme/`)
+Each method writes a single table named `<method>_results.csv`:
+
+- `cibersort_results.csv` — columns suffixed with `_CIBERSORT`. Note whether `--perm` and `--QN` were used.
+- `quantiseq_results.csv` — quanTIseq fractions. Document the chosen `--method {lsei|hampel|huber|bisquare}` and flags like `--arrays`, `--tumor`, `--scale_mrna`, `--signame`.
+- `epic_results.csv` — EPIC fractions; record the reference profile used (`--reference {TRef|BRef|both}`).
+- `estimate_results.csv` — ESTIMATE immune/stromal/purity scores; columns suffixed `_estimate`.
+- `mcpcounter_results.csv` — MCPcounter scores; columns suffixed `_MCPcounter`.
+- `IPS_results.csv` — IPS sub-scores and total score.
+
+**Merged table**
+- `deconvo_merged.csv` — produced by `runall` after all deconvolution methods finish; normalizes the sample index to a column named `ID` and outer-joins by sample ID across methods.
+
+#### Ligand–receptor (`06-LR_cal/`)
+- `lr_cal.csv` — ligand–receptor scoring table from `LR_cal`. Record the `--data_type {count|tpm}` and the `--id_type` you used.
+
+---
 
 ### Typical end‑to‑end workflow — output file structure examples
 
@@ -904,3 +1016,7 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+## Contact / Support
+- Issues: https://github.com/IOBR/IOBRpy/issues
+- Maintainers: <Haonan Huang> (email = 2905611068@qq.com); <Dongqiang Zeng> (email = interlaken@smu.edu.cn)
