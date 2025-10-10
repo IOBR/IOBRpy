@@ -1,7 +1,7 @@
 ---
 title: Citation & acknowledgments
 layout: default
-nav_order: 6
+nav_order: 7
 ---
 
 # Citation & acknowledgments
