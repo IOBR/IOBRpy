@@ -1,3 +1,9 @@
+---
+title: Typical end-to-end workflow
+layout: default
+nav_order: 2
+---
+
 # Typical end‑to‑end workflow — output file structure examples
 
 ## 1) FASTQ Quality Control
