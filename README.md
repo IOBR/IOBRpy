@@ -6,52 +6,9 @@
 
 ---
 
-## Features
+## Documentation
 
-**End-to-End Pipeline Runner**
-- `runall` — A single command that wires the full Salmon or STAR pipeline end-to-end and writes the standardized layout:
-  The pipeline creates the following directories, in order: `01-qc/`, `02-salmon/` or `02-star/`, `03-tpm/`, `04-signatures/`, `05-tme/`, and `06-LR_cal/`.
-
-**Preprocessing**
-- `fastq_qc` — Parallel FASTQ QC/trimming via **fastp**, with per-sample HTML/JSON and an optional **MultiQC** summary report under `01-qc/multiqc_report/`. Resume-friendly and prints output paths first.
-
-**Salmon submodule (quantification, merge, and TPM)**
-- `batch_salmon` — Batch **salmon quant** on paired-end FASTQs; safe R1/R2 inference; per-sample `quant.sf`; progress and preflight checks (salmon version, index meta).  
-- `merge_salmon` — Recursively collect per-sample `quant.sf` and produce two matrices: **TPM** and **NumReads**.  
-- `prepare_salmon` — Clean up Salmon outputs into a TPM matrix; strip version suffixes; keep `symbol`/`ENSG`/`ENST` identifiers.
-
-**STAR submodule (alignment, counts, and TPM)**
-- `batch_star_count` — Batch **STAR** alignment with `--quantMode GeneCounts`, sorted BAM + `_ReadsPerGene.out.tab`; resume-friendly summary.  
-- `merge_star_count` — Merge multiple `_ReadsPerGene.out.tab` into one wide count matrix.  
-- `count2tpm` — Convert counts to TPM (supports Ensembl/Entrez/Symbol/MGI; optional effective length CSV).
-
-**Expression Annotation & Mouse to Human Mapping & log2(x+1) (Optional)**
-- `anno_eset` — Harmonize/annotate an expression matrix (choose symbol/probe columns; deduplicate; aggregation method).
-- `mouse2human_eset` — Convert mouse gene symbols to human gene symbols. Supports two modes: **matrix mode** (rows = genes) or **table mode** (input contains a symbol column). 
-- `log2_eset` — Apply log2(x+1) to a **genes × samples** expression matrix.
-
-**Pathway / signature scoring**
-- `calculate_sig_score` — Sample‑level signature scores via `pca`, `zscore`, `ssgsea`, or `integration`. 
-  Supports the following signature **groups** (space‑ or comma‑separated), or `all` to merge them:
-  - `go_bp`, `go_cc`, `go_mf`
-  - `signature_collection`, `signature_tme`, `signature_sc`, `signature_tumor`, `signature_metabolism`
-  - `kegg`, `hallmark`, `reactome`
-
-**Immune deconvolution and scoring**
-- `cibersort` — CIBERSORT wrapper/implementation with permutations, quantile normalization, absolute mode.
-- `quantiseq` — quanTIseq deconvolution with `lsei` or robust norms (`hampel`, `huber`, `bisquare`); tumor‑gene filtering; mRNA scaling.
-- `epic` — EPIC cell fractions using `TRef`/`BRef` references.
-- `estimate` — ESTIMATE immune/stromal/tumor purity scores.
-- `mcpcounter` — MCPcounter infiltration scores.
-- `IPS` — Immunophenoscore (AZ/SC/CP/EC + total).
-- `deside` — Deep learning–based deconvolution (requires pre‑downloaded model; supports pathway‑masked mode via KEGG/Reactome GMTs).
-
-**Clustering / decomposition**
-- `tme_cluster` — k‑means with **automatic k** via KL index (Hartigan–Wong), feature selection and standardization.
-- `nmf` — NMF‑based clustering (auto‑selects k; excludes k=2) with PCA plot and top features.
-
-**Ligand–receptor**
-- `LR_cal` — Ligand–receptor interaction scoring using cancer‑type specific networks.
+A complete documentation for IOBRpy can be found at https://iobr.github.io/IOBRpy/.
 
 ---
 
@@ -120,6 +77,54 @@ iobrpy runall \
 tree -L 2 /path/to/outdir
 ```
 
+---
+
+## Features
+
+**End-to-End Pipeline Runner**
+- `runall` — A single command that wires the full Salmon or STAR pipeline end-to-end and writes the standardized layout:
+  The pipeline creates the following directories, in order: `01-qc/`, `02-salmon/` or `02-star/`, `03-tpm/`, `04-signatures/`, `05-tme/`, and `06-LR_cal/`.
+
+**Preprocessing**
+- `fastq_qc` — Parallel FASTQ QC/trimming via **fastp**, with per-sample HTML/JSON and an optional **MultiQC** summary report under `01-qc/multiqc_report/`. Resume-friendly and prints output paths first.
+
+**Salmon submodule (quantification, merge, and TPM)**
+- `batch_salmon` — Batch **salmon quant** on paired-end FASTQs; safe R1/R2 inference; per-sample `quant.sf`; progress and preflight checks (salmon version, index meta).  
+- `merge_salmon` — Recursively collect per-sample `quant.sf` and produce two matrices: **TPM** and **NumReads**.  
+- `prepare_salmon` — Clean up Salmon outputs into a TPM matrix; strip version suffixes; keep `symbol`/`ENSG`/`ENST` identifiers.
+
+**STAR submodule (alignment, counts, and TPM)**
+- `batch_star_count` — Batch **STAR** alignment with `--quantMode GeneCounts`, sorted BAM + `_ReadsPerGene.out.tab`; resume-friendly summary.  
+- `merge_star_count` — Merge multiple `_ReadsPerGene.out.tab` into one wide count matrix.  
+- `count2tpm` — Convert counts to TPM (supports Ensembl/Entrez/Symbol/MGI; optional effective length CSV).
+
+**Expression Annotation & Mouse to Human Mapping & log2(x+1) (Optional)**
+- `anno_eset` — Harmonize/annotate an expression matrix (choose symbol/probe columns; deduplicate; aggregation method).
+- `mouse2human_eset` — Convert mouse gene symbols to human gene symbols. Supports two modes: **matrix mode** (rows = genes) or **table mode** (input contains a symbol column). 
+- `log2_eset` — Apply log2(x+1) to a **genes × samples** expression matrix.
+
+**Pathway / signature scoring**
+- `calculate_sig_score` — Sample‑level signature scores via `pca`, `zscore`, `ssgsea`, or `integration`. 
+  Supports the following signature **groups** (space‑ or comma‑separated), or `all` to merge them:
+  - `go_bp`, `go_cc`, `go_mf`
+  - `signature_collection`, `signature_tme`, `signature_sc`, `signature_tumor`, `signature_metabolism`
+  - `kegg`, `hallmark`, `reactome`
+
+**Immune deconvolution and scoring**
+- `cibersort` — CIBERSORT wrapper/implementation with permutations, quantile normalization, absolute mode.
+- `quantiseq` — quanTIseq deconvolution with `lsei` or robust norms (`hampel`, `huber`, `bisquare`); tumor‑gene filtering; mRNA scaling.
+- `epic` — EPIC cell fractions using `TRef`/`BRef` references.
+- `estimate` — ESTIMATE immune/stromal/tumor purity scores.
+- `mcpcounter` — MCPcounter infiltration scores.
+- `IPS` — Immunophenoscore (AZ/SC/CP/EC + total).
+- `deside` — Deep learning–based deconvolution (requires pre‑downloaded model; supports pathway‑masked mode via KEGG/Reactome GMTs).
+
+**Clustering / decomposition**
+- `tme_cluster` — k‑means with **automatic k** via KL index (Hartigan–Wong), feature selection and standardization.
+- `nmf` — NMF‑based clustering (auto‑selects k; excludes k=2) with PCA plot and top features.
+
+**Ligand–receptor**
+- `LR_cal` — Ligand–receptor interaction scoring using cancer‑type specific networks.
 ---
 
 ## Input Requirements
