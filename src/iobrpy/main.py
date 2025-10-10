@@ -26,8 +26,9 @@ from iobrpy.workflow.batch_star_count import main as batch_star_count_main
 from iobrpy.workflow.fastq_qc import main as fastq_qc_main
 from iobrpy.utils.print_colorful_message import print_colorful_message
 from iobrpy.workflow import runall as runall_mod
+from iobrpy.workflow.log2_eset import main as log2_eset_main
 
-VERSION = "0.1.3"
+VERSION = "0.1.4"
 
 def main():
     parser = argparse.ArgumentParser(prog='iobrpy', description="Immuno-Oncology Biological Research using Python")
@@ -333,6 +334,13 @@ def main():
     p20.add_argument('--batch_size', type=int, default=5, help='Number of concurrent samples (processes)')
     p20.add_argument('--se', action='store_true', help='Single-end sequencing; omit for paired-end')
     p20.add_argument('--length_required', type=int, default=50, help='Minimum read length to keep')
+
+    p21 = subparsers.add_parser('log2_eset', help='Apply log2(x+1) to an expression matrix')
+    p21.add_argument('-i', '--input',  required=True,
+                help='Path to input matrix (CSV/TSV/TXT, optionally .gz). Rows=genes, cols=samples.')
+    p21.add_argument('-o', '--output', required=True,
+                help='Path to save the log2(x+1) matrix. Extension selects delimiter (.csv/.tsv or mirror input).')
+
 
     p_runall = subparsers.add_parser('runall', help='Run the end-to-end pipeline (salmon/star)')
     p_runall.add_argument('--mode', choices=['salmon','star'], required=True)
@@ -714,6 +722,26 @@ def main():
         ]
         fastq_qc_main()
         _sys.argv = _sys_argv_orig
+    elif args.command == 'log2_eset':
+        _sys_argv_orig = _sys.argv[:]
+        _sys.argv = [
+            _sys_argv_orig[0],
+            '-i', args.input,
+            '-o', args.output,
+        ]
+        log2_eset_main()
+        _sys.argv = _sys_argv_orig
+
+        print("   ")
+        print_colorful_message("#########################################################", "blue")
+        print_colorful_message(" IOBRpy: Immuno-Oncology Biological Research using Python ", "cyan")
+        print_colorful_message(" If you encounter any issues, please report them at ", "cyan")
+        print_colorful_message(" https://github.com/IOBR/IOBRpy/issues ", "cyan")
+        print_colorful_message("#########################################################", "blue")
+        print(" Author: Haonan Huang, Dongqiang Zeng")
+        print(" Email: interlaken@smu.edu.cn ")
+        print_colorful_message("#########################################################", "blue")
+        print("   ")
     elif args.command == 'runall':
         sub_argv = ['--mode', args.mode, '--outdir', args.outdir, '--fastq', args.fastq]
         if args.resume: 
