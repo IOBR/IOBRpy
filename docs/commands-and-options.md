@@ -1,3 +1,9 @@
+---
+title: Commands & common options
+layout: default
+nav_order: 3
+---
+
 # Commands & common options
 
 ## `runall` — From FASTQ to TME
