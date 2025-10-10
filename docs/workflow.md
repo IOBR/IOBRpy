@@ -1,7 +1,7 @@
 ---
 title: Typical end-to-end workflow
 layout: default
-nav_order: 2
+nav_order: 3
 ---
 
 # Typical end‑to‑end workflow — output file structure examples
