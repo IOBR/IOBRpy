@@ -362,20 +362,33 @@ def main(argv: Optional[List[str]] = None) -> None:
             print("[ERROR] Cannot find merged Salmon TPM in '02-salmon/' (pattern '*_salmon_tpm.tsv*').")
             sys.exit(2)
 
-        # 4a) prepare_salmon -> 03-tpm/tpm_matrix.csv
+        # 4a) prepare_salmon -> 03-tpm/prepare_salmon.csv, then log2_eset -> 03-tpm/tpm_matrix.csv
+        prep_csv   = d_tpm / "prepare_salmon.csv"
         tpm_matrix = d_tpm / "tpm_matrix.csv"
+
         if ns.resume and _nonempty(tpm_matrix):
-            print("[resume] prepare_salmon skipped.")
+            # If final log2'ed matrix exists, skip both steps.
+            print("[resume] prepare_salmon + log2_eset skipped.")
         else:
-            cmd = ["iobrpy", "prepare_salmon",
-                   "--input", str(merged_salmon_tpm),
-                   "--output", str(tpm_matrix)]
-            # Apply default return_feature only if user didn't provide one
-            ps_args = blocks.get("prepare_salmon") or []
-            if not any(a.startswith("--return_feature") for a in ps_args):
-                cmd += ["--return_feature", "symbol"]
-            _append_passthrough(cmd, blocks, "prepare_salmon")
-            # Do NOT force --remove_version; it is passed only if the user provided it.
+            # Run prepare_salmon only if the intermediate is missing (resume-friendly).
+            if not (ns.resume and _nonempty(prep_csv)):
+                cmd = ["iobrpy", "prepare_salmon",
+                       "--input", str(merged_salmon_tpm),
+                       "--output", str(prep_csv)]
+                # Apply default return_feature only if user didn't provide one
+                ps_args = blocks.get("prepare_salmon") or []
+                if not any(a.startswith("--return_feature") for a in ps_args):
+                    cmd += ["--return_feature", "symbol"]
+                _append_passthrough(cmd, blocks, "prepare_salmon")
+                # Do NOT force --remove_version; it is passed only if the user provided it.
+                rc = _run(cmd, dry=ns.dry_run)
+                if rc != 0:
+                    sys.exit(rc)
+
+            # Always ensure final matrix is log2(x+1) from the intermediate.
+            cmd = ["iobrpy", "log2_eset",
+                   "-i", str(prep_csv),
+                   "-o", str(tpm_matrix)]
             rc = _run(cmd, dry=ns.dry_run)
             if rc != 0:
                 sys.exit(rc)
@@ -414,19 +427,31 @@ def main(argv: Optional[List[str]] = None) -> None:
             print("[ERROR] Cannot find merged STAR ReadsPerGene in '02-star/' (pattern '*_star_ReadsPerGene.tsv*').")
             sys.exit(2)
 
-        # 4b) count2tpm -> 03-tpm/tpm_matrix.csv
+        # 4b) count2tpm -> 03-tpm/count2tpm.csv, then log2_eset -> 03-tpm/tpm_matrix.csv
+        prep_csv   = d_tpm / "count2tpm.csv"
         tpm_matrix = d_tpm / "tpm_matrix.csv"
+
         if ns.resume and _nonempty(tpm_matrix):
-            print("[resume] count2tpm skipped.")
+            print("[resume] count2tpm + log2_eset skipped.")
         else:
-            cmd = ["iobrpy", "count2tpm",
-                   "--input", str(merged_star_counts),
-                   "--output", str(tpm_matrix),
-                   "--idtype", "ensembl",
-                   "--org", "hsa",
-                   "--source", "local"]
-            # Do NOT force --remove_version; it is passed only if the user provided it.
-            _append_passthrough(cmd, blocks, "count2tpm")
+            # Run count2tpm only if the intermediate is missing (resume-friendly).
+            if not (ns.resume and _nonempty(prep_csv)):
+                cmd = ["iobrpy", "count2tpm",
+                       "--input", str(merged_star_counts),
+                       "--output", str(prep_csv),
+                       "--idtype", "ensembl",
+                       "--org", "hsa",
+                       "--source", "local"]
+                # Do NOT force --remove_version; it is passed only if the user provided it.
+                _append_passthrough(cmd, blocks, "count2tpm")
+                rc = _run(cmd, dry=ns.dry_run)
+                if rc != 0:
+                    sys.exit(rc)
+
+            # Always ensure final matrix is log2(x+1) from the intermediate.
+            cmd = ["iobrpy", "log2_eset",
+                   "-i", str(prep_csv),
+                   "-o", str(tpm_matrix)]
             rc = _run(cmd, dry=ns.dry_run)
             if rc != 0:
                 sys.exit(rc)
