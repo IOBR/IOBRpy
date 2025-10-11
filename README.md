@@ -155,7 +155,7 @@ iobrpy runall \
 #### Common options
 | Flag | Purpose |
 |---|---|
-| `--mode {salmon|star}` | Select backend (Salmon quant vs. STAR align+count) |
+| `--mode {salmon / star}` | Select backend (Salmon quant vs. STAR align+count) |
 | `--outdir <DIR>` | Root output directory (creates the standardized layout) |
 | `--fastq <DIR>` | Raw FASTQ dir, forwarded to `fastq_qc --path1_fastq` |
 | `--threads <INT>` / `--batch_size <INT>` | Global concurrency/batching |
