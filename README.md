@@ -51,34 +51,6 @@ multiqc --version
 
 ---
 
-## Quick Start
-
-```bash
-# 1) Minimal end-to-end example (Salmon mode)
-iobrpy runall \
-  --mode salmon \
-  --outdir /path/to/outdir \
-  --fastq /path/to/fastq \
-  --index /path/to/salmon/index \
-  --threads 16 \
-  --batch_size 4 \
-  --project MyProj
-# Alternative: STAR mode
-iobrpy runall \
-  --mode star \
-  --outdir /path/to/outdir \
-  --fastq /path/to/fastq \
-  --index /path/to/star/index \
-  --threads 8 \
-  --batch_size 1 \
-  --project MyProj
-
-# 2) Inspect results
-tree -L 2 /path/to/outdir
-```
-
----
-
 ## Features
 
 **End-to-End Pipeline Runner**
@@ -146,7 +118,7 @@ iobrpy count2tpm --help
 
 ---
 
-### `runall` — From FASTQ to TME
+### From FASTQ to TME - `runall`
 
 #### How `runall` passes options
 `runall` defines a small set of top-level options (e.g., `--mode/--outdir/--fastq/--threads/--batch_size`). Any unrecognized options are forwarded to the corresponding sub-steps. This keeps `runall` flexible as sub-commands evolve.
@@ -159,27 +131,10 @@ iobrpy runall \
   --mode salmon \
   --outdir "/path/to/outdir" \
   --fastq "/path/to/fastq" \
-  --threads 16 \
-  --batch_size 4 \
+  --threads 8 \
+  --batch_size 1 \
   --index "/path/to/salmon/index" \
-  --project MyProj \
-  --return_feature symbol \
-  --remove_version \
-  --method integration \
-  --signature all \
-  --mini_gene_count 2 \
-  --adjust_eset \
-  --perm 1000 \
-  --QN true \
-  --platform affymetrix \
-  --features HUGO_symbols \
-  --arrays \
-  --tumor \
-  --scale_mrna \
-  --reference TRef \
-  --data_type tpm \
-  --id_type "symbol" \
-  --verbose
+  --project MyProj
 ```
 #### STAR mode
 ```bash
@@ -187,28 +142,10 @@ iobrpy runall \
   --mode star \
   --outdir "/path/to/outdir" \
   --fastq "/path/to/fastq" \
-  --threads 16 \
+  --threads 8 \
   --batch_size 1 \
   --index "/path/to/star/index" \
-  --project MyProj \
-  --idtype ensembl \
-  --org hsa \
-  --remove_version \
-  --method integration \
-  --signature all \
-  --mini_gene_count 2 \
-  --adjust_eset \
-  --perm 100 \
-  --QN true \
-  --platform affymetrix \
-  --features HUGO_symbols \
-  --arrays \
-  --tumor \
-  --scale_mrna \
-  --reference TRef \
-  --data_type tpm \
-  --id_type "symbol" \
-  --verbose
+  --project MyProj
 ```
 
 ---
