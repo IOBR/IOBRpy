@@ -17,7 +17,7 @@ What this revision does (key points):
 - NEW: --remove_version is now OPTIONAL in both modes.
   * salmon: if provided, routed to prepare_salmon
   * star:   if provided, routed to count2tpm
-  Defaults do NOT force remove_version anymore.
+  Defaults DO force --remove_version for prepare_salmon (salmon) and count2tpm (star).
 - Output layout:
     01-qc/                 # fastp outputs
     02-salmon/ or 02-star/ # quantification / align counts
@@ -308,7 +308,7 @@ def main(argv: Optional[List[str]] = None) -> None:
 
     # Final unified values (explicit top-level overrides legacy)
     threads = ns.threads if ns.threads is not None else (legacy_threads if legacy_threads is not None else 8)
-    batch_size = ns.batch_size if ns.batch_size is not None else (legacy_batch if legacy_batch is not None else 4)
+    batch_size = ns.batch_size if ns.batch_size is not None else (legacy_batch if legacy_batch is not None else 1)
 
     # 1) fastq_qc -> 01-qc/
     fastp_done_flag = d_fastp / ".fastq_qc.done"
@@ -380,7 +380,9 @@ def main(argv: Optional[List[str]] = None) -> None:
                 if not any(a.startswith("--return_feature") for a in ps_args):
                     cmd += ["--return_feature", "symbol"]
                 _append_passthrough(cmd, blocks, "prepare_salmon")
-                # Do NOT force --remove_version; it is passed only if the user provided it.
+                # Default: invoke --remove_version unless user already set it
+                if not any(a.startswith("--remove_version") for a in ps_args):
+                    cmd.append("--remove_version")
                 rc = _run(cmd, dry=ns.dry_run)
                 if rc != 0:
                     sys.exit(rc)
@@ -442,7 +444,10 @@ def main(argv: Optional[List[str]] = None) -> None:
                        "--idtype", "ensembl",
                        "--org", "hsa",
                        "--source", "local"]
-                # Do NOT force --remove_version; it is passed only if the user provided it.
+                # Default: invoke --remove_version unless user already set it
+                c2_args = blocks.get("count2tpm") or []
+                if not any(a.startswith("--remove_version") for a in c2_args):
+                    cmd.append("--remove_version")
                 _append_passthrough(cmd, blocks, "count2tpm")
                 rc = _run(cmd, dry=ns.dry_run)
                 if rc != 0:
@@ -465,6 +470,16 @@ def main(argv: Optional[List[str]] = None) -> None:
                "--input", str(tpm_matrix),
                "--output", str(sig_out),
                "--parallel_size", str(threads)]
+        # Defaults for calculate_sig_score
+        cs_args = (blocks.get("calculate_sig_score") or []) + (blocks.get("sig_score") or [])
+        if not any(a.startswith("--signature") for a in cs_args):
+            cmd += ["--signature", "all"]
+        if not any(a.startswith("--method") for a in cs_args):
+            cmd += ["--method", "integration"]
+        if not any(a.startswith("--mini_gene_count") for a in cs_args):
+            cmd += ["--mini_gene_count", "2"]
+        if not any(a.startswith("--adjust_eset") for a in cs_args):
+            cmd += ["--adjust_eset"]
         _append_passthrough(cmd, blocks, "calculate_sig_score", "sig_score")
         rc = _run(cmd, dry=ns.dry_run)
         if rc != 0:
@@ -494,6 +509,14 @@ def main(argv: Optional[List[str]] = None) -> None:
             cmd = ["iobrpy", "mcpcounter", "--input", str(tpm_matrix), "--features", "HUGO_symbols", "--output", str(out_file)]
         elif m == "quantiseq":
             cmd = ["iobrpy", "quantiseq", "--input", str(tpm_matrix), "--output", str(out_file)]
+            # Defaults: enable arrays/tumor/scale_mrna unless user set them explicitly
+            q_args = blocks.get("quantiseq") or []
+            if not any(a == "--arrays" for a in q_args):
+                cmd.append("--arrays")
+            if not any(a == "--tumor" for a in q_args):
+                cmd.append("--tumor")
+            if not any(a.startswith("--scale_mrna") for a in q_args) and not any(a.startswith("--mRNAscale") for a in q_args):
+                cmd.append("--scale_mrna")
         else:
             cmd = ["iobrpy", "epic", "--input", str(tpm_matrix), "--reference", "TRef", "--output", str(out_file)]
 
@@ -574,8 +597,9 @@ def main(argv: Optional[List[str]] = None) -> None:
                "--input", str(tpm_matrix),
                "--output", str(lr_out),
                "--data_type", "tpm",
-               "--id_type", "ensembl",
-               "--cancer_type", "pancan"]
+               "--id_type", "symbol",
+               "--cancer_type", "pancan",
+               "--verbose"]
         _append_passthrough(cmd, blocks, "LR_cal")
         rc = _run(cmd, dry=ns.dry_run)
         if rc != 0:
