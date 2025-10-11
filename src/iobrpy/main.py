@@ -331,7 +331,7 @@ def main():
     p20.add_argument('--path2_fastp', required=True, help='Output directory for cleaned FASTQ files')
     p20.add_argument('--num_threads', type=int, default=8, help='Threads per fastp process')
     p20.add_argument('--suffix1', default='_1.fastq.gz', help="R1 suffix; R2 inferred by replacing '1' with '2'")
-    p20.add_argument('--batch_size', type=int, default=5, help='Number of concurrent samples (processes)')
+    p20.add_argument('--batch_size', type=int, default=1, help='Number of concurrent samples (processes)')
     p20.add_argument('--se', action='store_true', help='Single-end sequencing; omit for paired-end')
     p20.add_argument('--length_required', type=int, default=50, help='Minimum read length to keep')
 
