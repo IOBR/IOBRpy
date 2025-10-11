@@ -191,7 +191,7 @@ def main():
     parser.add_argument("--path2_fastp", type=str, required=True, help="Path to preprocessed FASTQ files")
     parser.add_argument("--num_threads", type=int, default=8, help="Number of threads for fastp")
     parser.add_argument("--suffix1", type=str, default="_1.fastq.gz", help="Suffix of the forward reads file")
-    parser.add_argument("--batch_size", type=int, default=5, help="Number of samples to process simultaneously")
+    parser.add_argument("--batch_size", type=int, default=1, help="Number of samples to process simultaneously")
     parser.add_argument("--se", action='store_true', help="Indicate if the sequencing data is single-end")
     parser.add_argument("--length_required", type=int, default=50, help="Minimum length of reads to keep after processing")
     args = parser.parse_args()
