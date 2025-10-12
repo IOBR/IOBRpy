@@ -17,27 +17,10 @@ iobrpy runall \
   --mode salmon \
   --outdir "/path/to/outdir" \
   --fastq "/path/to/fastq" \
-  --threads 16 \
-  --batch_size 4 \
+  --threads 8 \
+  --batch_size 1 \
   --index "/path/to/salmon/index" \
-  --project MyProj \
-  --return_feature symbol \
-  --remove_version \
-  --method integration \
-  --signature all \
-  --mini_gene_count 2 \
-  --adjust_eset \
-  --perm 1000 \
-  --QN true \
-  --platform affymetrix \
-  --features HUGO_symbols \
-  --arrays \
-  --tumor \
-  --scale_mrna \
-  --reference TRef \
-  --data_type tpm \
-  --id_type "symbol" \
-  --verbose
+  --project MyProj
 ```
 ## STAR mode
 ```bash
@@ -45,28 +28,10 @@ iobrpy runall \
   --mode star \
   --outdir "/path/to/outdir" \
   --fastq "/path/to/fastq" \
-  --threads 16 \
+  --threads 8 \
   --batch_size 1 \
   --index "/path/to/star/index" \
-  --project MyProj \
-  --idtype ensembl \
-  --org hsa \
-  --remove_version \
-  --method integration \
-  --signature all \
-  --mini_gene_count 2 \
-  --adjust_eset \
-  --perm 100 \
-  --QN true \
-  --platform affymetrix \
-  --features HUGO_symbols \
-  --arrays \
-  --tumor \
-  --scale_mrna \
-  --reference TRef \
-  --data_type tpm \
-  --id_type "symbol" \
-  --verbose
+  --project MyProj
 ```
 
 ---
