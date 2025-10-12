@@ -11,8 +11,8 @@ nav_order: 5
 iobrpy fastq_qc \
   --path1_fastq "/path/to/fastq" \
   --path2_fastp "/path/to/fastp" \
-  --num_threads 16 \
-  --batch_size 4
+  --num_threads 8 \
+  --batch_size 1
 ```
 ```
 /path/to/fastp/
@@ -31,8 +31,8 @@ iobrpy batch_salmon \
   --index "/path/to/salmon/index" \
   --path_fq "/path/to/fastp" \
   --path_out "/path/to/salmon" \
-  --num_threads 16 \
-  --batch_size 4
+  --num_threads 8 \
+  --batch_size 1
 ```
 ```
 /path/to/salmon/
@@ -42,7 +42,7 @@ iobrpy batch_salmon \
 iobrpy merge_salmon \
   --project MyProj \
   --path_salmon "/path/to/salmon" \
-  --num_processes 16
+  --num_processes 8
 ```
 ```
 /path/to/salmon/
@@ -71,7 +71,7 @@ iobrpy batch_star_count \
   --index "/path/to/star/index" \
   --path_fq "/path/to/fastp" \
   --path_out "/path/to/star" \
-  --num_threads 16 \
+  --num_threads 8 \
   --batch_size 1
 ```
 ```
