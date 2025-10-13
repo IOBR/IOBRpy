@@ -14,7 +14,7 @@ nav_order: 3
   Docs : [Salmon Documentation](https://salmon.readthedocs.io/) · Github : [COMBINE-lab/salmon](https://github.com/COMBINE-lab/salmon)
 
 - **STAR** — an *alignment-based* spliced read aligner that maps reads to the **genome**, discovers splice junctions, and produces alignment files suitable for downstream QC and gene-level counting.  
-  Manual/Repo : [alexdobin/STAR](https://github.com/alexdobin/STAR)
+  Github : [alexdobin/STAR](https://github.com/alexdobin/STAR)
 
 > This page shows how to build indices for **both** tools. Choose Salmon when you want fast transcript-level quantification from a transcriptome; choose STAR when you need full genomic alignments, splice junction discovery, or STAR-based counting workflows.
 
