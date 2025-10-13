@@ -5,7 +5,7 @@ parent: Example
 nav_order: 3
 ---
 
-# From TPM to TME
+# **From TPM to TME**
 
 This page takes a **TPM** matrix and runs downstream **TME** analyses: signature scoring, immune deconvolution (multiple methods), clustering, and ligand–receptor scoring. 
 
