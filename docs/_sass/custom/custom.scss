@@ -1,0 +1,14 @@
+/* Increase font size for fenced code blocks (```lang)
+   Inline code (like `this`) is NOT changed. */
+.highlight pre,
+.highlighter-rouge pre,
+pre > code {
+  font-size: 1.05rem;  /* try 1.0–1.125rem if you want bigger */
+  line-height: 1.6;
+}
+
+/* If line numbers are shown, keep gutter in sync */
+.highlight td.gutter pre {
+  font-size: 1.05rem;
+  line-height: 1.6;
+}
