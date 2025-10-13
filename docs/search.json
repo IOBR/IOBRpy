@@ -1,0 +1,586 @@
+[
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "IOBRpy Book",
+    "section": "",
+    "text": "1 IOBRpy\nIOBRpy is a command-line toolkit for bulk RNA-seq tumor microenvironment (TME) analysis. It wires together FASTQ QC, quantification (Salmon or STAR), matrix assembly, signature scoring, immune deconvolution, clustering, and ligand–receptor scoring.",
+    "crumbs": [
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>IOBRpy</span>"
+    ]
+  },
+  {
+    "objectID": "index.html#input-requirements",
+    "href": "index.html#input-requirements",
+    "title": "IOBRpy Book",
+    "section": "1.1 Input Requirements",
+    "text": "1.1 Input Requirements\n\nFASTQ layout: paired-end by default. Filenames end with *_1.fastq.gz / *_2.fastq.gz (configurable via --suffix1). Use --se for single-end in fastq_qc.\nExpression matrix orientation: genes × samples by default.\nOutput file delimiters: automatically inferred from the file extension; .csv and .tsv/.txt are recommended.",
+    "crumbs": [
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>IOBRpy</span>"
+    ]
+  },
+  {
+    "objectID": "installation.html",
+    "href": "installation.html",
+    "title": "2  Installation",
+    "section": "",
+    "text": "3 Installation\n# Creating a virtual environment is recommended\nconda create -n iobrpy python=3.9 -y\nconda activate iobrpy\n\n# Update pip\npython -m pip install --upgrade pip\n\n# Install iobrpy\npip install iobrpy\n\n#Install fastp, salmon, STAR and MultiQC\n# Recommended: use mamba for faster solves (if available)\n# Channels order matters: conda-forge first, then bioconda\nmamba install -y -c conda-forge -c bioconda \\\n  fastp \\\n  salmon \\\n  star \\\n  multiqc\n\n# If you don't have mamba, use conda instead\n# (slower dependency solving; otherwise equivalent)\nconda install -y -c conda-forge -c bioconda \\\n  fastp \\\n  salmon \\\n  star \\\n  multiqc\n\n# (Optional) Verify tools are available\nfastp --version\nsalmon --version\nSTAR --version\nmultiqc --version",
+    "crumbs": [
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>Installation</span>"
+    ]
+  },
+  {
+    "objectID": "build-index.html",
+    "href": "build-index.html",
+    "title": "3  Build Salmon & STAR Index",
+    "section": "",
+    "text": "4 Build Salmon & STAR Index",
+    "crumbs": [
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>Build Salmon & STAR Index</span>"
+    ]
+  },
+  {
+    "objectID": "build-index.html#overview",
+    "href": "build-index.html#overview",
+    "title": "3  Build Salmon & STAR Index",
+    "section": "4.1 Overview",
+    "text": "4.1 Overview\nSalmon and STAR are two cornerstone tools for RNA-seq quantification that serve complementary purposes:\n\nSalmon — a fast, lightweight alignment-free (quasi-mapping / selective-alignment) quantifier that works on a transcriptome index, provides bias-aware transcript abundance estimates, and is ideal for rapid, large-scale quantification.\nDocs : Salmon Documentation · Github : COMBINE-lab/salmon\nSTAR — an alignment-based spliced read aligner that maps reads to the genome, discovers splice junctions, and produces alignment files suitable for downstream QC and gene-level counting.\nGithub : alexdobin/STAR\n\n\nThis page shows how to build indices for both tools. Choose Salmon when you want fast transcript-level quantification from a transcriptome; choose STAR when you need full genomic alignments, splice junction discovery, or STAR-based counting workflows.",
+    "crumbs": [
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>Build Salmon & STAR Index</span>"
+    ]
+  },
+  {
+    "objectID": "build-index.html#prerequisites",
+    "href": "build-index.html#prerequisites",
+    "title": "3  Build Salmon & STAR Index",
+    "section": "4.2 Prerequisites",
+    "text": "4.2 Prerequisites\n\nActivate iobrpy environment\n\nconda activate iobrpy\n\nChoose a base directory for index:\n\nexport BASE=/path/to/index/dir\nmkdir -p \"$BASE\"",
+    "crumbs": [
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>Build Salmon & STAR Index</span>"
+    ]
+  },
+  {
+    "objectID": "build-index.html#build-salmon-index",
+    "href": "build-index.html#build-salmon-index",
+    "title": "3  Build Salmon & STAR Index",
+    "section": "4.3 Build Salmon index",
+    "text": "4.3 Build Salmon index\n# Move to the base directory for references\ncd \"$BASE\"\n\n# Download GENCODE v44 annotation & transcript FASTA\n# (Use -c to resume if the download is interrupted)\nwget -c ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_44/gencode.v44.annotation.gtf.gz\nwget -c ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_44/gencode.v44.transcripts.fa.gz\n\n# Decompress the downloads\ngunzip -f gencode.v44.annotation.gtf.gz\ngunzip -f gencode.v44.transcripts.fa.gz\n\n# Paths\nfa=\"$BASE/gencode.v44.transcripts.fa\"\n\n# Output directory for Salmon index\nmkdir -p \"$BASE/salmon\"\n\n# Build Salmon index\n# -t: transcript FASTA\n# -i: index output directory\n# -k: k-mer size (31 is common for human)\n# -p: threads\nsalmon index -t \"$fa\" -i \"$BASE/salmon/gencode44\" -k 31 -p 8\nTip: Adjust -p to match your CPU cores; -k can be tuned depending on read length and species.",
+    "crumbs": [
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>Build Salmon & STAR Index</span>"
+    ]
+  },
+  {
+    "objectID": "build-index.html#build-star-index",
+    "href": "build-index.html#build-star-index",
+    "title": "3  Build Salmon & STAR Index",
+    "section": "4.4 2) Build STAR index",
+    "text": "4.4 2) Build STAR index\n# Move to the base directory for references\ncd \"$BASE\"\n\n# Download the primary assembly and GTF (GENCODE v44)\nwget -c https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_44/GRCh38.primary_assembly.genome.fa.gz\nwget -c https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_44/gencode.v44.annotation.gtf.gz\n\n# Decompress the downloads\ngunzip -f GRCh38.primary_assembly.genome.fa.gz\ngunzip -f gencode.v44.annotation.gtf.gz\n\n# Paths\nSTAR_INDEX=\"$BASE/star\"\ngenome_fa=\"$BASE/GRCh38.primary_assembly.genome.fa\"\ngtf=\"$BASE/gencode.v44.annotation.gtf\"\n\n# Create output directory for STAR index\nmkdir -p \"$STAR_INDEX\"\n\n# Build STAR genome index\nSTAR --runMode genomeGenerate \\\n     --genomeDir \"$STAR_INDEX\" \\\n     --genomeFastaFiles \"$genome_fa\" \\\n     --sjdbGTFfile \"$gtf\" \\\n     --runThreadN 16 \\\n     --sjdbOverhang 100",
+    "crumbs": [
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>Build Salmon & STAR Index</span>"
+    ]
+  },
+  {
+    "objectID": "build-index.html#notes",
+    "href": "build-index.html#notes",
+    "title": "3  Build Salmon & STAR Index",
+    "section": "4.5 Notes",
+    "text": "4.5 Notes\n\nRelease/assembly: This guide uses GENCODE v44 (GRCh38). If you need a different release or assembly (e.g., T2T-CHM13), update the URLs and filenames accordingly.\nThreads: Increase --runThreadN/-p to speed up indexing if you have more cores.\nStorage: STAR indexes are large (tens of GB). Ensure you have enough disk space.\nRead length: For STAR, set --sjdbOverhang = read_length - 1 for best splice junction annotations.",
+    "crumbs": [
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>Build Salmon & STAR Index</span>"
+    ]
+  },
+  {
+    "objectID": "build-index.html#references-acknowledgments",
+    "href": "build-index.html#references-acknowledgments",
+    "title": "3  Build Salmon & STAR Index",
+    "section": "4.6 References & Acknowledgments",
+    "text": "4.6 References & Acknowledgments\nWe gratefully acknowledge the developers and maintainers of Salmon and STAR. If you use these tools, please cite:\n\nPatro R, Duggal G, Love MI, Irizarry RA, Kingsford C. Salmon provides fast and bias-aware quantification of transcript expression. Nat Methods. 2017 Apr;14(4):417-419. doi: 10.1038/nmeth.4197. Epub 2017 Mar 6. PMID: 28263959; PMCID: PMC5600148.\nDobin A, Davis CA, Schlesinger F, Drenkow J, Zaleski C, Jha S, Batut P, Chaisson M, Gingeras TR. STAR: ultrafast universal RNA-seq aligner. Bioinformatics. 2013 Jan 1;29(1):15-21. doi: 10.1093/bioinformatics/bts635. Epub 2012 Oct 25. PMID: 23104886; PMCID: PMC3530905.",
+    "crumbs": [
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>Build Salmon & STAR Index</span>"
+    ]
+  },
+  {
+    "objectID": "runall.html",
+    "href": "runall.html",
+    "title": "4  From FASTQ to TME — runall",
+    "section": "",
+    "text": "5 From FASTQ to TME - runall",
+    "crumbs": [
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>From FASTQ to TME — runall</span>"
+    ]
+  },
+  {
+    "objectID": "runall.html#how-runall-passes-options",
+    "href": "runall.html#how-runall-passes-options",
+    "title": "4  From FASTQ to TME — runall",
+    "section": "5.1 How runall passes options",
+    "text": "5.1 How runall passes options\nrunall defines a small set of top-level options (e.g., --mode/--outdir/--fastq/--threads/--batch_size). Any unrecognized options are forwarded to the corresponding sub-steps. This keeps runall flexible as sub-commands evolve.\nBelow are two fully wired workflows handled by iobrpy runall.",
+    "crumbs": [
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>From FASTQ to TME — runall</span>"
+    ]
+  },
+  {
+    "objectID": "runall.html#salmon-mode",
+    "href": "runall.html#salmon-mode",
+    "title": "4  From FASTQ to TME — runall",
+    "section": "5.2 Salmon mode",
+    "text": "5.2 Salmon mode\niobrpy runall \\\n  --mode salmon \\\n  --outdir \"/path/to/outdir\" \\\n  --fastq \"/path/to/fastq\" \\\n  --threads 8 \\\n  --batch_size 1 \\\n  --index \"/path/to/salmon/index\" \\\n  --project MyProj",
+    "crumbs": [
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>From FASTQ to TME — runall</span>"
+    ]
+  },
+  {
+    "objectID": "runall.html#star-mode",
+    "href": "runall.html#star-mode",
+    "title": "4  From FASTQ to TME — runall",
+    "section": "5.3 STAR mode",
+    "text": "5.3 STAR mode\niobrpy runall \\\n  --mode star \\\n  --outdir \"/path/to/outdir\" \\\n  --fastq \"/path/to/fastq\" \\\n  --threads 8 \\\n  --batch_size 1 \\\n  --index \"/path/to/star/index\" \\\n  --project MyProj",
+    "crumbs": [
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>From FASTQ to TME — runall</span>"
+    ]
+  },
+  {
+    "objectID": "runall.html#option-legend-for-the-runall-examples",
+    "href": "runall.html#option-legend-for-the-runall-examples",
+    "title": "4  From FASTQ to TME — runall",
+    "section": "5.4 Option legend for the runall examples",
+    "text": "5.4 Option legend for the runall examples\n\n5.4.1 Common options\n\n--mode {salmon|star} — Select backend (Salmon quant vs. STAR align+count)\n--outdir &lt;DIR&gt; — Root output directory (creates the standardized layout)\n--fastq &lt;DIR&gt; — Raw FASTQ dir, forwarded to fastq_qc --path1_fastq\n--threads &lt;INT&gt; / --batch_size &lt;INT&gt; — Global concurrency / batching\n--resume — Skip steps whose outputs already exist\n--dry_run — Print planned commands without executing\n\n\n\n5.4.2 Salmon-only\n\n--index &lt;DIR&gt; — Salmon index for batch_salmon\n--project &lt;STR&gt; — Prefix for merged outputs in merge_salmon\n--return_feature {symbol|ENSG|ENST} — Output gene ID type in prepare_salmon\n--remove_version — Strip version suffix in prepare_salmon\n\n\n\n5.4.3 STAR-only\n\n--index &lt;DIR&gt; — STAR genomeDir for batch_star_count\n--project &lt;STR&gt; — Prefix for merged counts in merge_star_count\n--idtype {ensembl|entrez|symbol|mgi} — Gene ID type for count2tpm\n--org {hsa|mmus} — Organism for count2tpm\n--remove_version — Strip version suffix before count2tpm\n\n\n\n5.4.4 Signature scoring\n\n--method {integration|pca|zscore|ssgsea} — Scoring method for calculate_sig_score\n--signature &lt;set&gt; — Which signature set to use (all, etc.)\n--mini_gene_count &lt;INT&gt; — Minimum genes per signature\n--adjust_eset — Extra filtering after log transform\n\n\n\n5.4.5 Deconvolution\n\n--perm &lt;INT&gt; / --QN {true|false} — CIBERSORT permutations / quantile normalization\n--platform &lt;STR&gt; — ESTIMATE platform\n--features HUGO_symbols — MCPcounter feature type\n--arrays --tumor --scale_mrna — quanTIseq options\n--reference {TRef|BRef|both} — EPIC reference profile\n\n\n\n5.4.6 Ligand–receptor\n\n--data_type {tpm|count} — Input matrix type for LR_cal\n--id_type {symbol|ensembl|...} — Gene ID type for LR_cal\n--verbose — Verbose logging",
+    "crumbs": [
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>From FASTQ to TME — runall</span>"
+    ]
+  },
+  {
+    "objectID": "runall.html#expected-layout",
+    "href": "runall.html#expected-layout",
+    "title": "4  From FASTQ to TME — runall",
+    "section": "5.5 Expected layout",
+    "text": "5.5 Expected layout\n# Salmon mode：\n/path/to/outdir\n|-- 01-qc\n|   |-- &lt;sample&gt;_1.fastq.gz\n|   |-- &lt;sample&gt;_2.fastq.gz\n|   |-- &lt;sample&gt;_fastp.html\n|   |-- &lt;sample&gt;_fastp.json\n|   |-- &lt;sample&gt;.task.complete\n|   `-- multiqc_report\n|       `-- multiqc_fastp_report.html\n|-- 02-salmon\n|   |-- &lt;sample&gt;\n|   |   `-- quant.sf\n|   |-- MyProj_salmon_count.tsv.gz\n|   `-- MyProj_salmon_tpm.tsv.gz\n|-- 03-tpm\n|   |-- prepare_salmon.csv\n|   `-- tpm_matrix.csv\n|-- 04-signatures\n|   `-- calculate_sig_score.csv\n|-- 05-tme\n|   |-- cibersort_results.csv\n|   |-- epic_results.csv\n|   |-- quantiseq_results.csv\n|   |-- IPS_results.csv\n|   |-- estimate_results.csv\n|   |-- mcpcounter_results.csv\n|   `-- deconvo_merged.csv\n`-- 06-LR_cal\n    `-- lr_cal.csv\n# STAR mode：\n/path/to/outdir\n|-- 01-qc\n|   |-- &lt;sample&gt;_1.fastq.gz\n|   |-- &lt;sample&gt;_2.fastq.gz\n|   |-- &lt;sample&gt;_fastp.html\n|   |-- &lt;sample&gt;_fastp.json\n|   |-- &lt;sample&gt;.task.complete\n|   `-- multiqc_report\n|       `-- multiqc_fastp_report.html\n|-- 02-star\n|   |-- &lt;sample&gt;/\n|   |-- &lt;sample&gt;__STARgenome/\n|   |-- &lt;sample&gt;__STARpass1/\n|   |-- &lt;sample&gt;_STARtmp/\n|   |-- &lt;sample&gt;_Aligned.sortedByCoord.out.bam\n|   |-- &lt;sample&gt;_Log.final.out\n|   |-- &lt;sample&gt;_Log.out\n|   |-- &lt;sample&gt;_Log.progress.out\n|   |-- &lt;sample&gt;_ReadsPerGene.out.tab\n|   |-- &lt;sample&gt;_SJ.out.tab\n|   |-- &lt;sample&gt;.task.complete\n|   |-- .batch_star_count.done\n|   |-- .merge_star_count.done\n|   `-- MyProj.STAR.count.tsv.gz\n|-- 03-tpm\n|   |-- count2tpm.csv\n|   `-- tpm_matrix.csv\n|-- 04-signatures\n|   `-- calculate_sig_score.csv\n|-- 05-tme\n|   |-- cibersort_results.csv\n|   |-- epic_results.csv\n|   |-- quantiseq_results.csv\n|   |-- IPS_results.csv\n|   |-- estimate_results.csv\n|   |-- mcpcounter_results.csv\n|   `-- deconvo_merged.csv\n`-- 06-LR_cal\n    `-- lr_cal.csv",
+    "crumbs": [
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>From FASTQ to TME — runall</span>"
+    ]
+  },
+  {
+    "objectID": "runall.html#output-reference",
+    "href": "runall.html#output-reference",
+    "title": "4  From FASTQ to TME — runall",
+    "section": "5.6 Output Reference",
+    "text": "5.6 Output Reference\n\n5.6.1 Standard layout (produced by iobrpy runall)\n\n01-qc/ — fastp outputs; a resume flag .fastq_qc.done is written when the step completes.\n02-salmon/ or 02-star/ — quantification/alignment + merged matrices; resume flags like .batch_salmon.done, .merge_salmon.done, or .merge_star_count.done.\n03-tpm/ — unified TPM matrix tpm_matrix.csv. For Salmon mode it comes from prepare_salmon; for STAR mode it comes from count2tpm.\n04-signatures/ — signature scoring results (file: calculate_sig_score.csv).\n05-tme/ — deconvolution outputs from multiple methods + deconvo_merged.csv.\n06-LR_cal/ — ligand–receptor results lr_cal.csv.\n\n\n\n5.6.2 Salmon mode (02-salmon/)\n\nPer-sample Salmon folders containing quant.sf (from batch_salmon). A .batch_salmon.done flag is written after completion.\nMerged matrices (from merge_salmon):\n\n&lt;PROJECT&gt;_salmon_tpm.tsv[.gz]\n&lt;PROJECT&gt;_salmon_count.tsv[.gz]\nA .merge_salmon.done flag is written after completion.\n\n03-tpm/prepare_salmon.csv — cleaned genes × samples TPM matrix produced by prepare_salmon (default --return_feature symbol unless overridden).\n03-tpm/tpm_matrix.csv — log2(x+1) matrix produced by log2_eset from prepare_salmon.csv.\n\n\n\n5.6.3 STAR mode (02-star/)\n\nPer-sample STAR outputs (BAM, logs, *_ReadsPerGene.out.tab, etc.).\nMerged counts (from merge_star_count):\n\n&lt;PROJECT&gt;.STAR.count.tsv.gz . A .merge_star_count.done flag is written after completion.\n\n03-tpm/count2tpm.csv — TPM matrix produced by count2tpm from the merged STAR ReadPerGene/count matrix.\n03-tpm/tpm_matrix.csv — log2(x+1) matrix produced by log2_eset from count2tpm.csv.\n\n\n\n5.6.4 Signatures (04-signatures/)\n\ncalculate_sig_score.csv — per-sample pathway/signature scores. Columns correspond to the selected signature set and method (integration, pca, zscore, or ssgsea).\n\n\n\n5.6.5 Deconvolution (05-tme/)\nEach method writes a single table named &lt;method&gt;_results.csv:\n\ncibersort_results.csv — columns suffixed with _CIBERSORT. Note whether --perm and --QN were used.\nquantiseq_results.csv — quanTIseq fractions. Document the chosen --method {lsei|hampel|huber|bisquare} and flags like --arrays, --tumor, --scale_mrna, --signame.\nepic_results.csv — EPIC fractions; record the reference profile used (--reference {TRef|BRef|both}).\nestimate_results.csv — ESTIMATE immune/stromal/purity scores; columns suffixed _estimate.\nmcpcounter_results.csv — MCPcounter scores; columns suffixed _MCPcounter.\nIPS_results.csv — IPS sub-scores and total score.\n\nMerged table - deconvo_merged.csv — produced by runall after all deconvolution methods finish; normalizes the sample index to a column named ID and outer-joins by sample ID across methods.\n\n\n5.6.6 Ligand–receptor (06-LR_cal/)\n\nlr_cal.csv — ligand–receptor scoring table from LR_cal. Record the --data_type {count|tpm} and the --id_type you used.",
+    "crumbs": [
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>From FASTQ to TME — runall</span>"
+    ]
+  },
+  {
+    "objectID": "workflow.html",
+    "href": "workflow.html",
+    "title": "5  Typical end-to-end workflow",
+    "section": "",
+    "text": "6 Typical end‑to‑end workflow — output file structure examples",
+    "crumbs": [
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>Typical end-to-end workflow</span>"
+    ]
+  },
+  {
+    "objectID": "workflow.html#fastq-quality-control",
+    "href": "workflow.html#fastq-quality-control",
+    "title": "5  Typical end-to-end workflow",
+    "section": "6.1 1) FASTQ Quality Control",
+    "text": "6.1 1) FASTQ Quality Control\niobrpy fastq_qc \\\n  --path1_fastq \"/path/to/fastq\" \\\n  --path2_fastp \"/path/to/fastp\" \\\n  --num_threads 8 \\\n  --batch_size 1\n/path/to/fastp/\n  &lt;sample&gt;_1.fastq.gz\n  &lt;sample&gt;_2.fastq.gz\n  &lt;sample&gt;_fastp.html\n  &lt;sample&gt;_fastp.json\n  &lt;sample&gt;.task.complete\n  multiqc_report/multiqc_fastp_report.html",
+    "crumbs": [
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>Typical end-to-end workflow</span>"
+    ]
+  },
+  {
+    "objectID": "workflow.html#prepare-tpm",
+    "href": "workflow.html#prepare-tpm",
+    "title": "5  Typical end-to-end workflow",
+    "section": "6.2 2) Prepare TPM",
+    "text": "6.2 2) Prepare TPM\n# From FASTQ_QC to Salmon\niobrpy batch_salmon \\\n  --index \"/path/to/salmon/index\" \\\n  --path_fq \"/path/to/fastp\" \\\n  --path_out \"/path/to/salmon\" \\\n  --num_threads 8 \\\n  --batch_size 1\n/path/to/salmon/\n  &lt;sample&gt;/quant.sf\niobrpy merge_salmon \\\n  --project MyProj \\\n  --path_salmon \"/path/to/salmon\" \\\n  --num_processes 8\n/path/to/salmon/\n  MyProj_salmon_count.tsv.gz\n  MyProj_salmon_tpm.tsv.gz\n# From Salmon to TPM\niobrpy prepare_salmon \\\n  -i MyProj_salmon_tpm.tsv.gz \\\n  -o TPM_matrix.csv \\\n  --return_feature symbol \\\n  --remove_version\nGene        TS99       TC89       TC68       TC40       813738     1929563\n5S_rRNA     0.000      0.000      0.000      0.000      0.000      0.000\n5_8S_rRNA   0.000      0.000      0.000      0.000      0.000      0.000\n7SK         0.000      0.000      954.687    1488.249   3691.321   5399.889\nA1BG        0.479      1.717      1.844      0.382      1.676      1.126\nA1BG-AS1    0.149      0.348      0.755      0.000      0.314      0.400\n# From FASTQ_QC to STAR\niobrpy batch_star_count \\\n  --index \"/path/to/star/index\" \\\n  --path_fq \"/path/to/fastp\" \\\n  --path_out \"/path/to/star\" \\\n  --num_threads 8 \\\n  --batch_size 1\n/path/to/star/\n  &lt;sample&gt;/\n  &lt;sample&gt;__STARgenome/\n  &lt;sample&gt;__STARpass1/\n  &lt;sample&gt;_STARtmp/\n  &lt;sample&gt;_Aligned.sortedByCoord.out.bam\n  &lt;sample&gt;_Log.final.out\n  &lt;sample&gt;_Log.out\n  &lt;sample&gt;_Log.progress.out\n  &lt;sample&gt;_ReadsPerGene.out.tab\n  &lt;sample&gt;_SJ.out.tab\n  &lt;sample&gt;.task.complete\n  .batch_star_count.done\n  .merge_star_count.done\niobrpy merge_star_count \\\n  --project MyProj \\\n  --path \"/path/to/star\"\n/path/to/star/\n  MyProj.STAR.count.tsv.gz\n# b) From STAR to TPM\niobrpy count2tpm \\\n  -i MyProj.STAR.count.tsv.gz \\\n  -o TPM_matrix.csv \\\n  --idtype ensembl \\\n  --org hsa \\\n  --remove_version\n# (Optionally provide transcript effective lengths)\n#   --effLength_csv efflen.csv --id id --length eff_length --gene_symbol symbol\nName       SAMPLE-2e394f45066d_20180921  SAMPLE-88dc3e3cd88e_20180921  SAMPLE-b80d019c9afa_20180921  SAMPLE-586259880b46_20180926  SAMPLE-e95813c8875d_20180921  SAMPLE-7bd449ae436b_20180921\n5S_rRNA    5.326                         2.314                         2.377                         3.439                         6.993                         3.630\n5_8S_rRNA  0.000                         0.000                         0.000                         0.000                         0.000                         0.000\n7SK        8.006                         13.969                        11.398                        5.504                         8.510                         6.418\nA1BG       3.876                         2.576                         2.874                         2.533                         2.034                         2.828\nA1BG-AS1   5.512                         4.440                         7.725                         4.610                         6.292                         5.336",
+    "crumbs": [
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>Typical end-to-end workflow</span>"
+    ]
+  },
+  {
+    "objectID": "workflow.html#optional-mouse-to-human-symbol-mapping",
+    "href": "workflow.html#optional-mouse-to-human-symbol-mapping",
+    "title": "5  Typical end-to-end workflow",
+    "section": "6.3 3) (Optional) Mouse to Human symbol mapping",
+    "text": "6.3 3) (Optional) Mouse to Human symbol mapping\n# Matrix mode: rows are mouse gene symbols, columns are samples\niobrpy mouse2human_eset \\\n  -i mouse_matrix.tsv \\\n  -o human_matrix.tsv \\\n  --is_matrix \\\n  --verbose\n# Table mode: input has a symbol column (e.g., SYMBOL), will de-duplicate then map\niobrpy mouse2human_eset \\\n  -i mouse_table.csv \\\n  -o human_matrix.csv \\\n  --column_of_symbol SYMBOL \\\n  --verbose\nGene        Sample1    Sample2    Sample3    Sample4    Sample5    Sample6\nSCMH1       0.905412   0.993271   0.826294   0.535761   0.515038   0.733388\nNARF        0.116423   0.944370   0.847920   0.441993   0.736983   0.467756\nCD52        0.988616   0.784523   0.303614   0.886433   0.608639   0.351713\nCAV2        0.063843   0.993835   0.891718   0.702293   0.703912   0.248690\nHOXB6       0.716829   0.555838   0.638682   0.971783   0.868208   0.802464",
+    "crumbs": [
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>Typical end-to-end workflow</span>"
+    ]
+  },
+  {
+    "objectID": "workflow.html#optional-annotate-deduplicate",
+    "href": "workflow.html#optional-annotate-deduplicate",
+    "title": "5  Typical end-to-end workflow",
+    "section": "6.4 4) (Optional) Annotate / de‑duplicate",
+    "text": "6.4 4) (Optional) Annotate / de‑duplicate\niobrpy anno_eset \\\n  -i TPM_matrix.csv \\\n  -o TPM_anno.csv \\\n  --annotation anno_grch38 \\\n  --symbol symbol \\\n  --probe id \\\n  --method mean \\\n  --remove_version\niobrpy anno_eset \\\n  -i TPM_matrix.csv \\\n  -o TPM_anno.csv \\\n  --annotation anno_hug133plus2 \\\n  --symbol symbol \\\n  --probe id \\\n  --method mean\n# You can also use: --annotation-file my_anno.csv --annotation-key gene_id\nGene        GSM1523727   GSM1523728   GSM1523729   GSM1523744   GSM1523745   GSM1523746\nSH3KBP1     4.3279743    4.316195     4.3514247    4.2957463    4.2566543    4.2168822\nRPL41       4.2461486    4.2468076    4.2579398    4.2955956    4.2426114    4.3464246\nEEF1A1      4.2937622    4.291038     4.2621994    4.2718415    4.1992331    4.2639275\nHUWE1       4.2255821    4.2111235    4.1993775    4.2192063    4.2214823    4.2046394\nLOC1019288  4.2193027    4.2196698    4.2132521    4.1819267    4.2345738    4.2104611",
+    "crumbs": [
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>Typical end-to-end workflow</span>"
+    ]
+  },
+  {
+    "objectID": "workflow.html#optional-log2-transform",
+    "href": "workflow.html#optional-log2-transform",
+    "title": "5  Typical end-to-end workflow",
+    "section": "6.5 5) (Optional) Log2 transform",
+    "text": "6.5 5) (Optional) Log2 transform\niobrpy log2_eset \\\n  -i expr.csv \\\n  -o expr.log2.csv\nName      SRR35344563_GSM8516765_Normal4   SRR35344561_GSM8516763_Normal2   SRR35344562_GSM8516764_Normal3   SRR35344560_GSM8516762_Normal1\nA1BG      2.229246496                      0.636390662                      2.140913236                      1.420200061\nA1BG-AS1  4.206586844                      3.591817651                      0.614426747                      6.842377234\nA1CF      0.128261135                      0                                0.414914625                      0.205743238\nA2M       1.999453226                      0.679106252                      2.816410018                      2.898826563",
+    "crumbs": [
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>Typical end-to-end workflow</span>"
+    ]
+  },
+  {
+    "objectID": "workflow.html#signature-scoring",
+    "href": "workflow.html#signature-scoring",
+    "title": "5  Typical end-to-end workflow",
+    "section": "6.6 6) Signature scoring",
+    "text": "6.6 6) Signature scoring\niobrpy calculate_sig_score \\\n  -i TPM_anno.csv \\\n  -o sig_scores.csv \\\n  --signature signature_collection \\\n  --method pca \\\n  --mini_gene_count 2 \\\n  --parallel_size 1 \\\n  --adjust_eset\n# Accepts space‑separated or comma‑separated groups; use \"all\" for a full merge.\nID          CD_8_T_effector_PCA   DDR_PCA    APM_PCA    Immune_Checkpoint_PCA   CellCycle_Reg_PCA   Pan_F_TBRs_PCA\nGSM1523727  -3.003007             0.112244   1.046749   -3.287490               1.226469            -3.836552\nGSM1523728  0.631973              1.138303   1.999972   0.405965                1.431343            0.164805\nGSM1523729  -2.568384             -1.490780  -0.940420  -2.087635               0.579742            -1.208286\nGSM1523744  -0.834788             4.558424   -0.274724  -0.873015               1.400215            -2.880584\nGSM1523745  -1.358852             4.754705   -2.215926  -1.086041               1.342590            -1.054318",
+    "crumbs": [
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>Typical end-to-end workflow</span>"
+    ]
+  },
+  {
+    "objectID": "workflow.html#immune-deconvolution-choose-one-or-many",
+    "href": "workflow.html#immune-deconvolution-choose-one-or-many",
+    "title": "5  Typical end-to-end workflow",
+    "section": "6.7 7) Immune deconvolution (choose one or many)",
+    "text": "6.7 7) Immune deconvolution (choose one or many)\n# CIBERSORT\niobrpy cibersort \\\n  -i TPM_anno.csv \\\n  -o cibersort.csv \\\n  --perm 100 \\\n  --QN True \\\n  --absolute False \\\n  --abs_method sig.score \\\n  --threads 1\nID          B_cells_naive_CIBERSORT  B_cells_memory_CIBERSORT  Plasma_cells_CIBERSORT  T_cells_CD8_CIBERSORT  T_cells_CD4_naive_CIBERSORT  T_cells_CD4_memory_resting_CIBERSORT\nGSM1523727  0.025261644              0.00067545                0.174139691             0.060873405             0                           0.143873862\nGSM1523728  0.007497053              0.022985466               0.079320853             0.052005437             0                           0.137097071\nGSM1523729  0.005356156              0.010721794               0.114171733             0                       0                           0.191541779\nGSM1523744  0                        0.064645073               0.089539616             0.024437887             0                           0.147821928\nGSM1523745  0                        0.014678117               0.121834835             0                       0                           0.176046775\n# quanTIseq (method: lsei / robust norms)\niobrpy quantiseq \\\n  -i TPM_anno.csv \\\n  -o quantiseq.csv \\\n  --signame TIL10 \\\n  --method lsei \\\n  --tumor \\\n  --arrays \\\n  --scale_mrna\nID          B_cells_quantiseq   Macrophages_M1_quantiseq   Macrophages_M2_quantiseq   Monocytes_quantiseq   Neutrophils_quantiseq   NK_cells_quantiseq\nGSM1523727  0.098243385         0.050936602                0.059696474                0                      0.208837962            0.057777168\nGSM1523728  0.096665146         0.079422458                0.060696168                0                      0.247916520            0.057952322\nGSM1523729  0.102140568         0.044950190                0.075727597                0                      0.230014524            0.060158368\nGSM1523744  0.095363945         0.072341346                0.058039861                0                      0.213903654            0.059082891\nGSM1523745  0.099119729         0.066757223                0.061254450                0                      0.236191857            0.056277179\n# EPIC\niobrpy epic \\\n  -i TPM_anno.csv \\\n  -o epic.csv \\\n  --reference TRef\nID          Bcells_EPIC           CAFs_EPIC           CD4_Tcells_EPIC      CD8_Tcells_EPIC      Endothelial_EPIC      Macrophages_EPIC\nGSM1523727  0.029043394           0.008960087         0.145125027          0.075330211          0.087619386           0.005567638\nGSM1523728  0.029268307           0.010942391         0.159158789          0.074554506          0.095359587           0.007104695\nGSM1523729  0.030334561           0.010648890         0.148159994          0.074191268          0.094116333           0.006359346\nGSM1523744  0.027351486           0.010870086         0.144756807          0.070363208          0.085913230           0.006341159\nGSM1523745  0.027688157           0.011024014         0.148947183          0.072791879          0.092757138           0.006766186\n# ESTIMATE\niobrpy estimate \\\n  -i TPM_anno.csv \\\n  -o estimate.csv \\\n  --platform affymetrix\nID          StromalSignature_estimate   ImmuneSignature_estimate   ESTIMATEScore_estimate   TumorPurity_estimate\nGSM1523727  -1250.182509                267.9107094                -982.2718                0.895696565\nGSM1523728  197.4176128                 1333.936386                1531.353999              0.675043839\nGSM1523729  -110.7937025                821.7451865                710.951484               0.758787601\nGSM1523744  -118.685488                 662.3002928                543.6148048              0.774555972\nGSM1523745  323.7935623                 1015.007089                1338.800651              0.695624427\n# MCPcounter\niobrpy mcpcounter \\\n  -i TPM_anno.csv \\\n  -o mcpcounter.csv \\\n  --features HUGO_symbols\nID          T_cells_MCPcounter   CD8_T_cells_MCPcounter   Cytotoxic_lymphocytes_MCPcounter   B_lineage_MCPcounter   NK_cells_MCPcounter   Monocytic_lineage_MCPcounter\nGSM1523727  1.4729234            1.1096225                1.3252089                          1.7530587              1.3129832             1.9197157\nGSM1523728  1.5288218            1.0466424                1.5997275                          1.8069543              1.3283454             2.2191597\nGSM1523729  1.4688324            1.0731858                1.3722626                          1.8967154              1.3185674             2.0802533\nGSM1523744  1.4561831            1.0241529                1.440144                           1.7485736              1.3176502             2.2423225\nGSM1523745  1.5078415            1.0987011                1.4883308                          1.7068269              1.3165186             2.27452\n# IPS\niobrpy IPS \\\n  -i TPM_anno.csv \\\n  -o IPS.csv\nID          MHC_IPS    EC_IPS     SC_IPS     CP_IPS     AZ_IPS     IPS_IPS\nGSM1523727  2.252749   0.403792   -0.19162   0.219981   2.684902   9\nGSM1523728  2.373568   0.608176   -0.578189  -0.234406  2.16915    7\nGSM1523729  2.101158   0.479571   -0.321637  0.099342   2.358434   8\nGSM1523744  2.120172   0.535005   -0.332785  0.013166   2.335558   8\nGSM1523745  1.911082   0.558811   -0.479384  0.087989   2.078497   7\n# DeSide\niobrpy deside \\\n  --model_dir path/to/your/DeSide_model \\\n  -i TPM_anno.csv \\\n  -o deside.csv \\\n  -r path/to/your/plot/folder \\\n  --exp_type TPM \\\n  --method_adding_pathway add_to_end \\\n  --scaling_by_constant \\\n  --transpose \\\n  --print_info\n                  Plasma_B_cells_deside  Non_plasma_B_cells_deside  CD4_T_deside  CD8_T_effector_deside  CD8_T_\\(GZMK_high\\)_deside  Double_neg_like_T_deside\nTCGA-55-8508-01A  0.138                  0.014                      0.019         0.003                  0.001                       0\nTCGA-67-3771-01A  0.05                   0.005                      0.016         0.002                  0.017                       0.001\nTCGA-55-A4DG-01A  0.042                  0.049                      0.014         0.001                  0.035                       0.005\nTCGA-91-7771-01A  0.032                  0.014                      0.032         0.006                  0.023                       0.01\nTCGA-91-6849-01A  0.07                   0.011                      0.007         0.001                  0.014                       0",
+    "crumbs": [
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>Typical end-to-end workflow</span>"
+    ]
+  },
+  {
+    "objectID": "workflow.html#tme-clustering-nmf-clustering",
+    "href": "workflow.html#tme-clustering-nmf-clustering",
+    "title": "5  Typical end-to-end workflow",
+    "section": "6.8 8) TME clustering / NMF clustering",
+    "text": "6.8 8) TME clustering / NMF clustering\n# KL index auto‑select k (k‑means)\niobrpy tme_cluster \\\n  -i cibersort.csv \\\n  -o tme_cluster.csv \\\n  --features 1:22 \\\n  --id ID \\\n  --min_nc 2 \\\n  --max_nc 5 \\\n  --print_result \\\n  --scale\nID          cluster   B_cells_naive_CIBERSORT   B_cells_memory_CIBERSORT   Plasma_cells_CIBERSORT   T_cells_CD8_CIBERSORT   T_cells_CD4_naive_CIBERSORT\nGSM1523727  TME1      -0.218307125              -0.588626398               0.824242243              1.136773711             -0.142069534\nGSM1523728  TME3      -0.531705309              0.093328188                -0.892611283             1.086091448             -0.142069534\nGSM1523729  TME1      -0.359692153              -0.432511044               -0.481593953             -0.685959226            -0.142069534\nGSM1523744  TME3      -0.531705309              0.952517071                -0.873856851             0.370938418             -0.142069534\nGSM1523745  TME2      -0.531705309              -0.798612476               -0.132728742             -0.685959226            -0.142069534\n# NMF clustering (auto k, excludes k=2)\niobrpy nmf \\\n  -i cibersort.csv \\\n  -o path/to/your/result/folder \\\n  --kmin 2 \\\n  --kmax 10 \\\n  --features 1:22 \\\n  --max-iter 10000 \\\n  --skip_k_2\nsample      cluster   B_cells_naive_CIBERSORT  B_cells_memory_CIBERSORT  Plasma_cells_CIBERSORT  T_cells_CD8_CIBERSORT  T_cells_CD4_naive_CIBERSORT\nGSM1523727  cluster2  0.006101201              0.013615524               0.149377703             0.049747382            0\nGSM1523728  cluster3  0                        0.033869265               0.076470323             0.048364124            0\nGSM1523729  cluster1  0.003348733              0.018252079               0.09392446              0                      0\nGSM1523744  cluster2  0                        0.059386784               0.077266743             0.028845636            0\nGSM1523745  cluster3  0                        0.007379033               0.108739264             0                      0\n\ncluster   top_1                                 top_2                         top_3                                 top_4                             top_5                                   top_6\ncluster1  T_cells_CD4_memory_resting_CIBERSORT  Plasma_cells_CIBERSORT        Macrophages_M2_CIBERSORT              T_cells_gamma_delta_CIBERSORT     Mast_cells_resting_CIBERSORT            T_cells_follicular_helper_CIBERSORT\ncluster2  Macrophages_M2_CIBERSORT              Macrophages_M1_CIBERSORT      T_cells_follicular_helper_CIBERSORT   Plasma_cells_CIBERSORT            T_cells_CD4_memory_activated_CIBERSORT  Neutrophils_CIBERSORT\ncluster3  T_cells_CD4_memory_resting_CIBERSORT  Neutrophils_CIBERSORT         Macrophages_M0_CIBERSORT              Macrophages_M2_CIBERSORT          Plasma_cells_CIBERSORT                  Mast_cells_activated_CIBERSORT",
+    "crumbs": [
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>Typical end-to-end workflow</span>"
+    ]
+  },
+  {
+    "objectID": "workflow.html#ligandreceptor-scoring",
+    "href": "workflow.html#ligandreceptor-scoring",
+    "title": "5  Typical end-to-end workflow",
+    "section": "6.9 9) Ligand–receptor scoring",
+    "text": "6.9 9) Ligand–receptor scoring\niobrpy LR_cal \\\n  -i TPM_anno.csv \\\n  -o LR_score.csv \\\n  --data_type tpm \\\n  --id_type symbol \\\n  --cancer_type pancan \\\n  --verbose\nID          A2M_APP_CALR_LRPAP1_PSAP_SERPING1_LRP1   ADAM10_AXL    ADAM10_EFNA1_EPHA3   ADAM12_ITGA9   ADAM12_ITGB1_SDC4   ADAM12_SDC4\nGSM1523727  1.547225629                              1.566540118   1.017616452          1.476739407     1.492157038        1.492157038\nGSM1523728  1.477988945                              1.757804434   1.408624847          1.492926847     1.492926847        1.492926847\nGSM1523729  1.504309415                              1.730361606   1.5367173            1.473255496     1.473255496        1.473255496\nGSM1523744  1.514383163                              1.73870604    1.308314516          1.469082453     1.492761796        1.492761796\nGSM1523745  1.478643424                              1.76013689    1.552305282          1.449499815     1.449499815        1.449499815",
+    "crumbs": [
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>Typical end-to-end workflow</span>"
+    ]
+  },
+  {
+    "objectID": "commands-and-options.html",
+    "href": "commands-and-options.html",
+    "title": "6  Commands & common options",
+    "section": "",
+    "text": "7 Commands & common options",
+    "crumbs": [
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>Commands & common options</span>"
+    ]
+  },
+  {
+    "objectID": "commands-and-options.html#runall-from-fastq-to-tme",
+    "href": "commands-and-options.html#runall-from-fastq-to-tme",
+    "title": "6  Commands & common options",
+    "section": "7.1 runall — From FASTQ to TME",
+    "text": "7.1 runall — From FASTQ to TME\n\nrunall\n\n--mode {salmon|star} (required)\n--outdir &lt;DIR&gt; (required): root output directory\n--fastq &lt;DIR&gt; (required): forwarded to fastq_qc --path1_fastq\n--threads &lt;INT&gt; (per-block): CPU/concurrency control set via block-level flags (e.g., fastq_qc –num_threads, batch_salmon –num_threads, batch_star_count –num_threads, merge_salmon –num_processes, cibersort –threads, calculate_sig_score –parallel_size).\n--batch_size &lt;INT&gt; (per-block): batching size set via block-level flags (e.g., fastq_qc –batch_size, batch_salmon –batch_size, batch_star_count –batch_size).\n--resume: skip steps if outputs already exist\n--dry_run: print planned commands without executing",
+    "crumbs": [
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>Commands & common options</span>"
+    ]
+  },
+  {
+    "objectID": "commands-and-options.html#from-fastq-through-fastq-quality-control-and-salmonstar-to-tpm",
+    "href": "commands-and-options.html#from-fastq-through-fastq-quality-control-and-salmonstar-to-tpm",
+    "title": "6  Commands & common options",
+    "section": "7.2 From FASTQ through FASTQ Quality Control and Salmon/STAR to TPM",
+    "text": "7.2 From FASTQ through FASTQ Quality Control and Salmon/STAR to TPM\n\nfastq_qc\n\n--path1_fastq &lt;DIR&gt; (required): raw FASTQ directory\n--path2_fastp &lt;DIR&gt; (required): output directory for fastp results (01-qc/)\n--num_threads &lt;int&gt; (default: 8)\n--suffix1 &lt;str&gt; (default: _1.fastq.gz): forward read suffix\n--batch_size &lt;int&gt; (default: 5)\n--se: single-end mode\n--length_required &lt;int&gt; (default: 50)\nNotes: Writes per-sample *_fastp.html/json; if multiqc is present, also writes 01-qc/multiqc_report/multiqc_fastp_report.html.\n(Implementation: automatic MultiQC invocation and output path)\n\n\n\n7.2.1 Salmon mode\n\nbatch_salmon\n\n--index &lt;DIR&gt; (required): salmon index\n--path_fq &lt;DIR&gt; (required): directory of FASTQs (after fastq_qc)\n--path_out &lt;DIR&gt; (required): output root (e.g., 02-salmon/)\n--suffix1 &lt;str&gt; (default: _1.fastq.gz)\n--batch_size &lt;int&gt; (default: 1): concurrent samples (processes)\n--num_threads &lt;int&gt; (default: 8): threads per salmon\n--gtf &lt;FILE&gt;: optional GTF for -g gene-level quant\nBehavior: safe R1 to R2 inference; per-sample task.complete; progress; preflight prints salmon version & index meta keys.\n\nmerge_salmon\n\n--path_salmon &lt;DIR&gt; (required): root containing per-sample salmon outputs (searched recursively)\n--project &lt;STR&gt; (required): prefix for outputs\n--num_processes &lt;int&gt;: I/O threads (default: CPU count)\nOutput: &lt;project&gt;_salmon_tpm.tsv.gz, &lt;project&gt;_salmon_count.tsv.gz under --path_salmon with progress and head preview.\n\nprepare_salmon\n\n-i/--input &lt;TSV|TSV.GZ&gt; (required): Salmon-combined gene TPM table\n-o/--output &lt;CSV/TSV&gt; (required): cleaned TPM matrix (genes × samples)\n-r/--return_feature {ENST|ENSG|symbol} (default: symbol): which identifier to keep\n--remove_version: strip version suffix from gene IDs (e.g., ENSG000001.12 to ENSG000001)\n\n\n\n\n7.2.2 STAR mode\n\nbatch_star_count\n\n--index &lt;DIR&gt; (required): STAR genomeDir\n--path_fq &lt;DIR&gt; (required): directory of FASTQs (after fastq_qc)\n--path_out &lt;DIR&gt; (required): outputs (e.g., 02-star/)\n--suffix1 &lt;str&gt; (default: _1.fastq.gz)\n--batch_size &lt;int&gt; (default: 1)\n--num_threads &lt;int&gt; (default: 8)\nNotes: generates sorted BAM and _ReadsPerGene.out.tab per sample and a summary of paths.\n\nmerge_star_count\n\n--path &lt;DIR&gt; (required): directory containing multiple *_ReadsPerGene.out.tab\n--project &lt;STR&gt; (required): output prefix\nOutput: &lt;project&gt;.STAR.count.tsv.gz (gzipped TSV with gene IDs as rows and samples as columns)\n\ncount2tpm\n\n-i/--input &lt;CSV/TSV[.gz]&gt; (required): raw count matrix (genes × samples)\n-o/--output &lt;CSV/TSV&gt; (required): output TPM matrix\n--effLength_csv &lt;CSV&gt;: optional effective-length file with columns id, eff_length, symbol\n--idtype {ensembl|entrez|symbol|mgi} (default: ensembl)\n--org {hsa|mmus} (default: hsa)\n--id &lt;str&gt; (default: id): ID column name in --effLength_csv\n--length &lt;str&gt; (default: eff_length): length column\n--gene_symbol &lt;str&gt; (default: symbol): gene symbol column\n--check_data: check & drop missing/invalid entries before conversion\n--remove_version: strip version suffix from gene IDs",
+    "crumbs": [
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>Commands & common options</span>"
+    ]
+  },
+  {
+    "objectID": "commands-and-options.html#optional-mouse-to-human-symbol-mapping",
+    "href": "commands-and-options.html#optional-mouse-to-human-symbol-mapping",
+    "title": "6  Commands & common options",
+    "section": "7.3 (Optional) Mouse to Human symbol mapping",
+    "text": "7.3 (Optional) Mouse to Human symbol mapping\n\nmouse2human_eset\n\n-i/--input &lt;CSV|TSV|TXT[.gz]&gt; (required): input expression matrix or table\n-o/--output &lt;CSV|TSV|TXT[.gz]&gt; (required): converted matrix indexed by human symbols (genes × samples)\n--is_matrix: treat input as a matrix (rows = mouse gene symbols, columns = samples); if omitted, runs in table mode\n--column_of_symbol &lt;str&gt; (required in table mode): column name that contains mouse gene symbols\n--sep &lt;,|\\t&gt;: override input separator; if omitted, inferred by extension.\n--out_sep &lt;,|\\t&gt;: override output separator; if omitted, inferred by output path extension\n--verbose: print shapes and basic run info",
+    "crumbs": [
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>Commands & common options</span>"
+    ]
+  },
+  {
+    "objectID": "commands-and-options.html#optional-annotate-deduplicate",
+    "href": "commands-and-options.html#optional-annotate-deduplicate",
+    "title": "6  Commands & common options",
+    "section": "7.4 (Optional) Annotate / de‑duplicate",
+    "text": "7.4 (Optional) Annotate / de‑duplicate\n\nanno_eset\n\n-i/--input &lt;CSV/TSV/TXT&gt; (required)\n-o/--output &lt;CSV/TSV/TXT&gt; (required)\n--annotation {anno_hug133plus2|anno_rnaseq|anno_illumina|anno_grch38} (required unless using external file)\n--annotation-file &lt;pkl/csv/tsv/xlsx&gt;: external annotation (overrides built-in)\n--annotation-key &lt;str&gt;: key to pick a table if external .pkl stores a dict of DataFrames\n--symbol &lt;str&gt; (default: symbol): column used as gene symbol\n--probe  &lt;str&gt; (default: id): column used as probe/feature ID\n--method {mean|sd|sum} (default: mean): duplicate-ID aggregation\n--remove_version: strip version suffix from gene IDs",
+    "crumbs": [
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>Commands & common options</span>"
+    ]
+  },
+  {
+    "objectID": "commands-and-options.html#optional-log2-transform",
+    "href": "commands-and-options.html#optional-log2-transform",
+    "title": "6  Commands & common options",
+    "section": "7.5 (Optional) Log2 transform",
+    "text": "7.5 (Optional) Log2 transform\n\nlog2_eset\n\n-i/--input &lt;CSV/TSV/TXT&gt; (required)\n-o/--output &lt;CSV/TSV/TXT&gt; (required)",
+    "crumbs": [
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>Commands & common options</span>"
+    ]
+  },
+  {
+    "objectID": "commands-and-options.html#signature-scoring",
+    "href": "commands-and-options.html#signature-scoring",
+    "title": "6  Commands & common options",
+    "section": "7.6 Signature scoring",
+    "text": "7.6 Signature scoring\n\ncalculate_sig_score\n\n-i/--input &lt;CSV/TSV/TXT&gt; (required), -o/--output &lt;CSV/TSV/TXT&gt; (required)\n--signature &lt;one or more groups&gt; (required; space- or comma-separated; all uses every group)\nGroups: go_bp, go_cc, go_mf, signature_collection, signature_tme, signature_sc, signature_tumor, signature_metabolism, kegg, hallmark, reactome\n--method {pca|zscore|ssgsea|integration} (default: pca)\n--mini_gene_count &lt;int&gt; (default: 3)\n--adjust_eset: apply extra filtering after log2 transform\n--parallel_size &lt;int&gt; (default: 1; threads for scoring (PCA/zscore/ssGSEA))",
+    "crumbs": [
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>Commands & common options</span>"
+    ]
+  },
+  {
+    "objectID": "commands-and-options.html#deconvolution-scoring",
+    "href": "commands-and-options.html#deconvolution-scoring",
+    "title": "6  Commands & common options",
+    "section": "7.7 Deconvolution / scoring",
+    "text": "7.7 Deconvolution / scoring\n\ncibersort\n\n-i/--input &lt;CSV/TSV&gt; (required), -o/--output &lt;CSV/TSV&gt; (required)\n--perm &lt;int&gt; (default: 100)\n--QN &lt;True|False&gt; (default: True): quantile normalization\n--absolute &lt;True|False&gt; (default: False): absolute mode\n--abs_method {sig.score|no.sumto1} (default: sig.score)\n--threads &lt;int&gt; (default: 1)\nOutput: columns are suffixed with _CIBERSORT, index name is ID, separator inferred from output extension.\n\nquantiseq\n\n-i/--input &lt;CSV/TSV&gt; (required; genes × samples), -o/--output &lt;TSV&gt; (required)\n--arrays: perform quantile normalization for arrays\n--signame &lt;str&gt; (default: TIL10)\n--tumor: remove genes highly expressed in tumors\n--scale_mrna: enable mRNA scaling (otherwise raw signature proportions)\n--method {lsei|hampel|huber|bisquare} (default: lsei)\n--rmgenes &lt;str&gt; (default: unassigned; allowed: default, none, or comma-separated list)\n\nepic\n\n-i/--input &lt;CSV/TSV&gt; (required; genes × samples)\n-o/--output &lt;CSV/TSV&gt; (required)\n--reference {TRef|BRef|both} (default: TRef)\n\nestimate\n\n-i/--input &lt;CSV/TSV/TXT&gt; (required; genes × samples)\n-p/--platform {affymetrix|agilent|illumina} (default: affymetrix)\n-o/--output &lt;CSV/TSV/TXT&gt; (required)\nOutput is transposed; columns are suffixed with _estimate; index label is ID; separator inferred from extension.\n\nmcpcounter\n\n-i/--input &lt;TSV&gt; (required; genes × samples)\n-f/--features {affy133P2_probesets|HUGO_symbols|ENTREZ_ID|ENSEMBL_ID} (required)\n-o/--output &lt;CSV/TSV&gt; (required)\nOutput: suffixed with _MCPcounter; index label ID; separator inferred from extension.\n\nIPS\n\n-i/--input &lt;matrix&gt; (required), -o/--output &lt;file&gt; (required)\nNo extra flags (the expression matrix yields IPS sub-scores and a total score).\n\ndeside (deep learning–based deconvolution)\n\n-m/--model_dir &lt;dir&gt; (required): path to the pre-downloaded DeSide model directory\n-i/--input &lt;CSV/TSV&gt; (required): rows = genes, columns = samples\n-o/--output &lt;CSV&gt; (required)\n--exp_type {TPM|log_space|linear} (default: TPM)\n\nTPM: already log2 processed\n\nlog_space: log2(TPM+1)\n\nlinear: linear space (TPM/counts)\n\n--gmt &lt;file1.gmt file2.gmt ...&gt;: optional one or more GMT files for pathway masking\n--method_adding_pathway {add_to_end|convert} (default: add_to_end)\n--scaling_by_constant, --scaling_by_sample, --one_minus_alpha: optional scaling/transforms\n--print_info: verbose logs\n--add_cell_type: append predicted cell-type labels\n--transpose: use if your file is samples × genes\n-r/--result_dir &lt;dir&gt;: optional directory to save result plots/logs",
+    "crumbs": [
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>Commands & common options</span>"
+    ]
+  },
+  {
+    "objectID": "commands-and-options.html#clustering-decomposition",
+    "href": "commands-and-options.html#clustering-decomposition",
+    "title": "6  Commands & common options",
+    "section": "7.8 Clustering / decomposition",
+    "text": "7.8 Clustering / decomposition\n\ntme_cluster\n\n-i/--input &lt;CSV/TSV/TXT&gt; (required): input table for clustering.\n\nExpected shape: first column = sample ID (use --id if not first), remaining columns = features.\n\n-o/--output &lt;CSV/TSV/TXT&gt; (required): output file for clustering results.\n--features &lt;spec&gt;: select feature columns by 1-based inclusive range, e.g. 1:22 (intended for CIBERSORT outputs; exclude the sample ID column when counting).\n--pattern &lt;regex&gt;: alternatively select features by a regex on column names (e.g. ^CD8|^NK).\nTip: use one of --features or --pattern.\n--id &lt;str&gt; (default: first column): column name containing sample IDs.\n--scale / --no-scale: toggle z-score scaling of features (help text: default = True).\n--min_nc &lt;int&gt; (default: 2): minimum number of clusters to try.\n--max_nc &lt;int&gt; (default: 6): maximum number of clusters to try.\n--max_iter &lt;int&gt; (default: 10): maximum iterations for k-means.\n--tol &lt;float&gt; (default: 1e-4): convergence tolerance for centroid updates.\n--print_result: print intermediate KL scores and cluster counts.\n--input_sep &lt;str&gt; (default: auto): input delimiter (e.g. , or \\t); auto-detected if unset.\n--output_sep &lt;str&gt; (default: auto): output delimiter; inferred from filename if unset.\n\nnmf\n\n-i/--input &lt;CSV/TSV&gt; (required): matrix to factorize; first column should be sample names (index).\n-o/--output &lt;DIR&gt; (required): directory to save results.\n--kmin &lt;int&gt; (default: 2): minimum k (inclusive).\n--kmax &lt;int&gt; (default: 8): maximum k (inclusive).\n--features &lt;spec&gt;: 1-based inclusive selection of feature columns (e.g. 2-10 or 1:5), typically cell-type columns.\n--log1p: apply log1p to the input (useful for counts).\n--normalize: L1 row normalization (each sample sums to 1).\n--shift &lt;float&gt; (default: None): if data contain negatives, add a constant to make all values non-negative.\n--random-state &lt;int&gt; (default: 42): random seed for NMF.\n--max-iter &lt;int&gt; (default: 1000): NMF max iterations.\n--skip_k_2: skip evaluating k = 2 when searching for the best k.",
+    "crumbs": [
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>Commands & common options</span>"
+    ]
+  },
+  {
+    "objectID": "commands-and-options.html#ligandreceptor",
+    "href": "commands-and-options.html#ligandreceptor",
+    "title": "6  Commands & common options",
+    "section": "7.9 Ligand–receptor",
+    "text": "7.9 Ligand–receptor\n\nLR_cal\n\n-i/--input &lt;CSV/TSV&gt; (required): expression matrix (genes × samples).\n-o/--output &lt;CSV/TSV&gt; (required): file to save LR scores.\n--data_type {count|tpm} (default: tpm): type of the input matrix.\n--id_type &lt;str&gt; (default: ensembl): gene ID type expected by the LR backend.Choices: ensembl, entrez, symbol, mgi.\n--cancer_type &lt;str&gt; (default: pancan): cancer-type network to use.\n--verbose: verbose logging.",
+    "crumbs": [
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>Commands & common options</span>"
+    ]
+  },
+  {
+    "objectID": "example.html",
+    "href": "example.html",
+    "title": "7  Example",
+    "section": "",
+    "text": "8 Example\nWe provide three examples:\n\nFrom downloading data to TME.\nTPM conversion for multiple input types: raw count matrices, Salmon quantifications, and general gene-expression tables.\nFrom TPM to TME.",
+    "crumbs": [
+      "<span class='chapter-number'>7</span>  <span class='chapter-title'>Example</span>"
+    ]
+  },
+  {
+    "objectID": "Troubleshooting.html",
+    "href": "Troubleshooting.html",
+    "title": "8  Troubleshooting",
+    "section": "",
+    "text": "9 Troubleshooting\n\nWrong input orientation\nDeconvolution commands expect genes × samples. For deside, --transpose can be helpful depending on your file.\nMixed separators / encoding\nPrefer .csv , .txt or .tsv consistently. Auto‑detection works in most subcommands but you can override with explicit flags where provided.\nDeSide model missing The deside subcommand requires pretrained model files. If you get errors like FileNotFoundError: DeSide_model not found , download the official model archive from: https://figshare.com/articles/dataset/DeSide_model/25117862/1?file=44330255\nPython version for DeSide The deside subcommand runs ONLY on Python 3.9. Other versions (3.8/3.10/3.11/…) are not supported .When invoked via the iobrpy CLI, it automatically creates/uses an isolated virtual environment with pinned dependencies so it doesn’t leak packages from your outer env. You can override the venv location with IOBRPY_DESIDE_VENV or force a clean rebuild with IOBRPY_DESIDE_REBUILD=1; the CLI wires iobrpy into that venv through a small shim and then launches the worker.",
+    "crumbs": [
+      "<span class='chapter-number'>8</span>  <span class='chapter-title'>Troubleshooting</span>"
+    ]
+  },
+  {
+    "objectID": "Citation.html",
+    "href": "Citation.html",
+    "title": "9  Citation",
+    "section": "",
+    "text": "10 Citation",
+    "crumbs": [
+      "<span class='chapter-number'>9</span>  <span class='chapter-title'>Citation</span>"
+    ]
+  },
+  {
+    "objectID": "Citation.html#tme-deconvolution",
+    "href": "Citation.html#tme-deconvolution",
+    "title": "9  Citation",
+    "section": "10.1 TME deconvolution",
+    "text": "10.1 TME deconvolution\nPlease cite the following papers appropriately for TME deconvolution algorithm if used:\nCIBERSORT: Newman, A. M., Liu, C. L., Green, M. R., Gentles, A. J., Feng, W., Xu, Y., … Alizadeh, A. A. (2015). Robust enumeration of cell subsets from tissue expression profiles. Nature Methods, 12(5), 453–457. https://doi.org/10.1038/nmeth.3337\nESTIMATE: Vegesna R, Kim H, Torres-Garcia W, …, Verhaak R.* (2013). Inferring tumour purity and stromal and immune cell admixture from expression data. Nature Communications 4, 2612. http://doi.org/10.1038/ncomms3612\nquanTIseq: Finotello, F., Mayer, C., Plattner, C., Laschober, G., Rieder, D., Hackl, H., …, Sopper, S.* (2019). Molecular and pharmacological modulators of the tumor immune contexture revealed by deconvolution of RNA-seq data. Genome medicine, 11(1), 34. https://doi.org/10.1186/s13073-019-0638-6\nIPS: P. Charoentong et al.* , Pan-cancer Immunogenomic Analyses Reveal Genotype-Immunophenotype Relationships and Predictors of Response to Checkpoint Blockade. Cell Reports 18, 248-262 (2017). https://doi.org/10.1016/j.celrep.2016.12.019\nMCPCounter: Becht, E., Giraldo, N. A., Lacroix, L., Buttard, B., Elarouci, N., Petitprez, F., … de Reyniès, A*. (2016). Estimating the population abundance of tissue-infiltrating immune and stromal cell populations using gene expression. Genome Biology, 17(1), 218. https://doi.org/10.1186/s13059-016-1070-5\nEPIC: Racle, J., de Jonge, K., Baumgaertner, P., Speiser, D. E., & Gfeller, D*. (2017). Simultaneous enumeration of cancer and immune cell types from bulk tumor gene expression data. ELife, 6, e26476. https://doi.org/10.7554/eLife.26476\nDeside: Xiong X, Liu Y, Pu D, Yang Z, Bi Z, Tian L, Li X. DeSide: A unified deep learning approach for cellular deconvolution of tumor microenvironment. Proc Natl Acad Sci U S A. 2024 Nov 12;121(46):e2407096121. doi: 10.1073/pnas.2407096121. Epub 2024 Nov 8. PMID: 39514318; PMCID: PMC11573681.",
+    "crumbs": [
+      "<span class='chapter-number'>9</span>  <span class='chapter-title'>Citation</span>"
+    ]
+  },
+  {
+    "objectID": "Citation.html#tme-signatures",
+    "href": "Citation.html#tme-signatures",
+    "title": "9  Citation",
+    "section": "10.2 TME Signatures",
+    "text": "10.2 TME Signatures\nFor signature score estimation, please cite corresponding literature below:\nssgsea: Barbie, D.A. et al (2009). Systematic RNA interference reveals that oncogenic KRAS-driven cancers require TBK1. Nature, 462(5):108-112.\ngsva: Hänzelmann, S., Castelo, R. and Guinney, J. (2013). GSVA: Gene set variation analysis for microarray and RNA-Seq data. BMC Bioinformatics, 14(1):7.\nzscore: Lee, E. et al (2008). Inferring pathway activity toward precise disease classification. PLoS Comp Biol, 4(11):e1000217.",
+    "crumbs": [
+      "<span class='chapter-number'>9</span>  <span class='chapter-title'>Citation</span>"
+    ]
+  },
+  {
+    "objectID": "Citation.html#rna-seq-preprocessing-quantification-tools",
+    "href": "Citation.html#rna-seq-preprocessing-quantification-tools",
+    "title": "9  Citation",
+    "section": "10.3 RNA-seq preprocessing & quantification tools",
+    "text": "10.3 RNA-seq preprocessing & quantification tools\nfastp: Chen, S., Zhou, Y., Chen, Y., & Gu, J. (2018). fastp: an ultra-fast all-in-one FASTQ preprocessor. Bioinformatics, 34(17), i884–i890. https://doi.org/10.1093/bioinformatics/bty560\nMultiQC: Ewels, P., Magnusson, M., Lundin, S., & Käller, M. (2016). MultiQC: summarize analysis results for multiple tools and samples in a single report. Bioinformatics, 32(19), 3047–3048. https://doi.org/10.1093/bioinformatics/btw354\nSalmon: Patro, R., Duggal, G., Love, M. I., Irizarry, R. A., & Kingsford, C. (2017). Salmon provides fast and bias-aware quantification of transcript expression. Nature Methods, 14(4), 417–419. https://doi.org/10.1038/nmeth.4197\nSTAR: Dobin, A., Davis, C. A., Schlesinger, F., Drenkow, J., Zaleski, C., Jha, S., … Gingeras, T. R. (2013). STAR: ultrafast universal RNA-seq aligner. Bioinformatics, 29(1), 15–21. https://doi.org/10.1093/bioinformatics/bts635",
+    "crumbs": [
+      "<span class='chapter-number'>9</span>  <span class='chapter-title'>Citation</span>"
+    ]
+  },
+  {
+    "objectID": "example/example1.html",
+    "href": "example/example1.html",
+    "title": "10  From downloading data to TME",
+    "section": "",
+    "text": "11 From downloading data to TME",
+    "crumbs": [
+      "Examples",
+      "<span class='chapter-number'>10</span>  <span class='chapter-title'>From downloading data to TME</span>"
+    ]
+  },
+  {
+    "objectID": "example/example1.html#part-1-data-download",
+    "href": "example/example1.html#part-1-data-download",
+    "title": "10  From downloading data to TME",
+    "section": "11.1 Part 1 — Data download",
+    "text": "11.1 Part 1 — Data download\n\n11.1.1 Prepare the SRR list\n\nRetrieve the SRR accessions for PRJNA1161405 from NCBI SRA: https://www.ncbi.nlm.nih.gov/sra/?term=PRJNA1161405.\nSave the accessions (one per line) into PRJNA1161405.txt and upload it to: path/to/PRJNA1161405/.\n\n\n\n11.1.2 High-speed download with prefetch\n\nRequires SRA Toolkit installed and on your PATH.\n\n# (Optional) load/activate your environment\n# module load sra-tools            # or: conda activate sra-tools\n\ncd path/to/PRJNA1161405\n# Download all SRR runs listed in PRJNA1161405.txt into the current directory\nprefetch -O ./ --option-file PRJNA1161405.txt\n\n\n11.1.3 Convert .sra to FASTQ with fasterq-dump\nThis loop finds each run directory produced by prefetch and converts the .sra file to paired FASTQ files.\nfolder=\"path/to/PRJNA1161405/\"\ncd path/to/PRJNA1161405\n\nfor dir in \"${folder}\"SRR*; do\n  if [[ -d \"${dir}\" ]]; then\n    dir_name=\"$(basename \"${dir}\")\"\n    input_file=\"${dir}/${dir_name}.sra\"\n    # -3: skip technical reads, -p: show progress, -e 64: threads, -O . : output to current dir\n    fasterq-dump -3 \"${input_file}\" -p -e 64 -O .\n  fi\ndone\n\n\n11.1.4 Multi-thread compression with pigz\nCompress all .fastq files in the folder using 8 threads.\ncd path/to/PRJNA1161405\nfor file in SRR*.fastq; do\n  if [ -f \"$file\" ]; then\n    pigz \"$file\" -p 8\n  fi\ndone\n\n\n11.1.5 (Optional) Direct downloads from ENA FTP with curl\nIf you prefer pulling FASTQ files directly from ENA:\n#!/usr/bin/env bash\nset -euo pipefail\n\n# Normal samples\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/063/SRR35344563/SRR35344563_1.fastq.gz -o SRR35344563_GSM8516765_Normal4_Homo_sapiens_RNA-Seq_1.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/063/SRR35344563/SRR35344563_2.fastq.gz -o SRR35344563_GSM8516765_Normal4_Homo_sapiens_RNA-Seq_2.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/061/SRR35344561/SRR35344561_1.fastq.gz -o SRR35344561_GSM8516763_Normal2_Homo_sapiens_RNA-Seq_1.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/061/SRR35344561/SRR35344561_2.fastq.gz -o SRR35344561_GSM8516763_Normal2_Homo_sapiens_RNA-Seq_2.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/060/SRR35344560/SRR35344560_1.fastq.gz -o SRR35344560_GSM8516762_Normal1_Homo_sapiens_RNA-Seq_1.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/060/SRR35344560/SRR35344560_2.fastq.gz -o SRR35344560_GSM8516762_Normal1_Homo_sapiens_RNA-Seq_2.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/062/SRR35344562/SRR35344562_1.fastq.gz -o SRR35344562_GSM8516764_Normal3_Homo_sapiens_RNA-Seq_1.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/062/SRR35344562/SRR35344562_2.fastq.gz -o SRR35344562_GSM8516764_Normal3_Homo_sapiens_RNA-Seq_2.fastq.gz\n\n# HCC samples\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/068/SRR35344568/SRR35344568_1.fastq.gz -o SRR35344568_GSM8516770_HCC3_Homo_sapiens_RNA-Seq_1.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/068/SRR35344568/SRR35344568_2.fastq.gz -o SRR35344568_GSM8516770_HCC3_Homo_sapiens_RNA-Seq_2.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/069/SRR35344569/SRR35344569_1.fastq.gz -o SRR35344569_GSM8516771_HCC4_Homo_sapiens_RNA-Seq_1.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/069/SRR35344569/SRR35344569_2.fastq.gz -o SRR35344569_GSM8516771_HCC4_Homo_sapiens_RNA-Seq_2.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/070/SRR35344570/SRR35344570_1.fastq.gz -o SRR35344570_GSM8516772_HCC5_Homo_sapiens_RNA-Seq_1.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/070/SRR35344570/SRR35344570_2.fastq.gz -o SRR35344570_GSM8516772_HCC5_Homo_sapiens_RNA-Seq_2.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/071/SRR35344571/SRR35344571_1.fastq.gz -o SRR35344571_GSM8516773_HCC6_Homo_sapiens_RNA-Seq_1.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/071/SRR35344571/SRR35344571_2.fastq.gz -o SRR35344571_GSM8516773_HCC6_Homo_sapiens_RNA-Seq_2.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/072/SRR35344572/SRR35344572_1.fastq.gz -o SRR35344572_GSM8516774_HCC7_Homo_sapiens_RNA-Seq_1.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/072/SRR35344572/SRR35344572_2.fastq.gz -o SRR35344572_GSM8516774_HCC7_Homo_sapiens_RNA-Seq_2.fastq.gz\n\n# CLD samples\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/073/SRR35344573/SRR35344573_1.fastq.gz -o SRR35344573_GSM8516775_CLD1_Homo_sapiens_RNA-Seq_1.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/073/SRR35344573/SRR35344573_2.fastq.gz -o SRR35344573_GSM8516775_CLD1_Homo_sapiens_RNA-Seq_2.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/074/SRR35344574/SRR35344574_1.fastq.gz -o SRR35344574_GSM8516776_CLD2_Homo_sapiens_RNA-Seq_1.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/074/SRR35344574/SRR35344574_2.fastq.gz -o SRR35344574_GSM8516776_CLD2_Homo_sapiens_RNA-Seq_2.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/075/SRR35344575/SRR35344575_1.fastq.gz -o SRR35344575_GSM8516777_CLD3_Homo_sapiens_RNA-Seq_1.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/075/SRR35344575/SRR35344575_2.fastq.gz -o SRR35344575_GSM8516777_CLD3_Homo_sapiens_RNA-Seq_2.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/076/SRR35344576/SRR35344576_1.fastq.gz -o SRR35344576_GSM8516778_CLD4_Homo_sapiens_RNA-Seq_1.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/076/SRR35344576/SRR35344576_2.fastq.gz -o SRR35344576_GSM8516778_CLD4_Homo_sapiens_RNA-Seq_2.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/077/SRR35344577/SRR35344577_1.fastq.gz -o SRR35344577_GSM8516779_CLD5_Homo_sapiens_RNA-Seq_1.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/077/SRR35344577/SRR35344577_2.fastq.gz -o SRR35344577_GSM8516779_CLD5_Homo_sapiens_RNA-Seq_2.fastq.gz",
+    "crumbs": [
+      "Examples",
+      "<span class='chapter-number'>10</span>  <span class='chapter-title'>From downloading data to TME</span>"
+    ]
+  },
+  {
+    "objectID": "example/example1.html#part-2-from-fastq-to-tme---runall",
+    "href": "example/example1.html#part-2-from-fastq-to-tme---runall",
+    "title": "10  From downloading data to TME",
+    "section": "11.2 Part 2 — From FASTQ to TME - runall",
+    "text": "11.2 Part 2 — From FASTQ to TME - runall\n\n11.2.1 Salmon mode\niobrpy runall \\\n  --mode salmon \\\n  --outdir \"/path/to/outdir\" \\\n  --fastq \"/path/to/fastq\" \\\n  --threads 8 \\\n  --batch_size 1 \\\n  --index \"/path/to/salmon/index\" \\\n  --project SRR\n\n\n11.2.2 STAR mode\niobrpy runall \\\n  --mode star \\\n  --outdir \"/path/to/outdir\" \\\n  --fastq \"/path/to/fastq\" \\\n  --threads 8 \\\n  --batch_size 1 \\\n  --index \"/path/to/star/index\" \\\n  --project SRR",
+    "crumbs": [
+      "Examples",
+      "<span class='chapter-number'>10</span>  <span class='chapter-title'>From downloading data to TME</span>"
+    ]
+  },
+  {
+    "objectID": "example/example2.html",
+    "href": "example/example2.html",
+    "title": "11  TPM conversion",
+    "section": "",
+    "text": "12 TPM conversion\nThis page shows four common entry points to a TPM matrix and the final log2(x+1) transform you should apply after each path.",
+    "crumbs": [
+      "Examples",
+      "<span class='chapter-number'>11</span>  <span class='chapter-title'>TPM conversion</span>"
+    ]
+  },
+  {
+    "objectID": "example/example2.html#a-from-count-matrix-to-tpm",
+    "href": "example/example2.html#a-from-count-matrix-to-tpm",
+    "title": "11  TPM conversion",
+    "section": "12.1 A) From count matrix to TPM",
+    "text": "12.1 A) From count matrix to TPM\n# 1) counts → TPM\niobrpy count2tpm \\\n  -i MyProj.STAR.count.tsv.gz \\\n  -o TPM_matrix.csv \\\n  --idtype ensembl \\\n  --org hsa \\\n  --remove_version\n# (Optional) Add effective transcript lengths if available:\n#   --effLength_csv efflen.csv --id id --length eff_length --gene_symbol symbol\n# 2) TPM → log2(x+1)\niobrpy log2_eset \\\n  -i TPM_matrix.csv \\\n  -o TPM_matrix.log2.csv",
+    "crumbs": [
+      "Examples",
+      "<span class='chapter-number'>11</span>  <span class='chapter-title'>TPM conversion</span>"
+    ]
+  },
+  {
+    "objectID": "example/example2.html#b-from-salmon-matrix-to-tpm",
+    "href": "example/example2.html#b-from-salmon-matrix-to-tpm",
+    "title": "11  TPM conversion",
+    "section": "12.2 B) From Salmon matrix to TPM",
+    "text": "12.2 B) From Salmon matrix to TPM\n# 1) Salmon TPM (gene/transcript) → cleaned gene-level TPM\niobrpy prepare_salmon \\\n  -i MyProj_salmon_tpm.tsv.gz \\\n  -o TPM_matrix.csv \\\n  --return_feature symbol \\\n  --remove_version\n# 2) TPM → log2(x+1)\niobrpy log2_eset \\\n  -i TPM_matrix.csv \\\n  -o TPM_matrix.log2.csv",
+    "crumbs": [
+      "Examples",
+      "<span class='chapter-number'>11</span>  <span class='chapter-title'>TPM conversion</span>"
+    ]
+  },
+  {
+    "objectID": "example/example2.html#c-from-gene-expression-matrix-to-gene-level-matrix-with-annotation-anno_eset",
+    "href": "example/example2.html#c-from-gene-expression-matrix-to-gene-level-matrix-with-annotation-anno_eset",
+    "title": "11  TPM conversion",
+    "section": "12.3 C) From gene-expression matrix to gene-level matrix with annotation (anno_eset)",
+    "text": "12.3 C) From gene-expression matrix to gene-level matrix with annotation (anno_eset)\nUse when your input is an expression table that needs ID mapping / de-duplication (e.g., microarray probes → symbols, or TPM tables with mixed identifiers).\n# Map/aggregate to symbols using a built-in annotation set\niobrpy anno_eset \\\n  -i expression_matrix.csv \\\n  -o expression_anno.csv \\\n  --annotation anno_grch38 \\\n  --symbol symbol \\\n  --probe id \\\n  --method mean \\\n  --remove_version\n# Alternative platform example:\n# iobrpy anno_eset -i expression_matrix.csv -o expression_anno.csv \\\n#   --annotation anno_hug133plus2 --symbol symbol --probe id --method mean\n# if your input was already TPM-like, finish with log2(x+1)\niobrpy log2_eset \\\n  -i expression_anno.csv \\\n  -o expression_anno.log2.csv",
+    "crumbs": [
+      "Examples",
+      "<span class='chapter-number'>11</span>  <span class='chapter-title'>TPM conversion</span>"
+    ]
+  },
+  {
+    "objectID": "example/example2.html#d-mouse-human-gene-conversion-mouse2human_eset",
+    "href": "example/example2.html#d-mouse-human-gene-conversion-mouse2human_eset",
+    "title": "11  TPM conversion",
+    "section": "12.4 D) Mouse → Human gene conversion (mouse2human_eset)",
+    "text": "12.4 D) Mouse → Human gene conversion (mouse2human_eset)\nTwo common modes:\n# Matrix mode: rows = mouse gene symbols, columns = samples\niobrpy mouse2human_eset \\\n  -i mouse_matrix.tsv \\\n  -o human_matrix.tsv \\\n  --is_matrix \\\n  --verbose\n# Table mode: has a symbol column (e.g., SYMBOL); will de-duplicate then map\niobrpy mouse2human_eset \\\n  -i mouse_table.csv \\\n  -o human_matrix.csv \\\n  --column_of_symbol SYMBOL \\\n  --verbose\n# log2(x+1) after mapping\niobrpy log2_eset \\\n  -i human_matrix.tsv \\\n  -o human_matrix.log2.tsv",
+    "crumbs": [
+      "Examples",
+      "<span class='chapter-number'>11</span>  <span class='chapter-title'>TPM conversion</span>"
+    ]
+  },
+  {
+    "objectID": "example/example3.html",
+    "href": "example/example3.html",
+    "title": "12  From TPM to TME",
+    "section": "",
+    "text": "13 From TPM to TME\nThis page takes a TPM matrix and runs downstream TME analyses: signature scoring, immune deconvolution (multiple methods), clustering, and ligand–receptor scoring.",
+    "crumbs": [
+      "Examples",
+      "<span class='chapter-number'>12</span>  <span class='chapter-title'>From TPM to TME</span>"
+    ]
+  },
+  {
+    "objectID": "example/example3.html#inputs",
+    "href": "example/example3.html#inputs",
+    "title": "12  From TPM to TME",
+    "section": "13.1 Inputs",
+    "text": "13.1 Inputs\n\nTPM matrix: TPM_matrix.csv\n(Optional) log2 transform: if desired, apply:\n\niobrpy log2_eset \\\n  -i TPM_matrix.csv \\\n  -o TPM_matrix.log2.csv",
+    "crumbs": [
+      "Examples",
+      "<span class='chapter-number'>12</span>  <span class='chapter-title'>From TPM to TME</span>"
+    ]
+  },
+  {
+    "objectID": "example/example3.html#signature-scoring",
+    "href": "example/example3.html#signature-scoring",
+    "title": "12  From TPM to TME",
+    "section": "13.2 1) Signature scoring",
+    "text": "13.2 1) Signature scoring\nCompute pathway/signature scores from TPM.\niobrpy calculate_sig_score \\\n  -i TPM_matrix.csv \\\n  -o sig_scores.csv \\\n  --signature all \\\n  --method integration \\\n  --mini_gene_count 2 \\\n  --parallel_size 1 \\\n  --adjust_eset",
+    "crumbs": [
+      "Examples",
+      "<span class='chapter-number'>12</span>  <span class='chapter-title'>From TPM to TME</span>"
+    ]
+  },
+  {
+    "objectID": "example/example3.html#immune-deconvolution",
+    "href": "example/example3.html#immune-deconvolution",
+    "title": "12  From TPM to TME",
+    "section": "13.3 2) Immune deconvolution",
+    "text": "13.3 2) Immune deconvolution\nChoose one or several methods below; each writes one result file.\n\n13.3.1 CIBERSORT\niobrpy cibersort \\\n  -i TPM_matrix.csv \\\n  -o cibersort.csv \\\n  --perm 100 \\\n  --QN True \\\n  --absolute False \\\n  --abs_method sig.score \\\n  --threads 1\n\n\n13.3.2 quanTIseq\niobrpy quantiseq \\\n  -i TPM_matrix.csv \\\n  -o quantiseq.csv \\\n  --signame TIL10 \\\n  --method lsei \\\n  --tumor \\\n  --arrays \\\n  --scale_mrna\n\n\n13.3.3 EPIC\niobrpy epic \\\n  -i TPM_matrix.csv \\\n  -o epic.csv \\\n  --reference TRef\n\n\n13.3.4 ESTIMATE\niobrpy estimate \\\n  -i TPM_matrix.csv \\\n  -o estimate.csv \\\n  --platform affymetrix\n\n\n13.3.5 MCPcounter\niobrpy mcpcounter \\\n  -i TPM_matrix.csv \\\n  -o mcpcounter.csv \\\n  --features HUGO_symbols\n\n\n13.3.6 IPS\niobrpy IPS \\\n  -i TPM_matrix.csv \\\n  -o IPS.csv\n\n\n13.3.7 DeSide\niobrpy deside \\\n  --model_dir path/to/your/DeSide_model \\\n  -i TPM_matrix.csv \\\n  -o deside.csv \\\n  --result_dir path/to/your/plot/folder \\\n  --exp_type TPM \\\n  --scaling_by_constant \\\n  --transpose \\\n  --print_info",
+    "crumbs": [
+      "Examples",
+      "<span class='chapter-number'>12</span>  <span class='chapter-title'>From TPM to TME</span>"
+    ]
+  },
+  {
+    "objectID": "example/example3.html#tme-clustering",
+    "href": "example/example3.html#tme-clustering",
+    "title": "12  From TPM to TME",
+    "section": "13.4 3) TME clustering",
+    "text": "13.4 3) TME clustering\nYou can cluster samples by cell fractions or signature scores.\n\n13.4.1 k-means with KL index auto-k (recommended)\niobrpy tme_cluster \\\n  -i cibersort.csv \\\n  -o tme_cluster.csv \\\n  --features 1:22 \\\n  --id \"ID\" \\\n  --min_nc 2 \\\n  --max_nc 5 \\\n  --print_result \\\n  --scale\n\n\n13.4.2 NMF clustering (auto-k, excluding k=2)\niobrpy nmf \\\n  -i cibersort.csv \\\n  -o path/to/your/result/folder \\\n  --kmax 10 \\\n  --features 1:22 \\\n  --skip_k_2",
+    "crumbs": [
+      "Examples",
+      "<span class='chapter-number'>12</span>  <span class='chapter-title'>From TPM to TME</span>"
+    ]
+  },
+  {
+    "objectID": "example/example3.html#ligandreceptor-scoring",
+    "href": "example/example3.html#ligandreceptor-scoring",
+    "title": "12  From TPM to TME",
+    "section": "13.5 4) Ligand–receptor scoring",
+    "text": "13.5 4) Ligand–receptor scoring\nCompute bulk ligand–receptor interaction scores from TPM:\niobrpy LR_cal \\\n  -i TPM_matrix.csv \\\n  -o LR_score.csv \\\n  --data_type \"tpm\" \\\n  --id_type \"symbol\" \\\n  --cancer_type pancan \\\n  --verbose",
+    "crumbs": [
+      "Examples",
+      "<span class='chapter-number'>12</span>  <span class='chapter-title'>From TPM to TME</span>"
+    ]
+  }
+]
