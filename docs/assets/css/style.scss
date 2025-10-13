@@ -1,0 +1,25 @@
+---
+---
+@import "{{ site.theme }}";
+
+/* Increase font size for fenced code blocks (```lang)
+   Targets Rouge/just-the-docs wrappers and plain <pre><code> fallback.
+   Inline code (like `this`) is NOT changed. */
+.highlight pre,
+.highlighter-rouge pre,
+pre > code {
+  font-size: 1.05rem;  /* tweak: 1rem≈16px, 1.125rem≈18px */
+  line-height: 1.6;    /* better readability for multi-line code */
+}
+
+/* If line numbers are enabled (Rouge table layout), keep gutter in sync */
+.highlight td.gutter pre {
+  font-size: 1.05rem;
+  line-height: 1.6;
+}
+
+/* Optional: tighten code block padding a bit for larger fonts
+   (feel free to delete if you like the default spacing) */
+.highlight pre {
+  padding: 0.9rem 1rem;
+}
