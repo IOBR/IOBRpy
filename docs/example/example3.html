@@ -237,8 +237,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
    
   <ul>
   <li><a href="#inputs" id="toc-inputs" class="nav-link active" data-scroll-target="#inputs"><span class="header-section-number">9.1</span> Inputs</a></li>
-  <li><a href="#signature-scoring" id="toc-signature-scoring" class="nav-link" data-scroll-target="#signature-scoring"><span class="header-section-number">9.2</span> 1) Signature scoring</a></li>
-  <li><a href="#immune-deconvolution" id="toc-immune-deconvolution" class="nav-link" data-scroll-target="#immune-deconvolution"><span class="header-section-number">9.3</span> 2) Immune deconvolution</a>
+  <li><a href="#signature-scoring" id="toc-signature-scoring" class="nav-link" data-scroll-target="#signature-scoring"><span class="header-section-number">9.2</span> Signature scoring</a></li>
+  <li><a href="#immune-deconvolution" id="toc-immune-deconvolution" class="nav-link" data-scroll-target="#immune-deconvolution"><span class="header-section-number">9.3</span> Immune deconvolution</a>
   <ul class="collapse">
   <li><a href="#cibersort" id="toc-cibersort" class="nav-link" data-scroll-target="#cibersort"><span class="header-section-number">9.3.1</span> CIBERSORT</a></li>
   <li><a href="#quantiseq" id="toc-quantiseq" class="nav-link" data-scroll-target="#quantiseq"><span class="header-section-number">9.3.2</span> quanTIseq</a></li>
@@ -248,12 +248,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#ips" id="toc-ips" class="nav-link" data-scroll-target="#ips"><span class="header-section-number">9.3.6</span> IPS</a></li>
   <li><a href="#deside" id="toc-deside" class="nav-link" data-scroll-target="#deside"><span class="header-section-number">9.3.7</span> DeSide</a></li>
   </ul></li>
-  <li><a href="#tme-clustering" id="toc-tme-clustering" class="nav-link" data-scroll-target="#tme-clustering"><span class="header-section-number">9.4</span> 3) TME clustering</a>
+  <li><a href="#tme-clustering" id="toc-tme-clustering" class="nav-link" data-scroll-target="#tme-clustering"><span class="header-section-number">9.4</span> TME clustering</a>
   <ul class="collapse">
   <li><a href="#k-means-with-kl-index-auto-k-recommended" id="toc-k-means-with-kl-index-auto-k-recommended" class="nav-link" data-scroll-target="#k-means-with-kl-index-auto-k-recommended"><span class="header-section-number">9.4.1</span> k-means with KL index auto-k (recommended)</a></li>
   <li><a href="#nmf-clustering-auto-k-excluding-k2" id="toc-nmf-clustering-auto-k-excluding-k2" class="nav-link" data-scroll-target="#nmf-clustering-auto-k-excluding-k2"><span class="header-section-number">9.4.2</span> NMF clustering (auto-k, excluding k=2)</a></li>
   </ul></li>
-  <li><a href="#ligandreceptor-scoring" id="toc-ligandreceptor-scoring" class="nav-link" data-scroll-target="#ligandreceptor-scoring"><span class="header-section-number">9.5</span> 4) Ligand–receptor scoring</a></li>
+  <li><a href="#ligandreceptor-scoring" id="toc-ligandreceptor-scoring" class="nav-link" data-scroll-target="#ligandreceptor-scoring"><span class="header-section-number">9.5</span> Ligand–receptor scoring</a></li>
   </ul>
 <div class="toc-actions"><ul><li><a href="https://github.com/IOBR/IOBRpy/edit/main/site/example/example3.md" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li><li><a href="https://github.com/IOBR/IOBRpy/issues/new" class="toc-action"><i class="bi empty"></i>Report an issue</a></li></ul></div></nav>
     </div>
@@ -293,7 +293,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <hr>
 </section>
 <section id="signature-scoring" class="level2" data-number="9.2">
-<h2 data-number="9.2" class="anchored" data-anchor-id="signature-scoring"><span class="header-section-number">9.2</span> 1) Signature scoring</h2>
+<h2 data-number="9.2" class="anchored" data-anchor-id="signature-scoring"><span class="header-section-number">9.2</span> Signature scoring</h2>
 <p>Compute pathway/signature scores from TPM.</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> calculate_sig_score <span class="dt">\</span></span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">-i</span> TPM_matrix.csv <span class="dt">\</span></span>
@@ -306,7 +306,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <hr>
 </section>
 <section id="immune-deconvolution" class="level2" data-number="9.3">
-<h2 data-number="9.3" class="anchored" data-anchor-id="immune-deconvolution"><span class="header-section-number">9.3</span> 2) Immune deconvolution</h2>
+<h2 data-number="9.3" class="anchored" data-anchor-id="immune-deconvolution"><span class="header-section-number">9.3</span> Immune deconvolution</h2>
 <p>Choose one or several methods below; each writes one result file.</p>
 <section id="cibersort" class="level3" data-number="9.3.1">
 <h3 data-number="9.3.1" class="anchored" data-anchor-id="cibersort"><span class="header-section-number">9.3.1</span> CIBERSORT</h3>
@@ -372,7 +372,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 </section>
 <section id="tme-clustering" class="level2" data-number="9.4">
-<h2 data-number="9.4" class="anchored" data-anchor-id="tme-clustering"><span class="header-section-number">9.4</span> 3) TME clustering</h2>
+<h2 data-number="9.4" class="anchored" data-anchor-id="tme-clustering"><span class="header-section-number">9.4</span> TME clustering</h2>
 <p>You can cluster samples by cell fractions or signature scores.</p>
 <section id="k-means-with-kl-index-auto-k-recommended" class="level3" data-number="9.4.1">
 <h3 data-number="9.4.1" class="anchored" data-anchor-id="k-means-with-kl-index-auto-k-recommended"><span class="header-section-number">9.4.1</span> k-means with KL index auto-k (recommended)</h3>
@@ -398,7 +398,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 </section>
 <section id="ligandreceptor-scoring" class="level2" data-number="9.5">
-<h2 data-number="9.5" class="anchored" data-anchor-id="ligandreceptor-scoring"><span class="header-section-number">9.5</span> 4) Ligand–receptor scoring</h2>
+<h2 data-number="9.5" class="anchored" data-anchor-id="ligandreceptor-scoring"><span class="header-section-number">9.5</span> Ligand–receptor scoring</h2>
 <p>Compute bulk ligand–receptor interaction scores from TPM:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> LR_cal <span class="dt">\</span></span>
 <span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">-i</span> TPM_matrix.csv <span class="dt">\</span></span>
