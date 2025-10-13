@@ -242,15 +242,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <h2 id="toc-title">Table of contents</h2>
    
   <ul>
-  <li><a href="#build-salmon-star-index" id="toc-build-salmon-star-index" class="nav-link active" data-scroll-target="#build-salmon-star-index"><span class="header-section-number">4</span> <strong>Build Salmon &amp; STAR Index</strong></a>
-  <ul class="collapse">
-  <li><a href="#overview" id="toc-overview" class="nav-link" data-scroll-target="#overview"><span class="header-section-number">4.1</span> Overview</a></li>
-  <li><a href="#prerequisites" id="toc-prerequisites" class="nav-link" data-scroll-target="#prerequisites"><span class="header-section-number">4.2</span> Prerequisites</a></li>
-  <li><a href="#build-salmon-index" id="toc-build-salmon-index" class="nav-link" data-scroll-target="#build-salmon-index"><span class="header-section-number">4.3</span> Build Salmon index</a></li>
-  <li><a href="#build-star-index" id="toc-build-star-index" class="nav-link" data-scroll-target="#build-star-index"><span class="header-section-number">4.4</span> 2) Build STAR index</a></li>
-  <li><a href="#notes" id="toc-notes" class="nav-link" data-scroll-target="#notes"><span class="header-section-number">4.5</span> Notes</a></li>
-  <li><a href="#references-acknowledgments" id="toc-references-acknowledgments" class="nav-link" data-scroll-target="#references-acknowledgments"><span class="header-section-number">4.6</span> References &amp; Acknowledgments</a></li>
-  </ul></li>
+  <li><a href="#overview" id="toc-overview" class="nav-link active" data-scroll-target="#overview"><span class="header-section-number">3.1</span> Overview</a></li>
+  <li><a href="#prerequisites" id="toc-prerequisites" class="nav-link" data-scroll-target="#prerequisites"><span class="header-section-number">3.2</span> Prerequisites</a></li>
+  <li><a href="#build-salmon-index" id="toc-build-salmon-index" class="nav-link" data-scroll-target="#build-salmon-index"><span class="header-section-number">3.3</span> Build Salmon index</a></li>
+  <li><a href="#build-star-index" id="toc-build-star-index" class="nav-link" data-scroll-target="#build-star-index"><span class="header-section-number">3.4</span> 2) Build STAR index</a></li>
+  <li><a href="#notes" id="toc-notes" class="nav-link" data-scroll-target="#notes"><span class="header-section-number">3.5</span> Notes</a></li>
+  <li><a href="#references-acknowledgments" id="toc-references-acknowledgments" class="nav-link" data-scroll-target="#references-acknowledgments"><span class="header-section-number">3.6</span> References &amp; Acknowledgments</a></li>
   </ul>
 <div class="toc-actions"><ul><li><a href="https://github.com/IOBR/IOBRpy/edit/main/site/build-index.md" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li><li><a href="https://github.com/IOBR/IOBRpy/issues/new" class="toc-action"><i class="bi empty"></i>Report an issue</a></li></ul></div></nav>
     </div>
@@ -276,10 +273,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<section id="build-salmon-star-index" class="level1" data-number="4">
-<h1 data-number="4"><span class="header-section-number">4</span> <strong>Build Salmon &amp; STAR Index</strong></h1>
-<section id="overview" class="level2" data-number="4.1">
-<h2 data-number="4.1" class="anchored" data-anchor-id="overview"><span class="header-section-number">4.1</span> Overview</h2>
+<section id="overview" class="level2" data-number="3.1">
+<h2 data-number="3.1" class="anchored" data-anchor-id="overview"><span class="header-section-number">3.1</span> Overview</h2>
 <p><strong>Salmon</strong> and <strong>STAR</strong> are two cornerstone tools for RNA-seq quantification that serve complementary purposes:</p>
 <ul>
 <li><p><strong>Salmon</strong> — a fast, lightweight <em>alignment-free</em> (quasi-mapping / selective-alignment) quantifier that works on a <strong>transcriptome index</strong>, provides bias-aware transcript abundance estimates, and is ideal for rapid, large-scale quantification.<br>
@@ -291,8 +286,8 @@ Github : <a href="https://github.com/alexdobin/STAR">alexdobin/STAR</a></p></li>
 <p>This page shows how to build indices for <strong>both</strong> tools. Choose Salmon when you want fast transcript-level quantification from a transcriptome; choose STAR when you need full genomic alignments, splice junction discovery, or STAR-based counting workflows.</p>
 </blockquote>
 </section>
-<section id="prerequisites" class="level2" data-number="4.2">
-<h2 data-number="4.2" class="anchored" data-anchor-id="prerequisites"><span class="header-section-number">4.2</span> Prerequisites</h2>
+<section id="prerequisites" class="level2" data-number="3.2">
+<h2 data-number="3.2" class="anchored" data-anchor-id="prerequisites"><span class="header-section-number">3.2</span> Prerequisites</h2>
 <ul>
 <li>Activate iobrpy environment</li>
 </ul>
@@ -304,8 +299,8 @@ Github : <a href="https://github.com/alexdobin/STAR">alexdobin/STAR</a></p></li>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="fu">mkdir</span> <span class="at">-p</span> <span class="st">"</span><span class="va">$BASE</span><span class="st">"</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <hr>
 </section>
-<section id="build-salmon-index" class="level2" data-number="4.3">
-<h2 data-number="4.3" class="anchored" data-anchor-id="build-salmon-index"><span class="header-section-number">4.3</span> Build Salmon index</h2>
+<section id="build-salmon-index" class="level2" data-number="3.3">
+<h2 data-number="3.3" class="anchored" data-anchor-id="build-salmon-index"><span class="header-section-number">3.3</span> Build Salmon index</h2>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Move to the base directory for references</span></span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> <span class="st">"</span><span class="va">$BASE</span><span class="st">"</span></span>
 <span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a></span>
@@ -333,8 +328,8 @@ Github : <a href="https://github.com/alexdobin/STAR">alexdobin/STAR</a></p></li>
 <p><strong>Tip:</strong> Adjust <code>-p</code> to match your CPU cores; <code>-k</code> can be tuned depending on read length and species.</p>
 <hr>
 </section>
-<section id="build-star-index" class="level2" data-number="4.4">
-<h2 data-number="4.4" class="anchored" data-anchor-id="build-star-index"><span class="header-section-number">4.4</span> 2) Build STAR index</h2>
+<section id="build-star-index" class="level2" data-number="3.4">
+<h2 data-number="3.4" class="anchored" data-anchor-id="build-star-index"><span class="header-section-number">3.4</span> 2) Build STAR index</h2>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Move to the base directory for references</span></span>
 <span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> <span class="st">"</span><span class="va">$BASE</span><span class="st">"</span></span>
 <span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a></span>
@@ -363,8 +358,8 @@ Github : <a href="https://github.com/alexdobin/STAR">alexdobin/STAR</a></p></li>
 <span id="cb4-26"><a href="#cb4-26" aria-hidden="true" tabindex="-1"></a>     <span class="at">--sjdbOverhang</span> 100</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <hr>
 </section>
-<section id="notes" class="level2" data-number="4.5">
-<h2 data-number="4.5" class="anchored" data-anchor-id="notes"><span class="header-section-number">4.5</span> Notes</h2>
+<section id="notes" class="level2" data-number="3.5">
+<h2 data-number="3.5" class="anchored" data-anchor-id="notes"><span class="header-section-number">3.5</span> Notes</h2>
 <ul>
 <li><strong>Release/assembly:</strong> This guide uses <strong>GENCODE v44</strong> (GRCh38). If you need a different release or assembly (e.g., T2T-CHM13), update the URLs and filenames accordingly.</li>
 <li><strong>Threads:</strong> Increase <code>--runThreadN</code>/<code>-p</code> to speed up indexing if you have more cores.</li>
@@ -373,8 +368,8 @@ Github : <a href="https://github.com/alexdobin/STAR">alexdobin/STAR</a></p></li>
 </ul>
 <hr>
 </section>
-<section id="references-acknowledgments" class="level2" data-number="4.6">
-<h2 data-number="4.6" class="anchored" data-anchor-id="references-acknowledgments"><span class="header-section-number">4.6</span> References &amp; Acknowledgments</h2>
+<section id="references-acknowledgments" class="level2" data-number="3.6">
+<h2 data-number="3.6" class="anchored" data-anchor-id="references-acknowledgments"><span class="header-section-number">3.6</span> References &amp; Acknowledgments</h2>
 <p>We gratefully acknowledge the developers and maintainers of <strong>Salmon</strong> and <strong>STAR</strong>. If you use these tools, please cite:</p>
 <ul>
 <li><p>Patro R, Duggal G, Love MI, Irizarry RA, Kingsford C. Salmon provides fast and bias-aware quantification of transcript expression. Nat Methods. 2017 Apr;14(4):417-419. doi: 10.1038/nmeth.4197. Epub 2017 Mar 6. PMID: 28263959; PMCID: PMC5600148.</p></li>
@@ -382,7 +377,6 @@ Github : <a href="https://github.com/alexdobin/STAR">alexdobin/STAR</a></p></li>
 </ul>
 
 
-</section>
 </section>
 
 </main> <!-- /main -->
