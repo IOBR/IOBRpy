@@ -4,7 +4,7 @@ layout: default
 nav_order: 2
 ---
 
-# Installation
+# **Installation**
 
 ```bash
 # Creating a virtual environment is recommended
