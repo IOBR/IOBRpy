@@ -6,7 +6,7 @@ has_children: true
 permalink: /example/
 ---
 
-# Example
+# **Example**
 
 We provide three examples:
 
