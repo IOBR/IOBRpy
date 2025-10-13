@@ -202,18 +202,19 @@ ul.task-list li input[type="checkbox"] {
    
   <ul>
   <li><a href="#runall-from-fastq-to-tme" id="toc-runall-from-fastq-to-tme" class="nav-link active" data-scroll-target="#runall-from-fastq-to-tme"><span class="header-section-number">6.1</span> <code>runall</code> — From FASTQ to TME</a></li>
-  <li><a href="#from-fastq-through-fastq-quality-control-and-salmonstar-to-tpm" id="toc-from-fastq-through-fastq-quality-control-and-salmonstar-to-tpm" class="nav-link" data-scroll-target="#from-fastq-through-fastq-quality-control-and-salmonstar-to-tpm"><span class="header-section-number">6.2</span> From FASTQ through FASTQ Quality Control and Salmon/STAR to TPM</a>
+  <li><a href="#all-in-one-tme-profiling---tme_profile" id="toc-all-in-one-tme-profiling---tme_profile" class="nav-link" data-scroll-target="#all-in-one-tme-profiling---tme_profile"><span class="header-section-number">6.2</span> All-in-one TME profiling - <code>tme_profile</code></a></li>
+  <li><a href="#from-fastq-through-fastq-quality-control-and-salmonstar-to-tpm" id="toc-from-fastq-through-fastq-quality-control-and-salmonstar-to-tpm" class="nav-link" data-scroll-target="#from-fastq-through-fastq-quality-control-and-salmonstar-to-tpm"><span class="header-section-number">6.3</span> From FASTQ through FASTQ Quality Control and Salmon/STAR to TPM</a>
   <ul class="collapse">
-  <li><a href="#salmon-mode" id="toc-salmon-mode" class="nav-link" data-scroll-target="#salmon-mode"><span class="header-section-number">6.2.1</span> Salmon mode</a></li>
-  <li><a href="#star-mode" id="toc-star-mode" class="nav-link" data-scroll-target="#star-mode"><span class="header-section-number">6.2.2</span> STAR mode</a></li>
+  <li><a href="#salmon-mode" id="toc-salmon-mode" class="nav-link" data-scroll-target="#salmon-mode"><span class="header-section-number">6.3.1</span> Salmon mode</a></li>
+  <li><a href="#star-mode" id="toc-star-mode" class="nav-link" data-scroll-target="#star-mode"><span class="header-section-number">6.3.2</span> STAR mode</a></li>
   </ul></li>
-  <li><a href="#optional-mouse-to-human-symbol-mapping" id="toc-optional-mouse-to-human-symbol-mapping" class="nav-link" data-scroll-target="#optional-mouse-to-human-symbol-mapping"><span class="header-section-number">6.3</span> (Optional) Mouse to Human symbol mapping</a></li>
-  <li><a href="#optional-annotate-deduplicate" id="toc-optional-annotate-deduplicate" class="nav-link" data-scroll-target="#optional-annotate-deduplicate"><span class="header-section-number">6.4</span> (Optional) Annotate / de‑duplicate</a></li>
-  <li><a href="#optional-log2-transform" id="toc-optional-log2-transform" class="nav-link" data-scroll-target="#optional-log2-transform"><span class="header-section-number">6.5</span> (Optional) Log2 transform</a></li>
-  <li><a href="#signature-scoring" id="toc-signature-scoring" class="nav-link" data-scroll-target="#signature-scoring"><span class="header-section-number">6.6</span> Signature scoring</a></li>
-  <li><a href="#deconvolution-scoring" id="toc-deconvolution-scoring" class="nav-link" data-scroll-target="#deconvolution-scoring"><span class="header-section-number">6.7</span> Deconvolution / scoring</a></li>
-  <li><a href="#clustering-decomposition" id="toc-clustering-decomposition" class="nav-link" data-scroll-target="#clustering-decomposition"><span class="header-section-number">6.8</span> Clustering / decomposition</a></li>
-  <li><a href="#ligandreceptor" id="toc-ligandreceptor" class="nav-link" data-scroll-target="#ligandreceptor"><span class="header-section-number">6.9</span> Ligand–receptor</a></li>
+  <li><a href="#optional-mouse-to-human-symbol-mapping" id="toc-optional-mouse-to-human-symbol-mapping" class="nav-link" data-scroll-target="#optional-mouse-to-human-symbol-mapping"><span class="header-section-number">6.4</span> (Optional) Mouse to Human symbol mapping</a></li>
+  <li><a href="#optional-annotate-deduplicate" id="toc-optional-annotate-deduplicate" class="nav-link" data-scroll-target="#optional-annotate-deduplicate"><span class="header-section-number">6.5</span> (Optional) Annotate / de‑duplicate</a></li>
+  <li><a href="#optional-log2-transform" id="toc-optional-log2-transform" class="nav-link" data-scroll-target="#optional-log2-transform"><span class="header-section-number">6.6</span> (Optional) Log2 transform</a></li>
+  <li><a href="#signature-scoring" id="toc-signature-scoring" class="nav-link" data-scroll-target="#signature-scoring"><span class="header-section-number">6.7</span> Signature scoring</a></li>
+  <li><a href="#deconvolution-scoring" id="toc-deconvolution-scoring" class="nav-link" data-scroll-target="#deconvolution-scoring"><span class="header-section-number">6.8</span> Deconvolution / scoring</a></li>
+  <li><a href="#clustering-decomposition" id="toc-clustering-decomposition" class="nav-link" data-scroll-target="#clustering-decomposition"><span class="header-section-number">6.9</span> Clustering / decomposition</a></li>
+  <li><a href="#ligandreceptor" id="toc-ligandreceptor" class="nav-link" data-scroll-target="#ligandreceptor"><span class="header-section-number">6.10</span> Ligand–receptor</a></li>
   </ul>
 <div class="toc-actions"><ul><li><a href="https://github.com/IOBR/IOBRpy/edit/main/site/commands-and-options.md" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li><li><a href="https://github.com/IOBR/IOBRpy/issues/new" class="toc-action"><i class="bi empty"></i>Report an issue</a></li></ul></div></nav>
     </div>
@@ -253,9 +254,22 @@ ul.task-list li input[type="checkbox"] {
 <li><code>--dry_run</code>: print planned commands without executing</li>
 </ul></li>
 </ul>
+<hr>
 </section>
-<section id="from-fastq-through-fastq-quality-control-and-salmonstar-to-tpm" class="level2" data-number="6.2">
-<h2 data-number="6.2" class="anchored" data-anchor-id="from-fastq-through-fastq-quality-control-and-salmonstar-to-tpm"><span class="header-section-number">6.2</span> From FASTQ through FASTQ Quality Control and Salmon/STAR to TPM</h2>
+<section id="all-in-one-tme-profiling---tme_profile" class="level2" data-number="6.2">
+<h2 data-number="6.2" class="anchored" data-anchor-id="all-in-one-tme-profiling---tme_profile"><span class="header-section-number">6.2</span> All-in-one TME profiling - <code>tme_profile</code></h2>
+<ul>
+<li><strong>tme_profile</strong>
+<ul>
+<li><code>-i/--input &lt;CSV|TSV[.gz]&gt;</code> (required): TPM matrix (genes × samples)</li>
+<li><code>-o/--output &lt;DIR&gt;</code> (required): root output directory</li>
+<li><code>--threads &lt;int&gt;</code> (default: <code>1</code>): threads for scoring/deconvolution</li>
+</ul></li>
+</ul>
+<hr>
+</section>
+<section id="from-fastq-through-fastq-quality-control-and-salmonstar-to-tpm" class="level2" data-number="6.3">
+<h2 data-number="6.3" class="anchored" data-anchor-id="from-fastq-through-fastq-quality-control-and-salmonstar-to-tpm"><span class="header-section-number">6.3</span> From FASTQ through FASTQ Quality Control and Salmon/STAR to TPM</h2>
 <ul>
 <li><strong>fastq_qc</strong>
 <ul>
@@ -270,8 +284,8 @@ ul.task-list li input[type="checkbox"] {
 <em>(Implementation: automatic MultiQC invocation and output path)</em></li>
 </ul></li>
 </ul>
-<section id="salmon-mode" class="level3" data-number="6.2.1">
-<h3 data-number="6.2.1" class="anchored" data-anchor-id="salmon-mode"><span class="header-section-number">6.2.1</span> Salmon mode</h3>
+<section id="salmon-mode" class="level3" data-number="6.3.1">
+<h3 data-number="6.3.1" class="anchored" data-anchor-id="salmon-mode"><span class="header-section-number">6.3.1</span> Salmon mode</h3>
 <ul>
 <li><strong>batch_salmon</strong>
 <ul>
@@ -300,8 +314,8 @@ ul.task-list li input[type="checkbox"] {
 </ul></li>
 </ul>
 </section>
-<section id="star-mode" class="level3" data-number="6.2.2">
-<h3 data-number="6.2.2" class="anchored" data-anchor-id="star-mode"><span class="header-section-number">6.2.2</span> STAR mode</h3>
+<section id="star-mode" class="level3" data-number="6.3.2">
+<h3 data-number="6.3.2" class="anchored" data-anchor-id="star-mode"><span class="header-section-number">6.3.2</span> STAR mode</h3>
 <ul>
 <li><strong>batch_star_count</strong>
 <ul>
@@ -333,10 +347,11 @@ ul.task-list li input[type="checkbox"] {
 <li><code>--remove_version</code>: strip version suffix from gene IDs</li>
 </ul></li>
 </ul>
+<hr>
 </section>
 </section>
-<section id="optional-mouse-to-human-symbol-mapping" class="level2" data-number="6.3">
-<h2 data-number="6.3" class="anchored" data-anchor-id="optional-mouse-to-human-symbol-mapping"><span class="header-section-number">6.3</span> (Optional) Mouse to Human symbol mapping</h2>
+<section id="optional-mouse-to-human-symbol-mapping" class="level2" data-number="6.4">
+<h2 data-number="6.4" class="anchored" data-anchor-id="optional-mouse-to-human-symbol-mapping"><span class="header-section-number">6.4</span> (Optional) Mouse to Human symbol mapping</h2>
 <ul>
 <li><strong>mouse2human_eset</strong>
 <ul>
@@ -349,9 +364,10 @@ ul.task-list li input[type="checkbox"] {
 <li><code>--verbose</code>: print shapes and basic run info</li>
 </ul></li>
 </ul>
+<hr>
 </section>
-<section id="optional-annotate-deduplicate" class="level2" data-number="6.4">
-<h2 data-number="6.4" class="anchored" data-anchor-id="optional-annotate-deduplicate"><span class="header-section-number">6.4</span> (Optional) Annotate / de‑duplicate</h2>
+<section id="optional-annotate-deduplicate" class="level2" data-number="6.5">
+<h2 data-number="6.5" class="anchored" data-anchor-id="optional-annotate-deduplicate"><span class="header-section-number">6.5</span> (Optional) Annotate / de‑duplicate</h2>
 <ul>
 <li><strong>anno_eset</strong>
 <ul>
@@ -366,9 +382,10 @@ ul.task-list li input[type="checkbox"] {
 <li><code>--remove_version</code>: strip version suffix from gene IDs</li>
 </ul></li>
 </ul>
+<hr>
 </section>
-<section id="optional-log2-transform" class="level2" data-number="6.5">
-<h2 data-number="6.5" class="anchored" data-anchor-id="optional-log2-transform"><span class="header-section-number">6.5</span> (Optional) Log2 transform</h2>
+<section id="optional-log2-transform" class="level2" data-number="6.6">
+<h2 data-number="6.6" class="anchored" data-anchor-id="optional-log2-transform"><span class="header-section-number">6.6</span> (Optional) Log2 transform</h2>
 <ul>
 <li><strong>log2_eset</strong>
 <ul>
@@ -376,9 +393,10 @@ ul.task-list li input[type="checkbox"] {
 <li><code>-o/--output &lt;CSV/TSV/TXT&gt;</code> (required)</li>
 </ul></li>
 </ul>
+<hr>
 </section>
-<section id="signature-scoring" class="level2" data-number="6.6">
-<h2 data-number="6.6" class="anchored" data-anchor-id="signature-scoring"><span class="header-section-number">6.6</span> Signature scoring</h2>
+<section id="signature-scoring" class="level2" data-number="6.7">
+<h2 data-number="6.7" class="anchored" data-anchor-id="signature-scoring"><span class="header-section-number">6.7</span> Signature scoring</h2>
 <ul>
 <li><strong>calculate_sig_score</strong>
 <ul>
@@ -391,9 +409,10 @@ Groups: <code>go_bp</code>, <code>go_cc</code>, <code>go_mf</code>, <code>signat
 <li><code>--parallel_size &lt;int&gt;</code> (default: <code>1</code>; threads for scoring (<code>PCA</code>/<code>zscore</code>/<code>ssGSEA</code>))</li>
 </ul></li>
 </ul>
+<hr>
 </section>
-<section id="deconvolution-scoring" class="level2" data-number="6.7">
-<h2 data-number="6.7" class="anchored" data-anchor-id="deconvolution-scoring"><span class="header-section-number">6.7</span> Deconvolution / scoring</h2>
+<section id="deconvolution-scoring" class="level2" data-number="6.8">
+<h2 data-number="6.8" class="anchored" data-anchor-id="deconvolution-scoring"><span class="header-section-number">6.8</span> Deconvolution / scoring</h2>
 <ul>
 <li><strong>cibersort</strong>
 <ul>
@@ -462,9 +481,10 @@ Groups: <code>go_bp</code>, <code>go_cc</code>, <code>go_mf</code>, <code>signat
 <li><code>-r/--result_dir &lt;dir&gt;</code>: optional directory to save result plots/logs</li>
 </ul></li>
 </ul>
+<hr>
 </section>
-<section id="clustering-decomposition" class="level2" data-number="6.8">
-<h2 data-number="6.8" class="anchored" data-anchor-id="clustering-decomposition"><span class="header-section-number">6.8</span> Clustering / decomposition</h2>
+<section id="clustering-decomposition" class="level2" data-number="6.9">
+<h2 data-number="6.9" class="anchored" data-anchor-id="clustering-decomposition"><span class="header-section-number">6.9</span> Clustering / decomposition</h2>
 <ul>
 <li><strong>tme_cluster</strong>
 <ul>
@@ -501,9 +521,10 @@ Groups: <code>go_bp</code>, <code>go_cc</code>, <code>go_mf</code>, <code>signat
 <li><code>--skip_k_2</code>: skip evaluating <code>k = 2</code> when searching for the best <code>k</code>.</li>
 </ul></li>
 </ul>
+<hr>
 </section>
-<section id="ligandreceptor" class="level2" data-number="6.9">
-<h2 data-number="6.9" class="anchored" data-anchor-id="ligandreceptor"><span class="header-section-number">6.9</span> Ligand–receptor</h2>
+<section id="ligandreceptor" class="level2" data-number="6.10">
+<h2 data-number="6.10" class="anchored" data-anchor-id="ligandreceptor"><span class="header-section-number">6.10</span> Ligand–receptor</h2>
 <ul>
 <li><strong>LR_cal</strong>
 <ul>
