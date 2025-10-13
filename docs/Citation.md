@@ -24,6 +24,8 @@ Please cite the following papers appropriately for TME deconvolution algorithm i
 
 **Deside**: Xiong X, Liu Y, Pu D, Yang Z, Bi Z, Tian L, Li X. DeSide: A unified deep learning approach for cellular deconvolution of tumor microenvironment. Proc Natl Acad Sci U S A. 2024 Nov 12;121(46):e2407096121. doi: 10.1073/pnas.2407096121. Epub 2024 Nov 8. PMID: 39514318; PMCID: PMC11573681.
 
+---
+
 ## TME Signatures
 
 For signature score estimation, please cite corresponding literature below:
@@ -33,3 +35,15 @@ For signature score estimation, please cite corresponding literature below:
 **gsva**: Hänzelmann, S., Castelo, R. and Guinney, J. (2013). GSVA: Gene set variation analysis for microarray and RNA-Seq data. BMC Bioinformatics, 14(1):7.
 
 **zscore**: Lee, E. et al (2008). Inferring pathway activity toward precise disease classification. PLoS Comp Biol, 4(11):e1000217.
+
+---
+
+## RNA-seq preprocessing & quantification tools
+
+**fastp**: Chen, S., Zhou, Y., Chen, Y., & Gu, J. (2018). fastp: an ultra-fast all-in-one FASTQ preprocessor. *Bioinformatics*, 34(17), i884–i890. https://doi.org/10.1093/bioinformatics/bty560
+
+**MultiQC**: Ewels, P., Magnusson, M., Lundin, S., & Käller, M. (2016). MultiQC: summarize analysis results for multiple tools and samples in a single report. *Bioinformatics*, 32(19), 3047–3048. https://doi.org/10.1093/bioinformatics/btw354
+
+**Salmon**: Patro, R., Duggal, G., Love, M. I., Irizarry, R. A., & Kingsford, C. (2017). Salmon provides fast and bias-aware quantification of transcript expression. *Nature Methods*, 14(4), 417–419. https://doi.org/10.1038/nmeth.4197
+
+**STAR**: Dobin, A., Davis, C. A., Schlesinger, F., Drenkow, J., Zaleski, C., Jha, S., … Gingeras, T. R. (2013). STAR: ultrafast universal RNA-seq aligner. *Bioinformatics*, 29(1), 15–21. https://doi.org/10.1093/bioinformatics/bts635
