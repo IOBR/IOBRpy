@@ -5,7 +5,7 @@ parent: Example
 nav_order: 2
 ---
 
-# TPM conversion
+# **TPM conversion**
 
 This page shows four common entry points to a TPM matrix and the final `log2(x+1)` transform you should apply after each path.
 
