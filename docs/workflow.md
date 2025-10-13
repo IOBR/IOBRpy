@@ -4,7 +4,7 @@ layout: default
 nav_order: 5
 ---
 
-# Typical end‑to‑end workflow — output file structure examples
+# **Typical end‑to‑end workflow — output file structure examples**
 
 ## 1) FASTQ Quality Control
 ```bash
