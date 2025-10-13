@@ -241,10 +241,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#optional-mouse-to-human-symbol-mapping" id="toc-optional-mouse-to-human-symbol-mapping" class="nav-link" data-scroll-target="#optional-mouse-to-human-symbol-mapping"><span class="header-section-number">5.3</span> (Optional) Mouse to Human symbol mapping</a></li>
   <li><a href="#optional-annotate-deduplicate" id="toc-optional-annotate-deduplicate" class="nav-link" data-scroll-target="#optional-annotate-deduplicate"><span class="header-section-number">5.4</span> (Optional) Annotate / de‑duplicate</a></li>
   <li><a href="#optional-log2-transform" id="toc-optional-log2-transform" class="nav-link" data-scroll-target="#optional-log2-transform"><span class="header-section-number">5.5</span> (Optional) Log2 transform</a></li>
-  <li><a href="#signature-scoring" id="toc-signature-scoring" class="nav-link" data-scroll-target="#signature-scoring"><span class="header-section-number">5.6</span> Signature scoring</a></li>
-  <li><a href="#immune-deconvolution-choose-one-or-many" id="toc-immune-deconvolution-choose-one-or-many" class="nav-link" data-scroll-target="#immune-deconvolution-choose-one-or-many"><span class="header-section-number">5.7</span> Immune deconvolution (choose one or many)</a></li>
-  <li><a href="#tme-clustering-nmf-clustering" id="toc-tme-clustering-nmf-clustering" class="nav-link" data-scroll-target="#tme-clustering-nmf-clustering"><span class="header-section-number">5.8</span> TME clustering / NMF clustering</a></li>
-  <li><a href="#ligandreceptor-scoring" id="toc-ligandreceptor-scoring" class="nav-link" data-scroll-target="#ligandreceptor-scoring"><span class="header-section-number">5.9</span> Ligand–receptor scoring</a></li>
+  <li><a href="#all-in-one-tme-profiling---tme_profile" id="toc-all-in-one-tme-profiling---tme_profile" class="nav-link" data-scroll-target="#all-in-one-tme-profiling---tme_profile"><span class="header-section-number">5.6</span> All-in-one TME profiling - <code>tme_profile</code></a>
+  <ul class="collapse">
+  <li><a href="#minimal-usage-for-tme_profile" id="toc-minimal-usage-for-tme_profile" class="nav-link" data-scroll-target="#minimal-usage-for-tme_profile"><span class="header-section-number">5.6.1</span> Minimal usage for <code>tme_profile</code></a></li>
+  <li><a href="#signature-scoring" id="toc-signature-scoring" class="nav-link" data-scroll-target="#signature-scoring"><span class="header-section-number">5.6.2</span> Signature scoring</a></li>
+  <li><a href="#immune-deconvolution-choose-one-or-many" id="toc-immune-deconvolution-choose-one-or-many" class="nav-link" data-scroll-target="#immune-deconvolution-choose-one-or-many"><span class="header-section-number">5.6.3</span> Immune deconvolution (choose one or many)</a></li>
+  <li><a href="#ligandreceptor-scoring" id="toc-ligandreceptor-scoring" class="nav-link" data-scroll-target="#ligandreceptor-scoring"><span class="header-section-number">5.6.4</span> Ligand–receptor scoring</a></li>
+  </ul></li>
+  <li><a href="#tme-clustering-nmf-clustering" id="toc-tme-clustering-nmf-clustering" class="nav-link" data-scroll-target="#tme-clustering-nmf-clustering"><span class="header-section-number">5.7</span> TME clustering / NMF clustering</a></li>
   </ul>
 <div class="toc-actions"><ul><li><a href="https://github.com/IOBR/IOBRpy/edit/main/site/workflow.md" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li><li><a href="https://github.com/IOBR/IOBRpy/issues/new" class="toc-action"><i class="bi empty"></i>Report an issue</a></li></ul></div></nav>
     </div>
@@ -284,6 +288,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   &lt;sample&gt;_fastp.json
   &lt;sample&gt;.task.complete
   multiqc_report/multiqc_fastp_report.html</code></pre>
+<hr>
 </section>
 <section id="prepare-tpm" class="level2" data-number="5.2">
 <h2 data-number="5.2" class="anchored" data-anchor-id="prepare-tpm"><span class="header-section-number">5.2</span> Prepare TPM</h2>
@@ -357,6 +362,7 @@ A1BG-AS1    0.149      0.348      0.755      0.000      0.314      0.400</code><
 A1BG       3.876                         2.576                         2.874                         2.533                         2.034                         2.828
 A1BG-AS1   5.512                         4.440                         7.725                         4.610                         6.292                         5.336
 </code></pre>
+<hr>
 </section>
 <section id="optional-mouse-to-human-symbol-mapping" class="level2" data-number="5.3">
 <h2 data-number="5.3" class="anchored" data-anchor-id="optional-mouse-to-human-symbol-mapping"><span class="header-section-number">5.3</span> (Optional) Mouse to Human symbol mapping</h2>
@@ -379,6 +385,7 @@ CD52        0.988616   0.784523   0.303614   0.886433   0.608639   0.351713
 CAV2        0.063843   0.993835   0.891718   0.702293   0.703912   0.248690
 HOXB6       0.716829   0.555838   0.638682   0.971783   0.868208   0.802464
 </code></pre>
+<hr>
 </section>
 <section id="optional-annotate-deduplicate" class="level2" data-number="5.4">
 <h2 data-number="5.4" class="anchored" data-anchor-id="optional-annotate-deduplicate"><span class="header-section-number">5.4</span> (Optional) Annotate / de‑duplicate</h2>
@@ -405,6 +412,7 @@ EEF1A1      4.2937622    4.291038     4.2621994    4.2718415    4.1992331    4.2
 HUWE1       4.2255821    4.2111235    4.1993775    4.2192063    4.2214823    4.2046394
 LOC1019288  4.2193027    4.2196698    4.2132521    4.1819267    4.2345738    4.2104611
 </code></pre>
+<hr>
 </section>
 <section id="optional-log2-transform" class="level2" data-number="5.5">
 <h2 data-number="5.5" class="anchored" data-anchor-id="optional-log2-transform"><span class="header-section-number">5.5</span> (Optional) Log2 transform</h2>
@@ -416,18 +424,49 @@ A1BG      2.229246496                      0.636390662                      2.14
 A1BG-AS1  4.206586844                      3.591817651                      0.614426747                      6.842377234
 A1CF      0.128261135                      0                                0.414914625                      0.205743238
 A2M       1.999453226                      0.679106252                      2.816410018                      2.898826563</code></pre>
+<hr>
 </section>
-<section id="signature-scoring" class="level2" data-number="5.6">
-<h2 data-number="5.6" class="anchored" data-anchor-id="signature-scoring"><span class="header-section-number">5.6</span> Signature scoring</h2>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb23"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> calculate_sig_score <span class="dt">\</span></span>
-<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">-i</span> TPM_anno.csv <span class="dt">\</span></span>
-<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> sig_scores.csv <span class="dt">\</span></span>
-<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">--signature</span> signature_collection <span class="dt">\</span></span>
-<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">--method</span> pca <span class="dt">\</span></span>
-<span id="cb23-6"><a href="#cb23-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">--mini_gene_count</span> 2 <span class="dt">\</span></span>
-<span id="cb23-7"><a href="#cb23-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">--parallel_size</span> 1 <span class="dt">\</span></span>
-<span id="cb23-8"><a href="#cb23-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">--adjust_eset</span></span>
-<span id="cb23-9"><a href="#cb23-9" aria-hidden="true" tabindex="-1"></a><span class="co"># Accepts space‑separated or comma‑separated groups; use "all" for a full merge.</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<section id="all-in-one-tme-profiling---tme_profile" class="level2" data-number="5.6">
+<h2 data-number="5.6" class="anchored" data-anchor-id="all-in-one-tme-profiling---tme_profile"><span class="header-section-number">5.6</span> All-in-one TME profiling - <code>tme_profile</code></h2>
+<p><code>tme_profile</code> runs the whole TME profiling stack <strong>from a TPM matrix</strong> in one command.<br>
+It wraps and orchestrates: - <strong>Signature scoring</strong> → <code>calculate_sig_score</code> - <strong>Immune deconvolution (six methods)</strong> → <code>cibersort</code>, <code>IPS</code>, <code>estimate</code>, <code>mcpcounter</code>, <code>quantiseq</code>, <code>epic</code> - <strong>Ligand–receptor scoring</strong> → <code>LR_cal</code> - It also <strong>merges</strong> the deconvolution outputs into a single table</p>
+<blockquote class="blockquote">
+<p><strong>Inputs</strong>: genes × samples <strong>TPM</strong> matrix <strong>Outputs</strong>: standardized subfolders for signatures, TME deconvolution, and Ligand–receptor scoring<br>
+<strong>Heads-up:</strong> <code>tme_profile</code> does <strong>not</strong> include <code>deside</code> and clustering.</p>
+</blockquote>
+<section id="minimal-usage-for-tme_profile" class="level3" data-number="5.6.1">
+<h3 data-number="5.6.1" class="anchored" data-anchor-id="minimal-usage-for-tme_profile"><span class="header-section-number">5.6.1</span> Minimal usage for <code>tme_profile</code></h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb23"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> tme_profile <span class="dt">\</span></span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">-i</span> TPM_matrix.csv <span class="dt">\</span></span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> /path/to/outdir <span class="dt">\</span></span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">--threads</span> 1</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<pre><code># Expected layout
+
+/path/to/outdir
+|-- 01-signatures
+|   `-- calculate_sig_score.csv
+|-- 02-tme
+|   |-- cibersort_results.csv
+|   |-- epic_results.csv
+|   |-- quantiseq_results.csv
+|   |-- IPS_results.csv
+|   |-- estimate_results.csv
+|   |-- mcpcounter_results.csv
+|   `-- deconvo_merged.csv
+`-- 03-LR_cal
+    `-- lr_cal.csv</code></pre>
+</section>
+<section id="signature-scoring" class="level3" data-number="5.6.2">
+<h3 data-number="5.6.2" class="anchored" data-anchor-id="signature-scoring"><span class="header-section-number">5.6.2</span> Signature scoring</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb25"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> calculate_sig_score <span class="dt">\</span></span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">-i</span> TPM_anno.csv <span class="dt">\</span></span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> sig_scores.csv <span class="dt">\</span></span>
+<span id="cb25-4"><a href="#cb25-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">--signature</span> signature_collection <span class="dt">\</span></span>
+<span id="cb25-5"><a href="#cb25-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">--method</span> pca <span class="dt">\</span></span>
+<span id="cb25-6"><a href="#cb25-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">--mini_gene_count</span> 2 <span class="dt">\</span></span>
+<span id="cb25-7"><a href="#cb25-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">--parallel_size</span> 1 <span class="dt">\</span></span>
+<span id="cb25-8"><a href="#cb25-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">--adjust_eset</span></span>
+<span id="cb25-9"><a href="#cb25-9" aria-hidden="true" tabindex="-1"></a><span class="co"># Accepts space‑separated or comma‑separated groups; use "all" for a full merge.</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <pre><code>ID          CD_8_T_effector_PCA   DDR_PCA    APM_PCA    Immune_Checkpoint_PCA   CellCycle_Reg_PCA   Pan_F_TBRs_PCA
 GSM1523727  -3.003007             0.112244   1.046749   -3.287490               1.226469            -3.836552
 GSM1523728  0.631973              1.138303   1.999972   0.405965                1.431343            0.164805
@@ -436,92 +475,99 @@ GSM1523744  -0.834788             4.558424   -0.274724  -0.873015               
 GSM1523745  -1.358852             4.754705   -2.215926  -1.086041               1.342590            -1.054318
 </code></pre>
 </section>
-<section id="immune-deconvolution-choose-one-or-many" class="level2" data-number="5.7">
-<h2 data-number="5.7" class="anchored" data-anchor-id="immune-deconvolution-choose-one-or-many"><span class="header-section-number">5.7</span> Immune deconvolution (choose one or many)</h2>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb25"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="co"># CIBERSORT</span></span>
-<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> cibersort <span class="dt">\</span></span>
-<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-i</span> TPM_anno.csv <span class="dt">\</span></span>
-<span id="cb25-4"><a href="#cb25-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> cibersort.csv <span class="dt">\</span></span>
-<span id="cb25-5"><a href="#cb25-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">--perm</span> 100 <span class="dt">\</span></span>
-<span id="cb25-6"><a href="#cb25-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">--QN</span> True <span class="dt">\</span></span>
-<span id="cb25-7"><a href="#cb25-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">--absolute</span> False <span class="dt">\</span></span>
-<span id="cb25-8"><a href="#cb25-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">--abs_method</span> sig.score <span class="dt">\</span></span>
-<span id="cb25-9"><a href="#cb25-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">--threads</span> 1</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<section id="immune-deconvolution-choose-one-or-many" class="level3" data-number="5.6.3">
+<h3 data-number="5.6.3" class="anchored" data-anchor-id="immune-deconvolution-choose-one-or-many"><span class="header-section-number">5.6.3</span> Immune deconvolution (choose one or many)</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb27"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="co"># CIBERSORT</span></span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> cibersort <span class="dt">\</span></span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-i</span> TPM_anno.csv <span class="dt">\</span></span>
+<span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> cibersort.csv <span class="dt">\</span></span>
+<span id="cb27-5"><a href="#cb27-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">--perm</span> 100 <span class="dt">\</span></span>
+<span id="cb27-6"><a href="#cb27-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">--QN</span> True <span class="dt">\</span></span>
+<span id="cb27-7"><a href="#cb27-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">--threads</span> 1</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb28"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="co"># CIBERSORT absolute mode</span></span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> cibersort <span class="dt">\</span></span>
+<span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-i</span> TPM_anno.csv <span class="dt">\</span></span>
+<span id="cb28-4"><a href="#cb28-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> cibersort.csv <span class="dt">\</span></span>
+<span id="cb28-5"><a href="#cb28-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">--perm</span> 100 <span class="dt">\</span></span>
+<span id="cb28-6"><a href="#cb28-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">--QN</span> True <span class="dt">\</span></span>
+<span id="cb28-7"><a href="#cb28-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">--absolute</span> True <span class="dt">\</span></span>
+<span id="cb28-8"><a href="#cb28-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">--abs_method</span> sig.score <span class="dt">\</span></span>
+<span id="cb28-9"><a href="#cb28-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">--threads</span> 1</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <pre><code>ID          B_cells_naive_CIBERSORT  B_cells_memory_CIBERSORT  Plasma_cells_CIBERSORT  T_cells_CD8_CIBERSORT  T_cells_CD4_naive_CIBERSORT  T_cells_CD4_memory_resting_CIBERSORT
 GSM1523727  0.025261644              0.00067545                0.174139691             0.060873405             0                           0.143873862
 GSM1523728  0.007497053              0.022985466               0.079320853             0.052005437             0                           0.137097071
 GSM1523729  0.005356156              0.010721794               0.114171733             0                       0                           0.191541779
 GSM1523744  0                        0.064645073               0.089539616             0.024437887             0                           0.147821928
 GSM1523745  0                        0.014678117               0.121834835             0                       0                           0.176046775</code></pre>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb27"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="co"># quanTIseq (method: lsei / robust norms)</span></span>
-<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> quantiseq <span class="dt">\</span></span>
-<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-i</span> TPM_anno.csv <span class="dt">\</span></span>
-<span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> quantiseq.csv <span class="dt">\</span></span>
-<span id="cb27-5"><a href="#cb27-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">--signame</span> TIL10 <span class="dt">\</span></span>
-<span id="cb27-6"><a href="#cb27-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">--method</span> lsei <span class="dt">\</span></span>
-<span id="cb27-7"><a href="#cb27-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">--tumor</span> <span class="dt">\</span></span>
-<span id="cb27-8"><a href="#cb27-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">--arrays</span> <span class="dt">\</span></span>
-<span id="cb27-9"><a href="#cb27-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">--scale_mrna</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb30"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a><span class="co"># quanTIseq (method: lsei / robust norms)</span></span>
+<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> quantiseq <span class="dt">\</span></span>
+<span id="cb30-3"><a href="#cb30-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-i</span> TPM_anno.csv <span class="dt">\</span></span>
+<span id="cb30-4"><a href="#cb30-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> quantiseq.csv <span class="dt">\</span></span>
+<span id="cb30-5"><a href="#cb30-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">--signame</span> TIL10 <span class="dt">\</span></span>
+<span id="cb30-6"><a href="#cb30-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">--method</span> lsei <span class="dt">\</span></span>
+<span id="cb30-7"><a href="#cb30-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">--tumor</span> <span class="dt">\</span></span>
+<span id="cb30-8"><a href="#cb30-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">--arrays</span> <span class="dt">\</span></span>
+<span id="cb30-9"><a href="#cb30-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">--scale_mrna</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <pre><code>ID          B_cells_quantiseq   Macrophages_M1_quantiseq   Macrophages_M2_quantiseq   Monocytes_quantiseq   Neutrophils_quantiseq   NK_cells_quantiseq
 GSM1523727  0.098243385         0.050936602                0.059696474                0                      0.208837962            0.057777168
 GSM1523728  0.096665146         0.079422458                0.060696168                0                      0.247916520            0.057952322
 GSM1523729  0.102140568         0.044950190                0.075727597                0                      0.230014524            0.060158368
 GSM1523744  0.095363945         0.072341346                0.058039861                0                      0.213903654            0.059082891
 GSM1523745  0.099119729         0.066757223                0.061254450                0                      0.236191857            0.056277179</code></pre>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb29"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="co"># EPIC</span></span>
-<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> epic <span class="dt">\</span></span>
-<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-i</span> TPM_anno.csv <span class="dt">\</span></span>
-<span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> epic.csv <span class="dt">\</span></span>
-<span id="cb29-5"><a href="#cb29-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">--reference</span> TRef</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb32"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a><span class="co"># EPIC</span></span>
+<span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> epic <span class="dt">\</span></span>
+<span id="cb32-3"><a href="#cb32-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-i</span> TPM_anno.csv <span class="dt">\</span></span>
+<span id="cb32-4"><a href="#cb32-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> epic.csv <span class="dt">\</span></span>
+<span id="cb32-5"><a href="#cb32-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">--reference</span> TRef</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <pre><code>ID          Bcells_EPIC           CAFs_EPIC           CD4_Tcells_EPIC      CD8_Tcells_EPIC      Endothelial_EPIC      Macrophages_EPIC
 GSM1523727  0.029043394           0.008960087         0.145125027          0.075330211          0.087619386           0.005567638
 GSM1523728  0.029268307           0.010942391         0.159158789          0.074554506          0.095359587           0.007104695
 GSM1523729  0.030334561           0.010648890         0.148159994          0.074191268          0.094116333           0.006359346
 GSM1523744  0.027351486           0.010870086         0.144756807          0.070363208          0.085913230           0.006341159
 GSM1523745  0.027688157           0.011024014         0.148947183          0.072791879          0.092757138           0.006766186</code></pre>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb31"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="co"># ESTIMATE</span></span>
-<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> estimate <span class="dt">\</span></span>
-<span id="cb31-3"><a href="#cb31-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-i</span> TPM_anno.csv <span class="dt">\</span></span>
-<span id="cb31-4"><a href="#cb31-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> estimate.csv <span class="dt">\</span></span>
-<span id="cb31-5"><a href="#cb31-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">--platform</span> affymetrix</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb34"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a><span class="co"># ESTIMATE</span></span>
+<span id="cb34-2"><a href="#cb34-2" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> estimate <span class="dt">\</span></span>
+<span id="cb34-3"><a href="#cb34-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-i</span> TPM_anno.csv <span class="dt">\</span></span>
+<span id="cb34-4"><a href="#cb34-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> estimate.csv <span class="dt">\</span></span>
+<span id="cb34-5"><a href="#cb34-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">--platform</span> affymetrix</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <pre><code>ID          StromalSignature_estimate   ImmuneSignature_estimate   ESTIMATEScore_estimate   TumorPurity_estimate
 GSM1523727  -1250.182509                267.9107094                -982.2718                0.895696565
 GSM1523728  197.4176128                 1333.936386                1531.353999              0.675043839
 GSM1523729  -110.7937025                821.7451865                710.951484               0.758787601
 GSM1523744  -118.685488                 662.3002928                543.6148048              0.774555972
 GSM1523745  323.7935623                 1015.007089                1338.800651              0.695624427</code></pre>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb33"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a><span class="co"># MCPcounter</span></span>
-<span id="cb33-2"><a href="#cb33-2" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> mcpcounter <span class="dt">\</span></span>
-<span id="cb33-3"><a href="#cb33-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-i</span> TPM_anno.csv <span class="dt">\</span></span>
-<span id="cb33-4"><a href="#cb33-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> mcpcounter.csv <span class="dt">\</span></span>
-<span id="cb33-5"><a href="#cb33-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">--features</span> HUGO_symbols</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb36"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a><span class="co"># MCPcounter</span></span>
+<span id="cb36-2"><a href="#cb36-2" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> mcpcounter <span class="dt">\</span></span>
+<span id="cb36-3"><a href="#cb36-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-i</span> TPM_anno.csv <span class="dt">\</span></span>
+<span id="cb36-4"><a href="#cb36-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> mcpcounter.csv <span class="dt">\</span></span>
+<span id="cb36-5"><a href="#cb36-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">--features</span> HUGO_symbols</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <pre><code>ID          T_cells_MCPcounter   CD8_T_cells_MCPcounter   Cytotoxic_lymphocytes_MCPcounter   B_lineage_MCPcounter   NK_cells_MCPcounter   Monocytic_lineage_MCPcounter
 GSM1523727  1.4729234            1.1096225                1.3252089                          1.7530587              1.3129832             1.9197157
 GSM1523728  1.5288218            1.0466424                1.5997275                          1.8069543              1.3283454             2.2191597
 GSM1523729  1.4688324            1.0731858                1.3722626                          1.8967154              1.3185674             2.0802533
 GSM1523744  1.4561831            1.0241529                1.440144                           1.7485736              1.3176502             2.2423225
 GSM1523745  1.5078415            1.0987011                1.4883308                          1.7068269              1.3165186             2.27452</code></pre>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb35"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a><span class="co"># IPS</span></span>
-<span id="cb35-2"><a href="#cb35-2" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> IPS <span class="dt">\</span></span>
-<span id="cb35-3"><a href="#cb35-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-i</span> TPM_anno.csv <span class="dt">\</span></span>
-<span id="cb35-4"><a href="#cb35-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> IPS.csv</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb38"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a><span class="co"># IPS</span></span>
+<span id="cb38-2"><a href="#cb38-2" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> IPS <span class="dt">\</span></span>
+<span id="cb38-3"><a href="#cb38-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-i</span> TPM_anno.csv <span class="dt">\</span></span>
+<span id="cb38-4"><a href="#cb38-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> IPS.csv</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <pre><code>ID          MHC_IPS    EC_IPS     SC_IPS     CP_IPS     AZ_IPS     IPS_IPS
 GSM1523727  2.252749   0.403792   -0.19162   0.219981   2.684902   9
 GSM1523728  2.373568   0.608176   -0.578189  -0.234406  2.16915    7
 GSM1523729  2.101158   0.479571   -0.321637  0.099342   2.358434   8
 GSM1523744  2.120172   0.535005   -0.332785  0.013166   2.335558   8
 GSM1523745  1.911082   0.558811   -0.479384  0.087989   2.078497   7</code></pre>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb37"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a><span class="co"># DeSide</span></span>
-<span id="cb37-2"><a href="#cb37-2" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> deside <span class="dt">\</span></span>
-<span id="cb37-3"><a href="#cb37-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">--model_dir</span> path/to/your/DeSide_model <span class="dt">\</span></span>
-<span id="cb37-4"><a href="#cb37-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">-i</span> TPM_anno.csv <span class="dt">\</span></span>
-<span id="cb37-5"><a href="#cb37-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> deside.csv <span class="dt">\</span></span>
-<span id="cb37-6"><a href="#cb37-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">-r</span> path/to/your/plot/folder <span class="dt">\</span></span>
-<span id="cb37-7"><a href="#cb37-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">--exp_type</span> TPM <span class="dt">\</span></span>
-<span id="cb37-8"><a href="#cb37-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">--method_adding_pathway</span> add_to_end <span class="dt">\</span></span>
-<span id="cb37-9"><a href="#cb37-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">--scaling_by_constant</span> <span class="dt">\</span></span>
-<span id="cb37-10"><a href="#cb37-10" aria-hidden="true" tabindex="-1"></a>  <span class="at">--transpose</span> <span class="dt">\</span></span>
-<span id="cb37-11"><a href="#cb37-11" aria-hidden="true" tabindex="-1"></a>  <span class="at">--print_info</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb40"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb40-1"><a href="#cb40-1" aria-hidden="true" tabindex="-1"></a><span class="co"># DeSide</span></span>
+<span id="cb40-2"><a href="#cb40-2" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> deside <span class="dt">\</span></span>
+<span id="cb40-3"><a href="#cb40-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">--model_dir</span> path/to/your/DeSide_model <span class="dt">\</span></span>
+<span id="cb40-4"><a href="#cb40-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">-i</span> TPM_anno.csv <span class="dt">\</span></span>
+<span id="cb40-5"><a href="#cb40-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> deside.csv <span class="dt">\</span></span>
+<span id="cb40-6"><a href="#cb40-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">-r</span> path/to/your/plot/folder <span class="dt">\</span></span>
+<span id="cb40-7"><a href="#cb40-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">--exp_type</span> TPM <span class="dt">\</span></span>
+<span id="cb40-8"><a href="#cb40-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">--method_adding_pathway</span> add_to_end <span class="dt">\</span></span>
+<span id="cb40-9"><a href="#cb40-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">--scaling_by_constant</span> <span class="dt">\</span></span>
+<span id="cb40-10"><a href="#cb40-10" aria-hidden="true" tabindex="-1"></a>  <span class="at">--transpose</span> <span class="dt">\</span></span>
+<span id="cb40-11"><a href="#cb40-11" aria-hidden="true" tabindex="-1"></a>  <span class="at">--print_info</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <pre><code>                  Plasma_B_cells_deside  Non_plasma_B_cells_deside  CD4_T_deside  CD8_T_effector_deside  CD8_T_\(GZMK_high\)_deside  Double_neg_like_T_deside
 TCGA-55-8508-01A  0.138                  0.014                      0.019         0.003                  0.001                       0
 TCGA-67-3771-01A  0.05                   0.005                      0.016         0.002                  0.017                       0.001
@@ -529,33 +575,52 @@ TCGA-55-A4DG-01A  0.042                  0.049                      0.014       
 TCGA-91-7771-01A  0.032                  0.014                      0.032         0.006                  0.023                       0.01
 TCGA-91-6849-01A  0.07                   0.011                      0.007         0.001                  0.014                       0</code></pre>
 </section>
-<section id="tme-clustering-nmf-clustering" class="level2" data-number="5.8">
-<h2 data-number="5.8" class="anchored" data-anchor-id="tme-clustering-nmf-clustering"><span class="header-section-number">5.8</span> TME clustering / NMF clustering</h2>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb39"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb39-1"><a href="#cb39-1" aria-hidden="true" tabindex="-1"></a><span class="co"># KL index auto‑select k (k‑means)</span></span>
-<span id="cb39-2"><a href="#cb39-2" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> tme_cluster <span class="dt">\</span></span>
-<span id="cb39-3"><a href="#cb39-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-i</span> cibersort.csv <span class="dt">\</span></span>
-<span id="cb39-4"><a href="#cb39-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> tme_cluster.csv <span class="dt">\</span></span>
-<span id="cb39-5"><a href="#cb39-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">--features</span> 1:22 <span class="dt">\</span></span>
-<span id="cb39-6"><a href="#cb39-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">--id</span> ID <span class="dt">\</span></span>
-<span id="cb39-7"><a href="#cb39-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">--min_nc</span> 2 <span class="dt">\</span></span>
-<span id="cb39-8"><a href="#cb39-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">--max_nc</span> 5 <span class="dt">\</span></span>
-<span id="cb39-9"><a href="#cb39-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">--print_result</span> <span class="dt">\</span></span>
-<span id="cb39-10"><a href="#cb39-10" aria-hidden="true" tabindex="-1"></a>  <span class="at">--scale</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<section id="ligandreceptor-scoring" class="level3" data-number="5.6.4">
+<h3 data-number="5.6.4" class="anchored" data-anchor-id="ligandreceptor-scoring"><span class="header-section-number">5.6.4</span> Ligand–receptor scoring</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb42"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb42-1"><a href="#cb42-1" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> LR_cal <span class="dt">\</span></span>
+<span id="cb42-2"><a href="#cb42-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">-i</span> TPM_anno.csv <span class="dt">\</span></span>
+<span id="cb42-3"><a href="#cb42-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> LR_score.csv <span class="dt">\</span></span>
+<span id="cb42-4"><a href="#cb42-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">--data_type</span> tpm <span class="dt">\</span></span>
+<span id="cb42-5"><a href="#cb42-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">--id_type</span> symbol <span class="dt">\</span></span>
+<span id="cb42-6"><a href="#cb42-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">--cancer_type</span> pancan <span class="dt">\</span></span>
+<span id="cb42-7"><a href="#cb42-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">--verbose</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<pre><code>ID          A2M_APP_CALR_LRPAP1_PSAP_SERPING1_LRP1   ADAM10_AXL    ADAM10_EFNA1_EPHA3   ADAM12_ITGA9   ADAM12_ITGB1_SDC4   ADAM12_SDC4
+GSM1523727  1.547225629                              1.566540118   1.017616452          1.476739407     1.492157038        1.492157038
+GSM1523728  1.477988945                              1.757804434   1.408624847          1.492926847     1.492926847        1.492926847
+GSM1523729  1.504309415                              1.730361606   1.5367173            1.473255496     1.473255496        1.473255496
+GSM1523744  1.514383163                              1.73870604    1.308314516          1.469082453     1.492761796        1.492761796
+GSM1523745  1.478643424                              1.76013689    1.552305282          1.449499815     1.449499815        1.449499815
+</code></pre>
+<hr>
+</section>
+</section>
+<section id="tme-clustering-nmf-clustering" class="level2" data-number="5.7">
+<h2 data-number="5.7" class="anchored" data-anchor-id="tme-clustering-nmf-clustering"><span class="header-section-number">5.7</span> TME clustering / NMF clustering</h2>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb44"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb44-1"><a href="#cb44-1" aria-hidden="true" tabindex="-1"></a><span class="co"># KL index auto‑select k (k‑means)</span></span>
+<span id="cb44-2"><a href="#cb44-2" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> tme_cluster <span class="dt">\</span></span>
+<span id="cb44-3"><a href="#cb44-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-i</span> cibersort.csv <span class="dt">\</span></span>
+<span id="cb44-4"><a href="#cb44-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> tme_cluster.csv <span class="dt">\</span></span>
+<span id="cb44-5"><a href="#cb44-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">--features</span> 1:22 <span class="dt">\</span></span>
+<span id="cb44-6"><a href="#cb44-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">--id</span> ID <span class="dt">\</span></span>
+<span id="cb44-7"><a href="#cb44-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">--min_nc</span> 2 <span class="dt">\</span></span>
+<span id="cb44-8"><a href="#cb44-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">--max_nc</span> 5 <span class="dt">\</span></span>
+<span id="cb44-9"><a href="#cb44-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">--print_result</span> <span class="dt">\</span></span>
+<span id="cb44-10"><a href="#cb44-10" aria-hidden="true" tabindex="-1"></a>  <span class="at">--scale</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <pre><code>ID          cluster   B_cells_naive_CIBERSORT   B_cells_memory_CIBERSORT   Plasma_cells_CIBERSORT   T_cells_CD8_CIBERSORT   T_cells_CD4_naive_CIBERSORT
 GSM1523727  TME1      -0.218307125              -0.588626398               0.824242243              1.136773711             -0.142069534
 GSM1523728  TME3      -0.531705309              0.093328188                -0.892611283             1.086091448             -0.142069534
 GSM1523729  TME1      -0.359692153              -0.432511044               -0.481593953             -0.685959226            -0.142069534
 GSM1523744  TME3      -0.531705309              0.952517071                -0.873856851             0.370938418             -0.142069534
 GSM1523745  TME2      -0.531705309              -0.798612476               -0.132728742             -0.685959226            -0.142069534</code></pre>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb41"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb41-1"><a href="#cb41-1" aria-hidden="true" tabindex="-1"></a><span class="co"># NMF clustering (auto k, excludes k=2)</span></span>
-<span id="cb41-2"><a href="#cb41-2" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> nmf <span class="dt">\</span></span>
-<span id="cb41-3"><a href="#cb41-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-i</span> cibersort.csv <span class="dt">\</span></span>
-<span id="cb41-4"><a href="#cb41-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> path/to/your/result/folder <span class="dt">\</span></span>
-<span id="cb41-5"><a href="#cb41-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">--kmin</span> 2 <span class="dt">\</span></span>
-<span id="cb41-6"><a href="#cb41-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">--kmax</span> 10 <span class="dt">\</span></span>
-<span id="cb41-7"><a href="#cb41-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">--features</span> 1:22 <span class="dt">\</span></span>
-<span id="cb41-8"><a href="#cb41-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">--max-iter</span> 10000 <span class="dt">\</span></span>
-<span id="cb41-9"><a href="#cb41-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">--skip_k_2</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb46"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb46-1"><a href="#cb46-1" aria-hidden="true" tabindex="-1"></a><span class="co"># NMF clustering (auto k, excludes k=2)</span></span>
+<span id="cb46-2"><a href="#cb46-2" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> nmf <span class="dt">\</span></span>
+<span id="cb46-3"><a href="#cb46-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-i</span> cibersort.csv <span class="dt">\</span></span>
+<span id="cb46-4"><a href="#cb46-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> path/to/your/result/folder <span class="dt">\</span></span>
+<span id="cb46-5"><a href="#cb46-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">--kmin</span> 2 <span class="dt">\</span></span>
+<span id="cb46-6"><a href="#cb46-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">--kmax</span> 10 <span class="dt">\</span></span>
+<span id="cb46-7"><a href="#cb46-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">--features</span> 1:22 <span class="dt">\</span></span>
+<span id="cb46-8"><a href="#cb46-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">--max-iter</span> 10000 <span class="dt">\</span></span>
+<span id="cb46-9"><a href="#cb46-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">--skip_k_2</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <pre><code>sample      cluster   B_cells_naive_CIBERSORT  B_cells_memory_CIBERSORT  Plasma_cells_CIBERSORT  T_cells_CD8_CIBERSORT  T_cells_CD4_naive_CIBERSORT
 GSM1523727  cluster2  0.006101201              0.013615524               0.149377703             0.049747382            0
 GSM1523728  cluster3  0                        0.033869265               0.076470323             0.048364124            0
@@ -567,23 +632,6 @@ cluster   top_1                                 top_2                         to
 cluster1  T_cells_CD4_memory_resting_CIBERSORT  Plasma_cells_CIBERSORT        Macrophages_M2_CIBERSORT              T_cells_gamma_delta_CIBERSORT     Mast_cells_resting_CIBERSORT            T_cells_follicular_helper_CIBERSORT
 cluster2  Macrophages_M2_CIBERSORT              Macrophages_M1_CIBERSORT      T_cells_follicular_helper_CIBERSORT   Plasma_cells_CIBERSORT            T_cells_CD4_memory_activated_CIBERSORT  Neutrophils_CIBERSORT
 cluster3  T_cells_CD4_memory_resting_CIBERSORT  Neutrophils_CIBERSORT         Macrophages_M0_CIBERSORT              Macrophages_M2_CIBERSORT          Plasma_cells_CIBERSORT                  Mast_cells_activated_CIBERSORT
-</code></pre>
-</section>
-<section id="ligandreceptor-scoring" class="level2" data-number="5.9">
-<h2 data-number="5.9" class="anchored" data-anchor-id="ligandreceptor-scoring"><span class="header-section-number">5.9</span> Ligand–receptor scoring</h2>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb43"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb43-1"><a href="#cb43-1" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> LR_cal <span class="dt">\</span></span>
-<span id="cb43-2"><a href="#cb43-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">-i</span> TPM_anno.csv <span class="dt">\</span></span>
-<span id="cb43-3"><a href="#cb43-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> LR_score.csv <span class="dt">\</span></span>
-<span id="cb43-4"><a href="#cb43-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">--data_type</span> tpm <span class="dt">\</span></span>
-<span id="cb43-5"><a href="#cb43-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">--id_type</span> symbol <span class="dt">\</span></span>
-<span id="cb43-6"><a href="#cb43-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">--cancer_type</span> pancan <span class="dt">\</span></span>
-<span id="cb43-7"><a href="#cb43-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">--verbose</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<pre><code>ID          A2M_APP_CALR_LRPAP1_PSAP_SERPING1_LRP1   ADAM10_AXL    ADAM10_EFNA1_EPHA3   ADAM12_ITGA9   ADAM12_ITGB1_SDC4   ADAM12_SDC4
-GSM1523727  1.547225629                              1.566540118   1.017616452          1.476739407     1.492157038        1.492157038
-GSM1523728  1.477988945                              1.757804434   1.408624847          1.492926847     1.492926847        1.492926847
-GSM1523729  1.504309415                              1.730361606   1.5367173            1.473255496     1.473255496        1.473255496
-GSM1523744  1.514383163                              1.73870604    1.308314516          1.469082453     1.492761796        1.492761796
-GSM1523745  1.478643424                              1.76013689    1.552305282          1.449499815     1.449499815        1.449499815
 </code></pre>
 
 
