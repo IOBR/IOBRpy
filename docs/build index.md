@@ -4,26 +4,32 @@ layout: default
 nav_order: 3
 ---
 
-# Build Salmon & STAR Index
+# **Build Salmon & STAR Index**
+
+## Overview
+
+**Salmon** and **STAR** are two cornerstone tools for RNA-seq quantification that serve complementary purposes:
+
+- **Salmon** — a fast, lightweight *alignment-free* (quasi-mapping / selective-alignment) quantifier that works on a **transcriptome index**, provides bias-aware transcript abundance estimates, and is ideal for rapid, large-scale quantification.  
+  Docs : [Salmon Documentation](https://salmon.readthedocs.io/) · Github : [COMBINE-lab/salmon](https://github.com/COMBINE-lab/salmon)
+
+- **STAR** — an *alignment-based* spliced read aligner that maps reads to the **genome**, discovers splice junctions, and produces alignment files suitable for downstream QC and gene-level counting.  
+  Manual/Repo : [alexdobin/STAR](https://github.com/alexdobin/STAR)
+
+> This page shows how to build indices for **both** tools. Choose Salmon when you want fast transcript-level quantification from a transcriptome; choose STAR when you need full genomic alignments, splice junction discovery, or STAR-based counting workflows.
 
 ## Prerequisites
 
-- Conda (or mamba) installed
-- Tools:
-  ```bash
-  # create/activate an environment (example)
-  conda create -n rnaseq -y
-  conda activate rnaseq
-
-  # install tools (choose bioconda channel)
-  conda install -c bioconda -c conda-forge salmon star -y
-  ```
+- Activate iobrpy environment
+```bash
+conda activate iobrpy
+```
 
 - Choose a base directory for index:
-  ```bash
-  export BASE=/path/to/index/dir
-  mkdir -p "$BASE"
-  ```
+```bash
+export BASE=/path/to/index/dir
+mkdir -p "$BASE"
+```
 
 ---
 
@@ -99,3 +105,13 @@ STAR --runMode genomeGenerate \
 - **Threads:** Increase `--runThreadN`/`-p` to speed up indexing if you have more cores.
 - **Storage:** STAR indexes are large (tens of GB). Ensure you have enough disk space.
 - **Read length:** For STAR, set `--sjdbOverhang = read_length - 1` for best splice junction annotations.
+
+---
+
+## References & Acknowledgments
+
+We gratefully acknowledge the developers and maintainers of **Salmon** and **STAR**. If you use these tools, please cite:
+
+- Patro R, Duggal G, Love MI, Irizarry RA, Kingsford C. Salmon provides fast and bias-aware quantification of transcript expression. Nature Methods 14, 417–419 (2017). doi: https://doi.org/10.1038/nmeth.4197
+
+- Dobin A, Davis CA, Schlesinger F, et al. STAR: ultrafast universal RNA-seq aligner. Bioinformatics 29(1):15–21 (2013). doi: https://doi.org/10.1093/bioinformatics/bts635
