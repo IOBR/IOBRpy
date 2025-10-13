@@ -4,7 +4,7 @@ layout: default
 nav_order: 6
 ---
 
-# Commands & common options
+# **Commands & common options**
 
 ## `runall` — From FASTQ to TME
 - **runall**
