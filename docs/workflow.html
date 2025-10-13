@@ -242,18 +242,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <h2 id="toc-title">Table of contents</h2>
    
   <ul>
-  <li><a href="#typical-endtoend-workflow-output-file-structure-examples" id="toc-typical-endtoend-workflow-output-file-structure-examples" class="nav-link active" data-scroll-target="#typical-endtoend-workflow-output-file-structure-examples"><span class="header-section-number">6</span> <strong>Typical end‑to‑end workflow — output file structure examples</strong></a>
-  <ul class="collapse">
-  <li><a href="#fastq-quality-control" id="toc-fastq-quality-control" class="nav-link" data-scroll-target="#fastq-quality-control"><span class="header-section-number">6.1</span> 1) FASTQ Quality Control</a></li>
-  <li><a href="#prepare-tpm" id="toc-prepare-tpm" class="nav-link" data-scroll-target="#prepare-tpm"><span class="header-section-number">6.2</span> 2) Prepare TPM</a></li>
-  <li><a href="#optional-mouse-to-human-symbol-mapping" id="toc-optional-mouse-to-human-symbol-mapping" class="nav-link" data-scroll-target="#optional-mouse-to-human-symbol-mapping"><span class="header-section-number">6.3</span> 3) (Optional) Mouse to Human symbol mapping</a></li>
-  <li><a href="#optional-annotate-deduplicate" id="toc-optional-annotate-deduplicate" class="nav-link" data-scroll-target="#optional-annotate-deduplicate"><span class="header-section-number">6.4</span> 4) (Optional) Annotate / de‑duplicate</a></li>
-  <li><a href="#optional-log2-transform" id="toc-optional-log2-transform" class="nav-link" data-scroll-target="#optional-log2-transform"><span class="header-section-number">6.5</span> 5) (Optional) Log2 transform</a></li>
-  <li><a href="#signature-scoring" id="toc-signature-scoring" class="nav-link" data-scroll-target="#signature-scoring"><span class="header-section-number">6.6</span> 6) Signature scoring</a></li>
-  <li><a href="#immune-deconvolution-choose-one-or-many" id="toc-immune-deconvolution-choose-one-or-many" class="nav-link" data-scroll-target="#immune-deconvolution-choose-one-or-many"><span class="header-section-number">6.7</span> 7) Immune deconvolution (choose one or many)</a></li>
-  <li><a href="#tme-clustering-nmf-clustering" id="toc-tme-clustering-nmf-clustering" class="nav-link" data-scroll-target="#tme-clustering-nmf-clustering"><span class="header-section-number">6.8</span> 8) TME clustering / NMF clustering</a></li>
-  <li><a href="#ligandreceptor-scoring" id="toc-ligandreceptor-scoring" class="nav-link" data-scroll-target="#ligandreceptor-scoring"><span class="header-section-number">6.9</span> 9) Ligand–receptor scoring</a></li>
-  </ul></li>
+  <li><a href="#fastq-quality-control" id="toc-fastq-quality-control" class="nav-link active" data-scroll-target="#fastq-quality-control"><span class="header-section-number">5.1</span> 1) FASTQ Quality Control</a></li>
+  <li><a href="#prepare-tpm" id="toc-prepare-tpm" class="nav-link" data-scroll-target="#prepare-tpm"><span class="header-section-number">5.2</span> 2) Prepare TPM</a></li>
+  <li><a href="#optional-mouse-to-human-symbol-mapping" id="toc-optional-mouse-to-human-symbol-mapping" class="nav-link" data-scroll-target="#optional-mouse-to-human-symbol-mapping"><span class="header-section-number">5.3</span> 3) (Optional) Mouse to Human symbol mapping</a></li>
+  <li><a href="#optional-annotate-deduplicate" id="toc-optional-annotate-deduplicate" class="nav-link" data-scroll-target="#optional-annotate-deduplicate"><span class="header-section-number">5.4</span> 4) (Optional) Annotate / de‑duplicate</a></li>
+  <li><a href="#optional-log2-transform" id="toc-optional-log2-transform" class="nav-link" data-scroll-target="#optional-log2-transform"><span class="header-section-number">5.5</span> 5) (Optional) Log2 transform</a></li>
+  <li><a href="#signature-scoring" id="toc-signature-scoring" class="nav-link" data-scroll-target="#signature-scoring"><span class="header-section-number">5.6</span> 6) Signature scoring</a></li>
+  <li><a href="#immune-deconvolution-choose-one-or-many" id="toc-immune-deconvolution-choose-one-or-many" class="nav-link" data-scroll-target="#immune-deconvolution-choose-one-or-many"><span class="header-section-number">5.7</span> 7) Immune deconvolution (choose one or many)</a></li>
+  <li><a href="#tme-clustering-nmf-clustering" id="toc-tme-clustering-nmf-clustering" class="nav-link" data-scroll-target="#tme-clustering-nmf-clustering"><span class="header-section-number">5.8</span> 8) TME clustering / NMF clustering</a></li>
+  <li><a href="#ligandreceptor-scoring" id="toc-ligandreceptor-scoring" class="nav-link" data-scroll-target="#ligandreceptor-scoring"><span class="header-section-number">5.9</span> 9) Ligand–receptor scoring</a></li>
   </ul>
 <div class="toc-actions"><ul><li><a href="https://github.com/IOBR/IOBRpy/edit/main/site/workflow.md" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li><li><a href="https://github.com/IOBR/IOBRpy/issues/new" class="toc-action"><i class="bi empty"></i>Report an issue</a></li></ul></div></nav>
     </div>
@@ -279,10 +276,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<section id="typical-endtoend-workflow-output-file-structure-examples" class="level1" data-number="6">
-<h1 data-number="6"><span class="header-section-number">6</span> <strong>Typical end‑to‑end workflow — output file structure examples</strong></h1>
-<section id="fastq-quality-control" class="level2" data-number="6.1">
-<h2 data-number="6.1" class="anchored" data-anchor-id="fastq-quality-control"><span class="header-section-number">6.1</span> 1) FASTQ Quality Control</h2>
+<section id="fastq-quality-control" class="level2" data-number="5.1">
+<h2 data-number="5.1" class="anchored" data-anchor-id="fastq-quality-control"><span class="header-section-number">5.1</span> 1) FASTQ Quality Control</h2>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> fastq_qc <span class="dt">\</span></span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">--path1_fastq</span> <span class="st">"/path/to/fastq"</span> <span class="dt">\</span></span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">--path2_fastp</span> <span class="st">"/path/to/fastp"</span> <span class="dt">\</span></span>
@@ -296,8 +291,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   &lt;sample&gt;.task.complete
   multiqc_report/multiqc_fastp_report.html</code></pre>
 </section>
-<section id="prepare-tpm" class="level2" data-number="6.2">
-<h2 data-number="6.2" class="anchored" data-anchor-id="prepare-tpm"><span class="header-section-number">6.2</span> 2) Prepare TPM</h2>
+<section id="prepare-tpm" class="level2" data-number="5.2">
+<h2 data-number="5.2" class="anchored" data-anchor-id="prepare-tpm"><span class="header-section-number">5.2</span> 2) Prepare TPM</h2>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># From FASTQ_QC to Salmon</span></span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> batch_salmon <span class="dt">\</span></span>
 <span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">--index</span> <span class="st">"/path/to/salmon/index"</span> <span class="dt">\</span></span>
@@ -369,8 +364,8 @@ A1BG       3.876                         2.576                         2.874    
 A1BG-AS1   5.512                         4.440                         7.725                         4.610                         6.292                         5.336
 </code></pre>
 </section>
-<section id="optional-mouse-to-human-symbol-mapping" class="level2" data-number="6.3">
-<h2 data-number="6.3" class="anchored" data-anchor-id="optional-mouse-to-human-symbol-mapping"><span class="header-section-number">6.3</span> 3) (Optional) Mouse to Human symbol mapping</h2>
+<section id="optional-mouse-to-human-symbol-mapping" class="level2" data-number="5.3">
+<h2 data-number="5.3" class="anchored" data-anchor-id="optional-mouse-to-human-symbol-mapping"><span class="header-section-number">5.3</span> 3) (Optional) Mouse to Human symbol mapping</h2>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb15"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Matrix mode: rows are mouse gene symbols, columns are samples</span></span>
 <span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> mouse2human_eset <span class="dt">\</span></span>
 <span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-i</span> mouse_matrix.tsv <span class="dt">\</span></span>
@@ -391,8 +386,8 @@ CAV2        0.063843   0.993835   0.891718   0.702293   0.703912   0.248690
 HOXB6       0.716829   0.555838   0.638682   0.971783   0.868208   0.802464
 </code></pre>
 </section>
-<section id="optional-annotate-deduplicate" class="level2" data-number="6.4">
-<h2 data-number="6.4" class="anchored" data-anchor-id="optional-annotate-deduplicate"><span class="header-section-number">6.4</span> 4) (Optional) Annotate / de‑duplicate</h2>
+<section id="optional-annotate-deduplicate" class="level2" data-number="5.4">
+<h2 data-number="5.4" class="anchored" data-anchor-id="optional-annotate-deduplicate"><span class="header-section-number">5.4</span> 4) (Optional) Annotate / de‑duplicate</h2>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb18"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> anno_eset <span class="dt">\</span></span>
 <span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">-i</span> TPM_matrix.csv <span class="dt">\</span></span>
 <span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> TPM_anno.csv <span class="dt">\</span></span>
@@ -417,8 +412,8 @@ HUWE1       4.2255821    4.2111235    4.1993775    4.2192063    4.2214823    4.2
 LOC1019288  4.2193027    4.2196698    4.2132521    4.1819267    4.2345738    4.2104611
 </code></pre>
 </section>
-<section id="optional-log2-transform" class="level2" data-number="6.5">
-<h2 data-number="6.5" class="anchored" data-anchor-id="optional-log2-transform"><span class="header-section-number">6.5</span> 5) (Optional) Log2 transform</h2>
+<section id="optional-log2-transform" class="level2" data-number="5.5">
+<h2 data-number="5.5" class="anchored" data-anchor-id="optional-log2-transform"><span class="header-section-number">5.5</span> 5) (Optional) Log2 transform</h2>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb21"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> log2_eset <span class="dt">\</span></span>
 <span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">-i</span> expr.csv <span class="dt">\</span></span>
 <span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> expr.log2.csv</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -428,8 +423,8 @@ A1BG-AS1  4.206586844                      3.591817651                      0.61
 A1CF      0.128261135                      0                                0.414914625                      0.205743238
 A2M       1.999453226                      0.679106252                      2.816410018                      2.898826563</code></pre>
 </section>
-<section id="signature-scoring" class="level2" data-number="6.6">
-<h2 data-number="6.6" class="anchored" data-anchor-id="signature-scoring"><span class="header-section-number">6.6</span> 6) Signature scoring</h2>
+<section id="signature-scoring" class="level2" data-number="5.6">
+<h2 data-number="5.6" class="anchored" data-anchor-id="signature-scoring"><span class="header-section-number">5.6</span> 6) Signature scoring</h2>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb23"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> calculate_sig_score <span class="dt">\</span></span>
 <span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">-i</span> TPM_anno.csv <span class="dt">\</span></span>
 <span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> sig_scores.csv <span class="dt">\</span></span>
@@ -447,8 +442,8 @@ GSM1523744  -0.834788             4.558424   -0.274724  -0.873015               
 GSM1523745  -1.358852             4.754705   -2.215926  -1.086041               1.342590            -1.054318
 </code></pre>
 </section>
-<section id="immune-deconvolution-choose-one-or-many" class="level2" data-number="6.7">
-<h2 data-number="6.7" class="anchored" data-anchor-id="immune-deconvolution-choose-one-or-many"><span class="header-section-number">6.7</span> 7) Immune deconvolution (choose one or many)</h2>
+<section id="immune-deconvolution-choose-one-or-many" class="level2" data-number="5.7">
+<h2 data-number="5.7" class="anchored" data-anchor-id="immune-deconvolution-choose-one-or-many"><span class="header-section-number">5.7</span> 7) Immune deconvolution (choose one or many)</h2>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb25"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="co"># CIBERSORT</span></span>
 <span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> cibersort <span class="dt">\</span></span>
 <span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-i</span> TPM_anno.csv <span class="dt">\</span></span>
@@ -540,8 +535,8 @@ TCGA-55-A4DG-01A  0.042                  0.049                      0.014       
 TCGA-91-7771-01A  0.032                  0.014                      0.032         0.006                  0.023                       0.01
 TCGA-91-6849-01A  0.07                   0.011                      0.007         0.001                  0.014                       0</code></pre>
 </section>
-<section id="tme-clustering-nmf-clustering" class="level2" data-number="6.8">
-<h2 data-number="6.8" class="anchored" data-anchor-id="tme-clustering-nmf-clustering"><span class="header-section-number">6.8</span> 8) TME clustering / NMF clustering</h2>
+<section id="tme-clustering-nmf-clustering" class="level2" data-number="5.8">
+<h2 data-number="5.8" class="anchored" data-anchor-id="tme-clustering-nmf-clustering"><span class="header-section-number">5.8</span> 8) TME clustering / NMF clustering</h2>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb39"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb39-1"><a href="#cb39-1" aria-hidden="true" tabindex="-1"></a><span class="co"># KL index auto‑select k (k‑means)</span></span>
 <span id="cb39-2"><a href="#cb39-2" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> tme_cluster <span class="dt">\</span></span>
 <span id="cb39-3"><a href="#cb39-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-i</span> cibersort.csv <span class="dt">\</span></span>
@@ -580,8 +575,8 @@ cluster2  Macrophages_M2_CIBERSORT              Macrophages_M1_CIBERSORT      T_
 cluster3  T_cells_CD4_memory_resting_CIBERSORT  Neutrophils_CIBERSORT         Macrophages_M0_CIBERSORT              Macrophages_M2_CIBERSORT          Plasma_cells_CIBERSORT                  Mast_cells_activated_CIBERSORT
 </code></pre>
 </section>
-<section id="ligandreceptor-scoring" class="level2" data-number="6.9">
-<h2 data-number="6.9" class="anchored" data-anchor-id="ligandreceptor-scoring"><span class="header-section-number">6.9</span> 9) Ligand–receptor scoring</h2>
+<section id="ligandreceptor-scoring" class="level2" data-number="5.9">
+<h2 data-number="5.9" class="anchored" data-anchor-id="ligandreceptor-scoring"><span class="header-section-number">5.9</span> 9) Ligand–receptor scoring</h2>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb43"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb43-1"><a href="#cb43-1" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> LR_cal <span class="dt">\</span></span>
 <span id="cb43-2"><a href="#cb43-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">-i</span> TPM_anno.csv <span class="dt">\</span></span>
 <span id="cb43-3"><a href="#cb43-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> LR_score.csv <span class="dt">\</span></span>
@@ -598,7 +593,6 @@ GSM1523745  1.478643424                              1.76013689    1.552305282  
 </code></pre>
 
 
-</section>
 </section>
 
 </main> <!-- /main -->
