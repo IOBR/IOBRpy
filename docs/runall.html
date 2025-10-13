@@ -242,30 +242,27 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <h2 id="toc-title">Table of contents</h2>
    
   <ul>
-  <li><a href="#from-fastq-to-tme---runall" id="toc-from-fastq-to-tme---runall" class="nav-link active" data-scroll-target="#from-fastq-to-tme---runall"><span class="header-section-number">5</span> <strong>From FASTQ to TME - <code>runall</code></strong></a>
+  <li><a href="#how-runall-passes-options" id="toc-how-runall-passes-options" class="nav-link active" data-scroll-target="#how-runall-passes-options"><span class="header-section-number">4.1</span> How <code>runall</code> passes options</a></li>
+  <li><a href="#salmon-mode" id="toc-salmon-mode" class="nav-link" data-scroll-target="#salmon-mode"><span class="header-section-number">4.2</span> Salmon mode</a></li>
+  <li><a href="#star-mode" id="toc-star-mode" class="nav-link" data-scroll-target="#star-mode"><span class="header-section-number">4.3</span> STAR mode</a></li>
+  <li><a href="#option-legend-for-the-runall-examples" id="toc-option-legend-for-the-runall-examples" class="nav-link" data-scroll-target="#option-legend-for-the-runall-examples"><span class="header-section-number">4.4</span> Option legend for the <code>runall</code> examples</a>
   <ul class="collapse">
-  <li><a href="#how-runall-passes-options" id="toc-how-runall-passes-options" class="nav-link" data-scroll-target="#how-runall-passes-options"><span class="header-section-number">5.1</span> How <code>runall</code> passes options</a></li>
-  <li><a href="#salmon-mode" id="toc-salmon-mode" class="nav-link" data-scroll-target="#salmon-mode"><span class="header-section-number">5.2</span> Salmon mode</a></li>
-  <li><a href="#star-mode" id="toc-star-mode" class="nav-link" data-scroll-target="#star-mode"><span class="header-section-number">5.3</span> STAR mode</a></li>
-  <li><a href="#option-legend-for-the-runall-examples" id="toc-option-legend-for-the-runall-examples" class="nav-link" data-scroll-target="#option-legend-for-the-runall-examples"><span class="header-section-number">5.4</span> Option legend for the <code>runall</code> examples</a>
-  <ul class="collapse">
-  <li><a href="#common-options" id="toc-common-options" class="nav-link" data-scroll-target="#common-options"><span class="header-section-number">5.4.1</span> Common options</a></li>
-  <li><a href="#salmon-only" id="toc-salmon-only" class="nav-link" data-scroll-target="#salmon-only"><span class="header-section-number">5.4.2</span> Salmon-only</a></li>
-  <li><a href="#star-only" id="toc-star-only" class="nav-link" data-scroll-target="#star-only"><span class="header-section-number">5.4.3</span> STAR-only</a></li>
-  <li><a href="#signature-scoring" id="toc-signature-scoring" class="nav-link" data-scroll-target="#signature-scoring"><span class="header-section-number">5.4.4</span> Signature scoring</a></li>
-  <li><a href="#deconvolution" id="toc-deconvolution" class="nav-link" data-scroll-target="#deconvolution"><span class="header-section-number">5.4.5</span> Deconvolution</a></li>
-  <li><a href="#ligandreceptor" id="toc-ligandreceptor" class="nav-link" data-scroll-target="#ligandreceptor"><span class="header-section-number">5.4.6</span> Ligand–receptor</a></li>
+  <li><a href="#common-options" id="toc-common-options" class="nav-link" data-scroll-target="#common-options"><span class="header-section-number">4.4.1</span> Common options</a></li>
+  <li><a href="#salmon-only" id="toc-salmon-only" class="nav-link" data-scroll-target="#salmon-only"><span class="header-section-number">4.4.2</span> Salmon-only</a></li>
+  <li><a href="#star-only" id="toc-star-only" class="nav-link" data-scroll-target="#star-only"><span class="header-section-number">4.4.3</span> STAR-only</a></li>
+  <li><a href="#signature-scoring" id="toc-signature-scoring" class="nav-link" data-scroll-target="#signature-scoring"><span class="header-section-number">4.4.4</span> Signature scoring</a></li>
+  <li><a href="#deconvolution" id="toc-deconvolution" class="nav-link" data-scroll-target="#deconvolution"><span class="header-section-number">4.4.5</span> Deconvolution</a></li>
+  <li><a href="#ligandreceptor" id="toc-ligandreceptor" class="nav-link" data-scroll-target="#ligandreceptor"><span class="header-section-number">4.4.6</span> Ligand–receptor</a></li>
   </ul></li>
-  <li><a href="#expected-layout" id="toc-expected-layout" class="nav-link" data-scroll-target="#expected-layout"><span class="header-section-number">5.5</span> Expected layout</a></li>
-  <li><a href="#output-reference" id="toc-output-reference" class="nav-link" data-scroll-target="#output-reference"><span class="header-section-number">5.6</span> Output Reference</a>
+  <li><a href="#expected-layout" id="toc-expected-layout" class="nav-link" data-scroll-target="#expected-layout"><span class="header-section-number">4.5</span> Expected layout</a></li>
+  <li><a href="#output-reference" id="toc-output-reference" class="nav-link" data-scroll-target="#output-reference"><span class="header-section-number">4.6</span> Output Reference</a>
   <ul class="collapse">
-  <li><a href="#standard-layout-produced-by-iobrpy-runall" id="toc-standard-layout-produced-by-iobrpy-runall" class="nav-link" data-scroll-target="#standard-layout-produced-by-iobrpy-runall"><span class="header-section-number">5.6.1</span> Standard layout (produced by <code>iobrpy runall</code>)</a></li>
-  <li><a href="#salmon-mode-02-salmon" id="toc-salmon-mode-02-salmon" class="nav-link" data-scroll-target="#salmon-mode-02-salmon"><span class="header-section-number">5.6.2</span> Salmon mode (<code>02-salmon/</code>)</a></li>
-  <li><a href="#star-mode-02-star" id="toc-star-mode-02-star" class="nav-link" data-scroll-target="#star-mode-02-star"><span class="header-section-number">5.6.3</span> STAR mode (<code>02-star/</code>)</a></li>
-  <li><a href="#signatures-04-signatures" id="toc-signatures-04-signatures" class="nav-link" data-scroll-target="#signatures-04-signatures"><span class="header-section-number">5.6.4</span> Signatures (<code>04-signatures/</code>)</a></li>
-  <li><a href="#deconvolution-05-tme" id="toc-deconvolution-05-tme" class="nav-link" data-scroll-target="#deconvolution-05-tme"><span class="header-section-number">5.6.5</span> Deconvolution (<code>05-tme/</code>)</a></li>
-  <li><a href="#ligandreceptor-06-lr_cal" id="toc-ligandreceptor-06-lr_cal" class="nav-link" data-scroll-target="#ligandreceptor-06-lr_cal"><span class="header-section-number">5.6.6</span> Ligand–receptor (<code>06-LR_cal/</code>)</a></li>
-  </ul></li>
+  <li><a href="#standard-layout-produced-by-iobrpy-runall" id="toc-standard-layout-produced-by-iobrpy-runall" class="nav-link" data-scroll-target="#standard-layout-produced-by-iobrpy-runall"><span class="header-section-number">4.6.1</span> Standard layout (produced by <code>iobrpy runall</code>)</a></li>
+  <li><a href="#salmon-mode-02-salmon" id="toc-salmon-mode-02-salmon" class="nav-link" data-scroll-target="#salmon-mode-02-salmon"><span class="header-section-number">4.6.2</span> Salmon mode (<code>02-salmon/</code>)</a></li>
+  <li><a href="#star-mode-02-star" id="toc-star-mode-02-star" class="nav-link" data-scroll-target="#star-mode-02-star"><span class="header-section-number">4.6.3</span> STAR mode (<code>02-star/</code>)</a></li>
+  <li><a href="#signatures-04-signatures" id="toc-signatures-04-signatures" class="nav-link" data-scroll-target="#signatures-04-signatures"><span class="header-section-number">4.6.4</span> Signatures (<code>04-signatures/</code>)</a></li>
+  <li><a href="#deconvolution-05-tme" id="toc-deconvolution-05-tme" class="nav-link" data-scroll-target="#deconvolution-05-tme"><span class="header-section-number">4.6.5</span> Deconvolution (<code>05-tme/</code>)</a></li>
+  <li><a href="#ligandreceptor-06-lr_cal" id="toc-ligandreceptor-06-lr_cal" class="nav-link" data-scroll-target="#ligandreceptor-06-lr_cal"><span class="header-section-number">4.6.6</span> Ligand–receptor (<code>06-LR_cal/</code>)</a></li>
   </ul></li>
   </ul>
 <div class="toc-actions"><ul><li><a href="https://github.com/IOBR/IOBRpy/edit/main/site/runall.md" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li><li><a href="https://github.com/IOBR/IOBRpy/issues/new" class="toc-action"><i class="bi empty"></i>Report an issue</a></li></ul></div></nav>
@@ -292,15 +289,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<section id="from-fastq-to-tme---runall" class="level1" data-number="5">
-<h1 data-number="5"><span class="header-section-number">5</span> <strong>From FASTQ to TME - <code>runall</code></strong></h1>
-<section id="how-runall-passes-options" class="level2" data-number="5.1">
-<h2 data-number="5.1" class="anchored" data-anchor-id="how-runall-passes-options"><span class="header-section-number">5.1</span> How <code>runall</code> passes options</h2>
+<section id="how-runall-passes-options" class="level2" data-number="4.1">
+<h2 data-number="4.1" class="anchored" data-anchor-id="how-runall-passes-options"><span class="header-section-number">4.1</span> How <code>runall</code> passes options</h2>
 <p><code>runall</code> defines a small set of top-level options (e.g., <code>--mode/--outdir/--fastq/--threads/--batch_size</code>). Any unrecognized options are forwarded to the corresponding sub-steps. This keeps <code>runall</code> flexible as sub-commands evolve.</p>
 <p>Below are <strong>two fully wired workflows</strong> handled by <code>iobrpy runall</code>.</p>
 </section>
-<section id="salmon-mode" class="level2" data-number="5.2">
-<h2 data-number="5.2" class="anchored" data-anchor-id="salmon-mode"><span class="header-section-number">5.2</span> Salmon mode</h2>
+<section id="salmon-mode" class="level2" data-number="4.2">
+<h2 data-number="4.2" class="anchored" data-anchor-id="salmon-mode"><span class="header-section-number">4.2</span> Salmon mode</h2>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> runall <span class="dt">\</span></span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">--mode</span> salmon <span class="dt">\</span></span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">--outdir</span> <span class="st">"/path/to/outdir"</span> <span class="dt">\</span></span>
@@ -310,8 +305,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">--index</span> <span class="st">"/path/to/salmon/index"</span> <span class="dt">\</span></span>
 <span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">--project</span> MyProj</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
-<section id="star-mode" class="level2" data-number="5.3">
-<h2 data-number="5.3" class="anchored" data-anchor-id="star-mode"><span class="header-section-number">5.3</span> STAR mode</h2>
+<section id="star-mode" class="level2" data-number="4.3">
+<h2 data-number="4.3" class="anchored" data-anchor-id="star-mode"><span class="header-section-number">4.3</span> STAR mode</h2>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> runall <span class="dt">\</span></span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">--mode</span> star <span class="dt">\</span></span>
 <span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">--outdir</span> <span class="st">"/path/to/outdir"</span> <span class="dt">\</span></span>
@@ -322,10 +317,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">--project</span> MyProj</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <hr>
 </section>
-<section id="option-legend-for-the-runall-examples" class="level2" data-number="5.4">
-<h2 data-number="5.4" class="anchored" data-anchor-id="option-legend-for-the-runall-examples"><span class="header-section-number">5.4</span> Option legend for the <code>runall</code> examples</h2>
-<section id="common-options" class="level3" data-number="5.4.1">
-<h3 data-number="5.4.1" class="anchored" data-anchor-id="common-options"><span class="header-section-number">5.4.1</span> Common options</h3>
+<section id="option-legend-for-the-runall-examples" class="level2" data-number="4.4">
+<h2 data-number="4.4" class="anchored" data-anchor-id="option-legend-for-the-runall-examples"><span class="header-section-number">4.4</span> Option legend for the <code>runall</code> examples</h2>
+<section id="common-options" class="level3" data-number="4.4.1">
+<h3 data-number="4.4.1" class="anchored" data-anchor-id="common-options"><span class="header-section-number">4.4.1</span> Common options</h3>
 <ul>
 <li><code>--mode {salmon|star}</code> — Select backend (Salmon quant vs.&nbsp;STAR align+count)</li>
 <li><code>--outdir &lt;DIR&gt;</code> — Root output directory (creates the standardized layout)</li>
@@ -335,8 +330,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <li><code>--dry_run</code> — Print planned commands without executing</li>
 </ul>
 </section>
-<section id="salmon-only" class="level3" data-number="5.4.2">
-<h3 data-number="5.4.2" class="anchored" data-anchor-id="salmon-only"><span class="header-section-number">5.4.2</span> Salmon-only</h3>
+<section id="salmon-only" class="level3" data-number="4.4.2">
+<h3 data-number="4.4.2" class="anchored" data-anchor-id="salmon-only"><span class="header-section-number">4.4.2</span> Salmon-only</h3>
 <ul>
 <li><code>--index &lt;DIR&gt;</code> — Salmon index for <code>batch_salmon</code></li>
 <li><code>--project &lt;STR&gt;</code> — Prefix for merged outputs in <code>merge_salmon</code></li>
@@ -344,8 +339,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <li><code>--remove_version</code> — Strip version suffix in <code>prepare_salmon</code></li>
 </ul>
 </section>
-<section id="star-only" class="level3" data-number="5.4.3">
-<h3 data-number="5.4.3" class="anchored" data-anchor-id="star-only"><span class="header-section-number">5.4.3</span> STAR-only</h3>
+<section id="star-only" class="level3" data-number="4.4.3">
+<h3 data-number="4.4.3" class="anchored" data-anchor-id="star-only"><span class="header-section-number">4.4.3</span> STAR-only</h3>
 <ul>
 <li><code>--index &lt;DIR&gt;</code> — STAR genomeDir for <code>batch_star_count</code></li>
 <li><code>--project &lt;STR&gt;</code> — Prefix for merged counts in <code>merge_star_count</code></li>
@@ -354,8 +349,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <li><code>--remove_version</code> — Strip version suffix before <code>count2tpm</code></li>
 </ul>
 </section>
-<section id="signature-scoring" class="level3" data-number="5.4.4">
-<h3 data-number="5.4.4" class="anchored" data-anchor-id="signature-scoring"><span class="header-section-number">5.4.4</span> Signature scoring</h3>
+<section id="signature-scoring" class="level3" data-number="4.4.4">
+<h3 data-number="4.4.4" class="anchored" data-anchor-id="signature-scoring"><span class="header-section-number">4.4.4</span> Signature scoring</h3>
 <ul>
 <li><code>--method {integration|pca|zscore|ssgsea}</code> — Scoring method for <code>calculate_sig_score</code></li>
 <li><code>--signature &lt;set&gt;</code> — Which signature set to use (<code>all</code>, etc.)</li>
@@ -363,8 +358,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <li><code>--adjust_eset</code> — Extra filtering after log transform</li>
 </ul>
 </section>
-<section id="deconvolution" class="level3" data-number="5.4.5">
-<h3 data-number="5.4.5" class="anchored" data-anchor-id="deconvolution"><span class="header-section-number">5.4.5</span> Deconvolution</h3>
+<section id="deconvolution" class="level3" data-number="4.4.5">
+<h3 data-number="4.4.5" class="anchored" data-anchor-id="deconvolution"><span class="header-section-number">4.4.5</span> Deconvolution</h3>
 <ul>
 <li><code>--perm &lt;INT&gt;</code> / <code>--QN {true|false}</code> — CIBERSORT permutations / quantile normalization</li>
 <li><code>--platform &lt;STR&gt;</code> — ESTIMATE platform</li>
@@ -373,8 +368,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <li><code>--reference {TRef|BRef|both}</code> — EPIC reference profile</li>
 </ul>
 </section>
-<section id="ligandreceptor" class="level3" data-number="5.4.6">
-<h3 data-number="5.4.6" class="anchored" data-anchor-id="ligandreceptor"><span class="header-section-number">5.4.6</span> Ligand–receptor</h3>
+<section id="ligandreceptor" class="level3" data-number="4.4.6">
+<h3 data-number="4.4.6" class="anchored" data-anchor-id="ligandreceptor"><span class="header-section-number">4.4.6</span> Ligand–receptor</h3>
 <ul>
 <li><code>--data_type {tpm|count}</code> — Input matrix type for <code>LR_cal</code></li>
 <li><code>--id_type {symbol|ensembl|...}</code> — Gene ID type for <code>LR_cal</code></li>
@@ -383,8 +378,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <hr>
 </section>
 </section>
-<section id="expected-layout" class="level2" data-number="5.5">
-<h2 data-number="5.5" class="anchored" data-anchor-id="expected-layout"><span class="header-section-number">5.5</span> Expected layout</h2>
+<section id="expected-layout" class="level2" data-number="4.5">
+<h2 data-number="4.5" class="anchored" data-anchor-id="expected-layout"><span class="header-section-number">4.5</span> Expected layout</h2>
 <pre><code># Salmon mode：
 /path/to/outdir
 |-- 01-qc
@@ -457,10 +452,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     `-- lr_cal.csv</code></pre>
 <hr>
 </section>
-<section id="output-reference" class="level2" data-number="5.6">
-<h2 data-number="5.6" class="anchored" data-anchor-id="output-reference"><span class="header-section-number">5.6</span> Output Reference</h2>
-<section id="standard-layout-produced-by-iobrpy-runall" class="level3" data-number="5.6.1">
-<h3 data-number="5.6.1" class="anchored" data-anchor-id="standard-layout-produced-by-iobrpy-runall"><span class="header-section-number">5.6.1</span> Standard layout (produced by <code>iobrpy runall</code>)</h3>
+<section id="output-reference" class="level2" data-number="4.6">
+<h2 data-number="4.6" class="anchored" data-anchor-id="output-reference"><span class="header-section-number">4.6</span> Output Reference</h2>
+<section id="standard-layout-produced-by-iobrpy-runall" class="level3" data-number="4.6.1">
+<h3 data-number="4.6.1" class="anchored" data-anchor-id="standard-layout-produced-by-iobrpy-runall"><span class="header-section-number">4.6.1</span> Standard layout (produced by <code>iobrpy runall</code>)</h3>
 <ul>
 <li><code>01-qc/</code> — fastp outputs; a resume flag <code>.fastq_qc.done</code> is written when the step completes.</li>
 <li><code>02-salmon/</code> <strong>or</strong> <code>02-star/</code> — quantification/alignment + merged matrices; resume flags like <code>.batch_salmon.done</code>, <code>.merge_salmon.done</code>, or <code>.merge_star_count.done</code>.</li>
@@ -470,8 +465,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <li><code>06-LR_cal/</code> — ligand–receptor results <code>lr_cal.csv</code>.</li>
 </ul>
 </section>
-<section id="salmon-mode-02-salmon" class="level3" data-number="5.6.2">
-<h3 data-number="5.6.2" class="anchored" data-anchor-id="salmon-mode-02-salmon"><span class="header-section-number">5.6.2</span> Salmon mode (<code>02-salmon/</code>)</h3>
+<section id="salmon-mode-02-salmon" class="level3" data-number="4.6.2">
+<h3 data-number="4.6.2" class="anchored" data-anchor-id="salmon-mode-02-salmon"><span class="header-section-number">4.6.2</span> Salmon mode (<code>02-salmon/</code>)</h3>
 <ul>
 <li>Per-sample Salmon folders containing <code>quant.sf</code> (from <code>batch_salmon</code>). A <code>.batch_salmon.done</code> flag is written after completion.</li>
 <li>Merged matrices (from <code>merge_salmon</code>):
@@ -484,8 +479,8 @@ A <code>.merge_salmon.done</code> flag is written after completion.</li>
 <li><code>03-tpm/tpm_matrix.csv</code> — <strong>log2(x+1)</strong> matrix produced by <code>log2_eset</code> from <code>prepare_salmon.csv</code>.</li>
 </ul>
 </section>
-<section id="star-mode-02-star" class="level3" data-number="5.6.3">
-<h3 data-number="5.6.3" class="anchored" data-anchor-id="star-mode-02-star"><span class="header-section-number">5.6.3</span> STAR mode (<code>02-star/</code>)</h3>
+<section id="star-mode-02-star" class="level3" data-number="4.6.3">
+<h3 data-number="4.6.3" class="anchored" data-anchor-id="star-mode-02-star"><span class="header-section-number">4.6.3</span> STAR mode (<code>02-star/</code>)</h3>
 <ul>
 <li>Per-sample STAR outputs (BAM, logs, <code>*_ReadsPerGene.out.tab</code>, etc.).</li>
 <li>Merged counts (from <code>merge_star_count</code>):
@@ -496,14 +491,14 @@ A <code>.merge_salmon.done</code> flag is written after completion.</li>
 <li><code>03-tpm/tpm_matrix.csv</code> — <strong>log2(x+1)</strong> matrix produced by <code>log2_eset</code> from <code>count2tpm.csv</code>.</li>
 </ul>
 </section>
-<section id="signatures-04-signatures" class="level3" data-number="5.6.4">
-<h3 data-number="5.6.4" class="anchored" data-anchor-id="signatures-04-signatures"><span class="header-section-number">5.6.4</span> Signatures (<code>04-signatures/</code>)</h3>
+<section id="signatures-04-signatures" class="level3" data-number="4.6.4">
+<h3 data-number="4.6.4" class="anchored" data-anchor-id="signatures-04-signatures"><span class="header-section-number">4.6.4</span> Signatures (<code>04-signatures/</code>)</h3>
 <ul>
 <li><code>calculate_sig_score.csv</code> — per-sample pathway/signature scores. Columns correspond to the selected signature set and method (<code>integration</code>, <code>pca</code>, <code>zscore</code>, or <code>ssgsea</code>).</li>
 </ul>
 </section>
-<section id="deconvolution-05-tme" class="level3" data-number="5.6.5">
-<h3 data-number="5.6.5" class="anchored" data-anchor-id="deconvolution-05-tme"><span class="header-section-number">5.6.5</span> Deconvolution (<code>05-tme/</code>)</h3>
+<section id="deconvolution-05-tme" class="level3" data-number="4.6.5">
+<h3 data-number="4.6.5" class="anchored" data-anchor-id="deconvolution-05-tme"><span class="header-section-number">4.6.5</span> Deconvolution (<code>05-tme/</code>)</h3>
 <p>Each method writes a single table named <code>&lt;method&gt;_results.csv</code>:</p>
 <ul>
 <li><code>cibersort_results.csv</code> — columns suffixed with <code>_CIBERSORT</code>. Note whether <code>--perm</code> and <code>--QN</code> were used.</li>
@@ -515,14 +510,13 @@ A <code>.merge_salmon.done</code> flag is written after completion.</li>
 </ul>
 <p><strong>Merged table</strong> - <code>deconvo_merged.csv</code> — produced by <code>runall</code> after all deconvolution methods finish; normalizes the sample index to a column named <code>ID</code> and outer-joins by sample ID across methods.</p>
 </section>
-<section id="ligandreceptor-06-lr_cal" class="level3" data-number="5.6.6">
-<h3 data-number="5.6.6" class="anchored" data-anchor-id="ligandreceptor-06-lr_cal"><span class="header-section-number">5.6.6</span> Ligand–receptor (<code>06-LR_cal/</code>)</h3>
+<section id="ligandreceptor-06-lr_cal" class="level3" data-number="4.6.6">
+<h3 data-number="4.6.6" class="anchored" data-anchor-id="ligandreceptor-06-lr_cal"><span class="header-section-number">4.6.6</span> Ligand–receptor (<code>06-LR_cal/</code>)</h3>
 <ul>
 <li><code>lr_cal.csv</code> — ligand–receptor scoring table from <code>LR_cal</code>. Record the <code>--data_type {count|tpm}</code> and the <code>--id_type</code> you used.</li>
 </ul>
 
 
-</section>
 </section>
 </section>
 
