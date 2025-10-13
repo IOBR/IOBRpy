@@ -4,7 +4,7 @@ layout: default
 nav_order: 4
 ---
 
-# From FASTQ to TME - `runall`
+# **From FASTQ to TME - `runall`**
 
 ## How `runall` passes options
 `runall` defines a small set of top-level options (e.g., `--mode/--outdir/--fastq/--threads/--batch_size`). Any unrecognized options are forwarded to the corresponding sub-steps. This keeps `runall` flexible as sub-commands evolve.
