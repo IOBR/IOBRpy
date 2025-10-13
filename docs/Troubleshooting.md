@@ -4,7 +4,7 @@ layout: default
 nav_order: 8
 ---
 
-# Troubleshooting
+# **Troubleshooting**
 
 - **Wrong input orientation**  
   Deconvolution commands expect **genes × samples**. For `deside`, `--transpose` can be helpful depending on your file.
