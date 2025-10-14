@@ -350,197 +350,83 @@
     ]
   },
   {
-    "objectID": "example/example1.html",
-    "href": "example/example1.html",
-    "title": "7  From downloading data to TME",
+    "objectID": "example/examples.html",
+    "href": "example/examples.html",
+    "title": "7  Examples",
     "section": "",
-    "text": "7.1 Data download",
+    "text": "7.1 From downloading data to TME",
     "crumbs": [
-      "Examples",
-      "<span class='chapter-number'>7</span>  <span class='chapter-title'>From downloading data to TME</span>"
+      "<span class='chapter-number'>7</span>  <span class='chapter-title'>Examples</span>"
     ]
   },
   {
-    "objectID": "example/example1.html#data-download",
-    "href": "example/example1.html#data-download",
-    "title": "7  From downloading data to TME",
+    "objectID": "example/examples.html#from-downloading-data-to-tme",
+    "href": "example/examples.html#from-downloading-data-to-tme",
+    "title": "7  Examples",
     "section": "",
-    "text": "7.1.1 Prepare the SRR list\n\nRetrieve the SRR accessions for PRJNA1161405 from NCBI SRA: https://www.ncbi.nlm.nih.gov/sra/?term=PRJNA1161405.\nSave the accessions (one per line) into PRJNA1161405.txt and upload it to: path/to/PRJNA1161405/.\n\n\n\n7.1.2 High-speed download with prefetch\n\nRequires SRA Toolkit installed and on your PATH.\n\n# (Optional) load/activate your environment\n# module load sra-tools            # or: conda activate sra-tools\n\ncd path/to/PRJNA1161405\n# Download all SRR runs listed in PRJNA1161405.txt into the current directory\nprefetch -O ./ --option-file PRJNA1161405.txt\n\n\n7.1.3 Convert .sra to FASTQ with fasterq-dump\nThis loop finds each run directory produced by prefetch and converts the .sra file to paired FASTQ files.\nfolder=\"path/to/PRJNA1161405/\"\ncd path/to/PRJNA1161405\n\nfor dir in \"${folder}\"SRR*; do\n  if [[ -d \"${dir}\" ]]; then\n    dir_name=\"$(basename \"${dir}\")\"\n    input_file=\"${dir}/${dir_name}.sra\"\n    # -3: skip technical reads, -p: show progress, -e 64: threads, -O . : output to current dir\n    fasterq-dump -3 \"${input_file}\" -p -e 64 -O .\n  fi\ndone\n\n\n7.1.4 Multi-thread compression with pigz\nCompress all .fastq files in the folder using 8 threads.\ncd path/to/PRJNA1161405\nfor file in SRR*.fastq; do\n  if [ -f \"$file\" ]; then\n    pigz \"$file\" -p 8\n  fi\ndone\n\n\n7.1.5 (Optional) Direct downloads from ENA FTP with curl\nIf you prefer pulling FASTQ files directly from ENA:\n#!/usr/bin/env bash\nset -euo pipefail\n\n# Normal samples\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/063/SRR35344563/SRR35344563_1.fastq.gz -o SRR35344563_GSM8516765_Normal4_Homo_sapiens_RNA-Seq_1.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/063/SRR35344563/SRR35344563_2.fastq.gz -o SRR35344563_GSM8516765_Normal4_Homo_sapiens_RNA-Seq_2.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/061/SRR35344561/SRR35344561_1.fastq.gz -o SRR35344561_GSM8516763_Normal2_Homo_sapiens_RNA-Seq_1.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/061/SRR35344561/SRR35344561_2.fastq.gz -o SRR35344561_GSM8516763_Normal2_Homo_sapiens_RNA-Seq_2.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/060/SRR35344560/SRR35344560_1.fastq.gz -o SRR35344560_GSM8516762_Normal1_Homo_sapiens_RNA-Seq_1.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/060/SRR35344560/SRR35344560_2.fastq.gz -o SRR35344560_GSM8516762_Normal1_Homo_sapiens_RNA-Seq_2.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/062/SRR35344562/SRR35344562_1.fastq.gz -o SRR35344562_GSM8516764_Normal3_Homo_sapiens_RNA-Seq_1.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/062/SRR35344562/SRR35344562_2.fastq.gz -o SRR35344562_GSM8516764_Normal3_Homo_sapiens_RNA-Seq_2.fastq.gz\n\n# HCC samples\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/068/SRR35344568/SRR35344568_1.fastq.gz -o SRR35344568_GSM8516770_HCC3_Homo_sapiens_RNA-Seq_1.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/068/SRR35344568/SRR35344568_2.fastq.gz -o SRR35344568_GSM8516770_HCC3_Homo_sapiens_RNA-Seq_2.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/069/SRR35344569/SRR35344569_1.fastq.gz -o SRR35344569_GSM8516771_HCC4_Homo_sapiens_RNA-Seq_1.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/069/SRR35344569/SRR35344569_2.fastq.gz -o SRR35344569_GSM8516771_HCC4_Homo_sapiens_RNA-Seq_2.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/070/SRR35344570/SRR35344570_1.fastq.gz -o SRR35344570_GSM8516772_HCC5_Homo_sapiens_RNA-Seq_1.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/070/SRR35344570/SRR35344570_2.fastq.gz -o SRR35344570_GSM8516772_HCC5_Homo_sapiens_RNA-Seq_2.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/071/SRR35344571/SRR35344571_1.fastq.gz -o SRR35344571_GSM8516773_HCC6_Homo_sapiens_RNA-Seq_1.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/071/SRR35344571/SRR35344571_2.fastq.gz -o SRR35344571_GSM8516773_HCC6_Homo_sapiens_RNA-Seq_2.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/072/SRR35344572/SRR35344572_1.fastq.gz -o SRR35344572_GSM8516774_HCC7_Homo_sapiens_RNA-Seq_1.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/072/SRR35344572/SRR35344572_2.fastq.gz -o SRR35344572_GSM8516774_HCC7_Homo_sapiens_RNA-Seq_2.fastq.gz\n\n# CLD samples\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/073/SRR35344573/SRR35344573_1.fastq.gz -o SRR35344573_GSM8516775_CLD1_Homo_sapiens_RNA-Seq_1.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/073/SRR35344573/SRR35344573_2.fastq.gz -o SRR35344573_GSM8516775_CLD1_Homo_sapiens_RNA-Seq_2.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/074/SRR35344574/SRR35344574_1.fastq.gz -o SRR35344574_GSM8516776_CLD2_Homo_sapiens_RNA-Seq_1.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/074/SRR35344574/SRR35344574_2.fastq.gz -o SRR35344574_GSM8516776_CLD2_Homo_sapiens_RNA-Seq_2.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/075/SRR35344575/SRR35344575_1.fastq.gz -o SRR35344575_GSM8516777_CLD3_Homo_sapiens_RNA-Seq_1.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/075/SRR35344575/SRR35344575_2.fastq.gz -o SRR35344575_GSM8516777_CLD3_Homo_sapiens_RNA-Seq_2.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/076/SRR35344576/SRR35344576_1.fastq.gz -o SRR35344576_GSM8516778_CLD4_Homo_sapiens_RNA-Seq_1.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/076/SRR35344576/SRR35344576_2.fastq.gz -o SRR35344576_GSM8516778_CLD4_Homo_sapiens_RNA-Seq_2.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/077/SRR35344577/SRR35344577_1.fastq.gz -o SRR35344577_GSM8516779_CLD5_Homo_sapiens_RNA-Seq_1.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/077/SRR35344577/SRR35344577_2.fastq.gz -o SRR35344577_GSM8516779_CLD5_Homo_sapiens_RNA-Seq_2.fastq.gz",
+    "text": "7.1.1 Data download\n\n7.1.1.1 Prepare the SRR list\n\nRetrieve the SRR accessions for PRJNA1161405 from NCBI SRA: https://www.ncbi.nlm.nih.gov/sra/?term=PRJNA1161405.\nSave the accessions (one per line) into PRJNA1161405.txt and upload it to: path/to/PRJNA1161405/.\n\n\n\n7.1.1.2 High-speed download with prefetch\n\nRequires SRA Toolkit installed and on your PATH.\n\n# (Optional) load/activate your environment\n# module load sra-tools            # or: conda activate sra-tools\n\ncd path/to/PRJNA1161405\n# Download all SRR runs listed in PRJNA1161405.txt into the current directory\nprefetch -O ./ --option-file PRJNA1161405.txt\n\n\n7.1.1.3 Convert .sra to FASTQ with fasterq-dump\nThis loop finds each run directory produced by prefetch and converts the .sra file to paired FASTQ files.\nfolder=\"path/to/PRJNA1161405/\"\ncd path/to/PRJNA1161405\n\nfor dir in \"${folder}\"SRR*; do\n  if [[ -d \"${dir}\" ]]; then\n    dir_name=\"$(basename \"${dir}\")\"\n    input_file=\"${dir}/${dir_name}.sra\"\n    # -3: skip technical reads, -p: show progress, -e 64: threads, -O . : output to current dir\n    fasterq-dump -3 \"${input_file}\" -p -e 64 -O .\n  fi\ndone\n\n\n7.1.1.4 Multi-thread compression with pigz\nCompress all .fastq files in the folder using 8 threads.\ncd path/to/PRJNA1161405\nfor file in SRR*.fastq; do\n  if [ -f \"$file\" ]; then\n    pigz \"$file\" -p 8\n  fi\ndone\n\n\n7.1.1.5 (Optional) Direct downloads from ENA FTP with curl\nIf you prefer pulling FASTQ files directly from ENA:\n#!/usr/bin/env bash\nset -euo pipefail\n\n# Normal samples\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/063/SRR35344563/SRR35344563_1.fastq.gz -o SRR35344563_GSM8516765_Normal4_Homo_sapiens_RNA-Seq_1.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/063/SRR35344563/SRR35344563_2.fastq.gz -o SRR35344563_GSM8516765_Normal4_Homo_sapiens_RNA-Seq_2.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/061/SRR35344561/SRR35344561_1.fastq.gz -o SRR35344561_GSM8516763_Normal2_Homo_sapiens_RNA-Seq_1.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/061/SRR35344561/SRR35344561_2.fastq.gz -o SRR35344561_GSM8516763_Normal2_Homo_sapiens_RNA-Seq_2.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/060/SRR35344560/SRR35344560_1.fastq.gz -o SRR35344560_GSM8516762_Normal1_Homo_sapiens_RNA-Seq_1.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/060/SRR35344560/SRR35344560_2.fastq.gz -o SRR35344560_GSM8516762_Normal1_Homo_sapiens_RNA-Seq_2.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/062/SRR35344562/SRR35344562_1.fastq.gz -o SRR35344562_GSM8516764_Normal3_Homo_sapiens_RNA-Seq_1.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/062/SRR35344562/SRR35344562_2.fastq.gz -o SRR35344562_GSM8516764_Normal3_Homo_sapiens_RNA-Seq_2.fastq.gz\n\n# HCC samples\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/068/SRR35344568/SRR35344568_1.fastq.gz -o SRR35344568_GSM8516770_HCC3_Homo_sapiens_RNA-Seq_1.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/068/SRR35344568/SRR35344568_2.fastq.gz -o SRR35344568_GSM8516770_HCC3_Homo_sapiens_RNA-Seq_2.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/069/SRR35344569/SRR35344569_1.fastq.gz -o SRR35344569_GSM8516771_HCC4_Homo_sapiens_RNA-Seq_1.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/069/SRR35344569/SRR35344569_2.fastq.gz -o SRR35344569_GSM8516771_HCC4_Homo_sapiens_RNA-Seq_2.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/070/SRR35344570/SRR35344570_1.fastq.gz -o SRR35344570_GSM8516772_HCC5_Homo_sapiens_RNA-Seq_1.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/070/SRR35344570/SRR35344570_2.fastq.gz -o SRR35344570_GSM8516772_HCC5_Homo_sapiens_RNA-Seq_2.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/071/SRR35344571/SRR35344571_1.fastq.gz -o SRR35344571_GSM8516773_HCC6_Homo_sapiens_RNA-Seq_1.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/071/SRR35344571/SRR35344571_2.fastq.gz -o SRR35344571_GSM8516773_HCC6_Homo_sapiens_RNA-Seq_2.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/072/SRR35344572/SRR35344572_1.fastq.gz -o SRR35344572_GSM8516774_HCC7_Homo_sapiens_RNA-Seq_1.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/072/SRR35344572/SRR35344572_2.fastq.gz -o SRR35344572_GSM8516774_HCC7_Homo_sapiens_RNA-Seq_2.fastq.gz\n\n# CLD samples\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/073/SRR35344573/SRR35344573_1.fastq.gz -o SRR35344573_GSM8516775_CLD1_Homo_sapiens_RNA-Seq_1.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/073/SRR35344573/SRR35344573_2.fastq.gz -o SRR35344573_GSM8516775_CLD1_Homo_sapiens_RNA-Seq_2.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/074/SRR35344574/SRR35344574_1.fastq.gz -o SRR35344574_GSM8516776_CLD2_Homo_sapiens_RNA-Seq_1.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/074/SRR35344574/SRR35344574_2.fastq.gz -o SRR35344574_GSM8516776_CLD2_Homo_sapiens_RNA-Seq_2.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/075/SRR35344575/SRR35344575_1.fastq.gz -o SRR35344575_GSM8516777_CLD3_Homo_sapiens_RNA-Seq_1.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/075/SRR35344575/SRR35344575_2.fastq.gz -o SRR35344575_GSM8516777_CLD3_Homo_sapiens_RNA-Seq_2.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/076/SRR35344576/SRR35344576_1.fastq.gz -o SRR35344576_GSM8516778_CLD4_Homo_sapiens_RNA-Seq_1.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/076/SRR35344576/SRR35344576_2.fastq.gz -o SRR35344576_GSM8516778_CLD4_Homo_sapiens_RNA-Seq_2.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/077/SRR35344577/SRR35344577_1.fastq.gz -o SRR35344577_GSM8516779_CLD5_Homo_sapiens_RNA-Seq_1.fastq.gz\ncurl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR353/077/SRR35344577/SRR35344577_2.fastq.gz -o SRR35344577_GSM8516779_CLD5_Homo_sapiens_RNA-Seq_2.fastq.gz\n\n\n\n\n7.1.2 From FASTQ to TME - runall\n\n7.1.2.1 Salmon mode\niobrpy runall \\\n  --mode salmon \\\n  --outdir \"/path/to/outdir\" \\\n  --fastq \"/path/to/fastq\" \\\n  --threads 8 \\\n  --batch_size 1 \\\n  --index \"/path/to/salmon/index\" \\\n  --project SRR\n\n\n7.1.2.2 STAR mode\niobrpy runall \\\n  --mode star \\\n  --outdir \"/path/to/outdir\" \\\n  --fastq \"/path/to/fastq\" \\\n  --threads 8 \\\n  --batch_size 1 \\\n  --index \"/path/to/star/index\" \\\n  --project SRR",
     "crumbs": [
-      "Examples",
-      "<span class='chapter-number'>7</span>  <span class='chapter-title'>From downloading data to TME</span>"
+      "<span class='chapter-number'>7</span>  <span class='chapter-title'>Examples</span>"
     ]
   },
   {
-    "objectID": "example/example1.html#from-fastq-to-tme---runall",
-    "href": "example/example1.html#from-fastq-to-tme---runall",
-    "title": "7  From downloading data to TME",
-    "section": "7.2 From FASTQ to TME - runall",
-    "text": "7.2 From FASTQ to TME - runall\n\n7.2.1 Salmon mode\niobrpy runall \\\n  --mode salmon \\\n  --outdir \"/path/to/outdir\" \\\n  --fastq \"/path/to/fastq\" \\\n  --threads 8 \\\n  --batch_size 1 \\\n  --index \"/path/to/salmon/index\" \\\n  --project SRR\n\n\n7.2.2 STAR mode\niobrpy runall \\\n  --mode star \\\n  --outdir \"/path/to/outdir\" \\\n  --fastq \"/path/to/fastq\" \\\n  --threads 8 \\\n  --batch_size 1 \\\n  --index \"/path/to/star/index\" \\\n  --project SRR",
+    "objectID": "example/examples.html#tpm-conversion",
+    "href": "example/examples.html#tpm-conversion",
+    "title": "7  Examples",
+    "section": "7.2 TPM conversion",
+    "text": "7.2 TPM conversion\nThis page shows four common entry points to a TPM matrix and the final log2(x+1) transform you should apply after each path.\n\nQuick rule of thumb\n- Raw counts → TPM: use count2tpm.\n- Salmon quant → TPM: use prepare_salmon.\n- Gene-expression tables (e.g., arrays) → gene-level matrix: use anno_eset to map/aggregate to symbols.\n- Mouse → Human: use mouse2human_eset to map symbols. - After any of the above, run log2_eset.\n\n\n\n7.2.1 From count matrix to TPM\n# 1) counts → TPM\niobrpy count2tpm \\\n  -i MyProj.STAR.count.tsv.gz \\\n  -o TPM_matrix.csv \\\n  --idtype ensembl \\\n  --org hsa \\\n  --remove_version\n# (Optional) Add effective transcript lengths if available:\n#   --effLength_csv efflen.csv --id id --length eff_length --gene_symbol symbol\n# 2) TPM → log2(x+1)\niobrpy log2_eset \\\n  -i TPM_matrix.csv \\\n  -o TPM_matrix.log2.csv\n\n\n\n7.2.2 From Salmon matrix to TPM\n# 1) Salmon TPM (gene/transcript) → cleaned gene-level TPM\niobrpy prepare_salmon \\\n  -i MyProj_salmon_tpm.tsv.gz \\\n  -o TPM_matrix.csv \\\n  --return_feature symbol \\\n  --remove_version\n# 2) TPM → log2(x+1)\niobrpy log2_eset \\\n  -i TPM_matrix.csv \\\n  -o TPM_matrix.log2.csv\n\n\n\n7.2.3 From gene-expression matrix to gene-level matrix with annotation (anno_eset)\nUse when your input is an expression table that needs ID mapping / de-duplication (e.g., microarray probes → symbols, or TPM tables with mixed identifiers).\n# Map/aggregate to symbols using a built-in annotation set\niobrpy anno_eset \\\n  -i expression_matrix.csv \\\n  -o expression_anno.csv \\\n  --annotation anno_grch38 \\\n  --symbol symbol \\\n  --probe id \\\n  --method mean \\\n  --remove_version\n# Alternative platform example:\n# iobrpy anno_eset -i expression_matrix.csv -o expression_anno.csv \\\n#   --annotation anno_hug133plus2 --symbol symbol --probe id --method mean\n# if your input was already TPM-like, finish with log2(x+1)\niobrpy log2_eset \\\n  -i expression_anno.csv \\\n  -o expression_anno.log2.csv\n\n\n\n7.2.4 Mouse → Human gene conversion (mouse2human_eset)\nTwo common modes:\n# Matrix mode: rows = mouse gene symbols, columns = samples\niobrpy mouse2human_eset \\\n  -i mouse_matrix.tsv \\\n  -o human_matrix.tsv \\\n  --is_matrix \\\n  --verbose\n# Table mode: has a symbol column (e.g., SYMBOL); will de-duplicate then map\niobrpy mouse2human_eset \\\n  -i mouse_table.csv \\\n  -o human_matrix.csv \\\n  --column_of_symbol SYMBOL \\\n  --verbose\n# log2(x+1) after mapping\niobrpy log2_eset \\\n  -i human_matrix.tsv \\\n  -o human_matrix.log2.tsv",
     "crumbs": [
-      "Examples",
-      "<span class='chapter-number'>7</span>  <span class='chapter-title'>From downloading data to TME</span>"
+      "<span class='chapter-number'>7</span>  <span class='chapter-title'>Examples</span>"
     ]
   },
   {
-    "objectID": "example/example2.html",
-    "href": "example/example2.html",
-    "title": "8  TPM conversion",
-    "section": "",
-    "text": "8.1 From count matrix to TPM\nThis page shows four common entry points to a TPM matrix and the final log2(x+1) transform you should apply after each path.",
+    "objectID": "example/examples.html#from-tpm-to-tme",
+    "href": "example/examples.html#from-tpm-to-tme",
+    "title": "7  Examples",
+    "section": "7.3 From TPM to TME",
+    "text": "7.3 From TPM to TME\nThis page takes a TPM matrix and runs downstream TME analyses: signature scoring, immune deconvolution (multiple methods), clustering, and ligand–receptor scoring.\n\n\n7.3.1 Inputs\n\nTPM matrix: TPM_matrix.csv\n(Optional) log2 transform: if desired, apply:\n\niobrpy log2_eset \\\n  -i TPM_matrix.csv \\\n  -o TPM_matrix.log2.csv\n\n\n\n7.3.2 All-in-one TME profiling - tme_profile\n\ntme_profile wraps the following functions into one command:\n\nSignature scoring → calculate_sig_score\nImmune deconvolution (six methods) → cibersort, IPS, estimate, mcpcounter, quantiseq, epic\nLigand–receptor scoring → LR_cal\nIt also merges the deconvolution outputs into a single table\n\n\n\nNot included: deside and any clustering (tme_cluster, nmf).\nTip: You can either run each function step-by-step (see the sections below for individual commands and options), or use tme_profile to execute the full chain in one go.\n\n\n7.3.2.1 Minimal usage\niobrpy tme_profile \\\n  -i TPM_matrix.csv \\\n  -o out/tme \\\n  --threads 1\n\n\n\n\n7.3.3 Immune deconvolution\nChoose one or several methods below; each writes one result file.\n\n7.3.3.1 CIBERSORT\niobrpy cibersort \\\n  -i TPM_matrix.csv \\\n  -o cibersort.csv \\\n  --perm 100 \\\n  --QN True \\\n  --absolute False \\\n  --abs_method sig.score \\\n  --threads 1\n\n\n7.3.3.2 quanTIseq\niobrpy quantiseq \\\n  -i TPM_matrix.csv \\\n  -o quantiseq.csv \\\n  --signame TIL10 \\\n  --method lsei \\\n  --tumor \\\n  --arrays \\\n  --scale_mrna\n\n\n7.3.3.3 EPIC\niobrpy epic \\\n  -i TPM_matrix.csv \\\n  -o epic.csv \\\n  --reference TRef\n\n\n7.3.3.4 ESTIMATE\niobrpy estimate \\\n  -i TPM_matrix.csv \\\n  -o estimate.csv \\\n  --platform affymetrix\n\n\n7.3.3.5 MCPcounter\niobrpy mcpcounter \\\n  -i TPM_matrix.csv \\\n  -o mcpcounter.csv \\\n  --features HUGO_symbols\n\n\n7.3.3.6 IPS\niobrpy IPS \\\n  -i TPM_matrix.csv \\\n  -o IPS.csv\n\n\n7.3.3.7 DeSide\niobrpy deside \\\n  --model_dir path/to/your/DeSide_model \\\n  -i TPM_matrix.csv \\\n  -o deside.csv \\\n  --result_dir path/to/your/plot/folder \\\n  --exp_type TPM \\\n  --scaling_by_constant \\\n  --transpose \\\n  --print_info\n\n\n\n\n7.3.4 TME clustering\nYou can cluster samples by cell fractions or signature scores.\n\n7.3.4.1 k-means with KL index auto-k (recommended)\niobrpy tme_cluster \\\n  -i cibersort.csv \\\n  -o tme_cluster.csv \\\n  --features 1:22 \\\n  --id \"ID\" \\\n  --min_nc 2 \\\n  --max_nc 5 \\\n  --print_result \\\n  --scale\n\n\n7.3.4.2 NMF clustering (auto-k, excluding k=2)\niobrpy nmf \\\n  -i cibersort.csv \\\n  -o path/to/your/result/folder \\\n  --kmax 10 \\\n  --features 1:22 \\\n  --skip_k_2\n\n\n\n\n7.3.5 Ligand–receptor scoring\nCompute bulk ligand–receptor interaction scores from TPM:\niobrpy LR_cal \\\n  -i TPM_matrix.csv \\\n  -o LR_score.csv \\\n  --data_type \"tpm\" \\\n  --id_type \"symbol\" \\\n  --cancer_type pancan \\\n  --verbose",
     "crumbs": [
-      "Examples",
-      "<span class='chapter-number'>8</span>  <span class='chapter-title'>TPM conversion</span>"
-    ]
-  },
-  {
-    "objectID": "example/example2.html#from-count-matrix-to-tpm",
-    "href": "example/example2.html#from-count-matrix-to-tpm",
-    "title": "8  TPM conversion",
-    "section": "",
-    "text": "# 1) counts → TPM\niobrpy count2tpm \\\n  -i MyProj.STAR.count.tsv.gz \\\n  -o TPM_matrix.csv \\\n  --idtype ensembl \\\n  --org hsa \\\n  --remove_version\n# (Optional) Add effective transcript lengths if available:\n#   --effLength_csv efflen.csv --id id --length eff_length --gene_symbol symbol\n# 2) TPM → log2(x+1)\niobrpy log2_eset \\\n  -i TPM_matrix.csv \\\n  -o TPM_matrix.log2.csv",
-    "crumbs": [
-      "Examples",
-      "<span class='chapter-number'>8</span>  <span class='chapter-title'>TPM conversion</span>"
-    ]
-  },
-  {
-    "objectID": "example/example2.html#from-salmon-matrix-to-tpm",
-    "href": "example/example2.html#from-salmon-matrix-to-tpm",
-    "title": "8  TPM conversion",
-    "section": "8.2 From Salmon matrix to TPM",
-    "text": "8.2 From Salmon matrix to TPM\n# 1) Salmon TPM (gene/transcript) → cleaned gene-level TPM\niobrpy prepare_salmon \\\n  -i MyProj_salmon_tpm.tsv.gz \\\n  -o TPM_matrix.csv \\\n  --return_feature symbol \\\n  --remove_version\n# 2) TPM → log2(x+1)\niobrpy log2_eset \\\n  -i TPM_matrix.csv \\\n  -o TPM_matrix.log2.csv",
-    "crumbs": [
-      "Examples",
-      "<span class='chapter-number'>8</span>  <span class='chapter-title'>TPM conversion</span>"
-    ]
-  },
-  {
-    "objectID": "example/example2.html#from-gene-expression-matrix-to-gene-level-matrix-with-annotation-anno_eset",
-    "href": "example/example2.html#from-gene-expression-matrix-to-gene-level-matrix-with-annotation-anno_eset",
-    "title": "8  TPM conversion",
-    "section": "8.3 From gene-expression matrix to gene-level matrix with annotation (anno_eset)",
-    "text": "8.3 From gene-expression matrix to gene-level matrix with annotation (anno_eset)\nUse when your input is an expression table that needs ID mapping / de-duplication (e.g., microarray probes → symbols, or TPM tables with mixed identifiers).\n# Map/aggregate to symbols using a built-in annotation set\niobrpy anno_eset \\\n  -i expression_matrix.csv \\\n  -o expression_anno.csv \\\n  --annotation anno_grch38 \\\n  --symbol symbol \\\n  --probe id \\\n  --method mean \\\n  --remove_version\n# Alternative platform example:\n# iobrpy anno_eset -i expression_matrix.csv -o expression_anno.csv \\\n#   --annotation anno_hug133plus2 --symbol symbol --probe id --method mean\n# if your input was already TPM-like, finish with log2(x+1)\niobrpy log2_eset \\\n  -i expression_anno.csv \\\n  -o expression_anno.log2.csv",
-    "crumbs": [
-      "Examples",
-      "<span class='chapter-number'>8</span>  <span class='chapter-title'>TPM conversion</span>"
-    ]
-  },
-  {
-    "objectID": "example/example2.html#mouse-human-gene-conversion-mouse2human_eset",
-    "href": "example/example2.html#mouse-human-gene-conversion-mouse2human_eset",
-    "title": "8  TPM conversion",
-    "section": "8.4 Mouse → Human gene conversion (mouse2human_eset)",
-    "text": "8.4 Mouse → Human gene conversion (mouse2human_eset)\nTwo common modes:\n# Matrix mode: rows = mouse gene symbols, columns = samples\niobrpy mouse2human_eset \\\n  -i mouse_matrix.tsv \\\n  -o human_matrix.tsv \\\n  --is_matrix \\\n  --verbose\n# Table mode: has a symbol column (e.g., SYMBOL); will de-duplicate then map\niobrpy mouse2human_eset \\\n  -i mouse_table.csv \\\n  -o human_matrix.csv \\\n  --column_of_symbol SYMBOL \\\n  --verbose\n# log2(x+1) after mapping\niobrpy log2_eset \\\n  -i human_matrix.tsv \\\n  -o human_matrix.log2.tsv",
-    "crumbs": [
-      "Examples",
-      "<span class='chapter-number'>8</span>  <span class='chapter-title'>TPM conversion</span>"
-    ]
-  },
-  {
-    "objectID": "example/example3.html",
-    "href": "example/example3.html",
-    "title": "9  From TPM to TME",
-    "section": "",
-    "text": "9.1 Inputs\nThis page takes a TPM matrix and runs downstream TME analyses: signature scoring, immune deconvolution (multiple methods), clustering, and ligand–receptor scoring.",
-    "crumbs": [
-      "Examples",
-      "<span class='chapter-number'>9</span>  <span class='chapter-title'>From TPM to TME</span>"
-    ]
-  },
-  {
-    "objectID": "example/example3.html#inputs",
-    "href": "example/example3.html#inputs",
-    "title": "9  From TPM to TME",
-    "section": "",
-    "text": "TPM matrix: TPM_matrix.csv\n(Optional) log2 transform: if desired, apply:\n\niobrpy log2_eset \\\n  -i TPM_matrix.csv \\\n  -o TPM_matrix.log2.csv",
-    "crumbs": [
-      "Examples",
-      "<span class='chapter-number'>9</span>  <span class='chapter-title'>From TPM to TME</span>"
-    ]
-  },
-  {
-    "objectID": "example/example3.html#all-in-one-tme-profiling---tme_profile",
-    "href": "example/example3.html#all-in-one-tme-profiling---tme_profile",
-    "title": "9  From TPM to TME",
-    "section": "9.2 All-in-one TME profiling - tme_profile",
-    "text": "9.2 All-in-one TME profiling - tme_profile\n\ntme_profile wraps the following functions into one command:\n\nSignature scoring → calculate_sig_score\nImmune deconvolution (six methods) → cibersort, IPS, estimate, mcpcounter, quantiseq, epic\nLigand–receptor scoring → LR_cal\nIt also merges the deconvolution outputs into a single table\n\n\n\nNot included: deside and any clustering (tme_cluster, nmf).\nTip: You can either run each function step-by-step (see the sections below for individual commands and options), or use tme_profile to execute the full chain in one go.\n\n\n9.2.1 Minimal usage\niobrpy tme_profile \\\n  -i TPM_matrix.csv \\\n  -o out/tme \\\n  --threads 1",
-    "crumbs": [
-      "Examples",
-      "<span class='chapter-number'>9</span>  <span class='chapter-title'>From TPM to TME</span>"
-    ]
-  },
-  {
-    "objectID": "example/example3.html#immune-deconvolution",
-    "href": "example/example3.html#immune-deconvolution",
-    "title": "9  From TPM to TME",
-    "section": "9.3 Immune deconvolution",
-    "text": "9.3 Immune deconvolution\nChoose one or several methods below; each writes one result file.\n\n9.3.1 CIBERSORT\niobrpy cibersort \\\n  -i TPM_matrix.csv \\\n  -o cibersort.csv \\\n  --perm 100 \\\n  --QN True \\\n  --absolute False \\\n  --abs_method sig.score \\\n  --threads 1\n\n\n9.3.2 quanTIseq\niobrpy quantiseq \\\n  -i TPM_matrix.csv \\\n  -o quantiseq.csv \\\n  --signame TIL10 \\\n  --method lsei \\\n  --tumor \\\n  --arrays \\\n  --scale_mrna\n\n\n9.3.3 EPIC\niobrpy epic \\\n  -i TPM_matrix.csv \\\n  -o epic.csv \\\n  --reference TRef\n\n\n9.3.4 ESTIMATE\niobrpy estimate \\\n  -i TPM_matrix.csv \\\n  -o estimate.csv \\\n  --platform affymetrix\n\n\n9.3.5 MCPcounter\niobrpy mcpcounter \\\n  -i TPM_matrix.csv \\\n  -o mcpcounter.csv \\\n  --features HUGO_symbols\n\n\n9.3.6 IPS\niobrpy IPS \\\n  -i TPM_matrix.csv \\\n  -o IPS.csv\n\n\n9.3.7 DeSide\niobrpy deside \\\n  --model_dir path/to/your/DeSide_model \\\n  -i TPM_matrix.csv \\\n  -o deside.csv \\\n  --result_dir path/to/your/plot/folder \\\n  --exp_type TPM \\\n  --scaling_by_constant \\\n  --transpose \\\n  --print_info",
-    "crumbs": [
-      "Examples",
-      "<span class='chapter-number'>9</span>  <span class='chapter-title'>From TPM to TME</span>"
-    ]
-  },
-  {
-    "objectID": "example/example3.html#tme-clustering",
-    "href": "example/example3.html#tme-clustering",
-    "title": "9  From TPM to TME",
-    "section": "9.4 TME clustering",
-    "text": "9.4 TME clustering\nYou can cluster samples by cell fractions or signature scores.\n\n9.4.1 k-means with KL index auto-k (recommended)\niobrpy tme_cluster \\\n  -i cibersort.csv \\\n  -o tme_cluster.csv \\\n  --features 1:22 \\\n  --id \"ID\" \\\n  --min_nc 2 \\\n  --max_nc 5 \\\n  --print_result \\\n  --scale\n\n\n9.4.2 NMF clustering (auto-k, excluding k=2)\niobrpy nmf \\\n  -i cibersort.csv \\\n  -o path/to/your/result/folder \\\n  --kmax 10 \\\n  --features 1:22 \\\n  --skip_k_2",
-    "crumbs": [
-      "Examples",
-      "<span class='chapter-number'>9</span>  <span class='chapter-title'>From TPM to TME</span>"
-    ]
-  },
-  {
-    "objectID": "example/example3.html#ligandreceptor-scoring",
-    "href": "example/example3.html#ligandreceptor-scoring",
-    "title": "9  From TPM to TME",
-    "section": "9.5 Ligand–receptor scoring",
-    "text": "9.5 Ligand–receptor scoring\nCompute bulk ligand–receptor interaction scores from TPM:\niobrpy LR_cal \\\n  -i TPM_matrix.csv \\\n  -o LR_score.csv \\\n  --data_type \"tpm\" \\\n  --id_type \"symbol\" \\\n  --cancer_type pancan \\\n  --verbose",
-    "crumbs": [
-      "Examples",
-      "<span class='chapter-number'>9</span>  <span class='chapter-title'>From TPM to TME</span>"
+      "<span class='chapter-number'>7</span>  <span class='chapter-title'>Examples</span>"
     ]
   },
   {
     "objectID": "Troubleshooting.html",
     "href": "Troubleshooting.html",
-    "title": "10  Troubleshooting",
+    "title": "8  Troubleshooting",
     "section": "",
     "text": "Wrong input orientation\nDeconvolution commands expect genes × samples. For deside, --transpose can be helpful depending on your file.\nMixed separators / encoding\nPrefer .csv , .txt or .tsv consistently. Auto‑detection works in most subcommands but you can override with explicit flags where provided.\nDeSide model missing The deside subcommand requires pretrained model files. If you get errors like FileNotFoundError: DeSide_model not found , download the official model archive from: https://figshare.com/articles/dataset/DeSide_model/25117862/1?file=44330255\nPython version for DeSide The deside subcommand runs ONLY on Python 3.9. Other versions (3.8/3.10/3.11/…) are not supported .When invoked via the iobrpy CLI, it automatically creates/uses an isolated virtual environment with pinned dependencies so it doesn’t leak packages from your outer env. You can override the venv location with IOBRPY_DESIDE_VENV or force a clean rebuild with IOBRPY_DESIDE_REBUILD=1; the CLI wires iobrpy into that venv through a small shim and then launches the worker.",
     "crumbs": [
-      "<span class='chapter-number'>10</span>  <span class='chapter-title'>Troubleshooting</span>"
+      "<span class='chapter-number'>8</span>  <span class='chapter-title'>Troubleshooting</span>"
     ]
   },
   {
     "objectID": "Citation.html",
     "href": "Citation.html",
-    "title": "11  Citation",
+    "title": "9  Citation",
     "section": "",
-    "text": "11.1 TME deconvolution\nPlease cite the following papers appropriately for TME deconvolution algorithm if used:\nCIBERSORT: Newman, A. M., Liu, C. L., Green, M. R., Gentles, A. J., Feng, W., Xu, Y., … Alizadeh, A. A. (2015). Robust enumeration of cell subsets from tissue expression profiles. Nature Methods, 12(5), 453–457. https://doi.org/10.1038/nmeth.3337\nESTIMATE: Vegesna R, Kim H, Torres-Garcia W, …, Verhaak R.* (2013). Inferring tumour purity and stromal and immune cell admixture from expression data. Nature Communications 4, 2612. http://doi.org/10.1038/ncomms3612\nquanTIseq: Finotello, F., Mayer, C., Plattner, C., Laschober, G., Rieder, D., Hackl, H., …, Sopper, S.* (2019). Molecular and pharmacological modulators of the tumor immune contexture revealed by deconvolution of RNA-seq data. Genome medicine, 11(1), 34. https://doi.org/10.1186/s13073-019-0638-6\nIPS: P. Charoentong et al.* , Pan-cancer Immunogenomic Analyses Reveal Genotype-Immunophenotype Relationships and Predictors of Response to Checkpoint Blockade. Cell Reports 18, 248-262 (2017). https://doi.org/10.1016/j.celrep.2016.12.019\nMCPCounter: Becht, E., Giraldo, N. A., Lacroix, L., Buttard, B., Elarouci, N., Petitprez, F., … de Reyniès, A*. (2016). Estimating the population abundance of tissue-infiltrating immune and stromal cell populations using gene expression. Genome Biology, 17(1), 218. https://doi.org/10.1186/s13059-016-1070-5\nEPIC: Racle, J., de Jonge, K., Baumgaertner, P., Speiser, D. E., & Gfeller, D*. (2017). Simultaneous enumeration of cancer and immune cell types from bulk tumor gene expression data. ELife, 6, e26476. https://doi.org/10.7554/eLife.26476\nDeside: Xiong X, Liu Y, Pu D, Yang Z, Bi Z, Tian L, Li X. DeSide: A unified deep learning approach for cellular deconvolution of tumor microenvironment. Proc Natl Acad Sci U S A. 2024 Nov 12;121(46):e2407096121. doi: 10.1073/pnas.2407096121. Epub 2024 Nov 8. PMID: 39514318; PMCID: PMC11573681.",
+    "text": "9.1 TME deconvolution\nPlease cite the following papers appropriately for TME deconvolution algorithm if used:\nCIBERSORT: Newman, A. M., Liu, C. L., Green, M. R., Gentles, A. J., Feng, W., Xu, Y., … Alizadeh, A. A. (2015). Robust enumeration of cell subsets from tissue expression profiles. Nature Methods, 12(5), 453–457. https://doi.org/10.1038/nmeth.3337\nESTIMATE: Vegesna R, Kim H, Torres-Garcia W, …, Verhaak R.* (2013). Inferring tumour purity and stromal and immune cell admixture from expression data. Nature Communications 4, 2612. http://doi.org/10.1038/ncomms3612\nquanTIseq: Finotello, F., Mayer, C., Plattner, C., Laschober, G., Rieder, D., Hackl, H., …, Sopper, S.* (2019). Molecular and pharmacological modulators of the tumor immune contexture revealed by deconvolution of RNA-seq data. Genome medicine, 11(1), 34. https://doi.org/10.1186/s13073-019-0638-6\nIPS: P. Charoentong et al.* , Pan-cancer Immunogenomic Analyses Reveal Genotype-Immunophenotype Relationships and Predictors of Response to Checkpoint Blockade. Cell Reports 18, 248-262 (2017). https://doi.org/10.1016/j.celrep.2016.12.019\nMCPCounter: Becht, E., Giraldo, N. A., Lacroix, L., Buttard, B., Elarouci, N., Petitprez, F., … de Reyniès, A*. (2016). Estimating the population abundance of tissue-infiltrating immune and stromal cell populations using gene expression. Genome Biology, 17(1), 218. https://doi.org/10.1186/s13059-016-1070-5\nEPIC: Racle, J., de Jonge, K., Baumgaertner, P., Speiser, D. E., & Gfeller, D*. (2017). Simultaneous enumeration of cancer and immune cell types from bulk tumor gene expression data. ELife, 6, e26476. https://doi.org/10.7554/eLife.26476\nDeside: Xiong X, Liu Y, Pu D, Yang Z, Bi Z, Tian L, Li X. DeSide: A unified deep learning approach for cellular deconvolution of tumor microenvironment. Proc Natl Acad Sci U S A. 2024 Nov 12;121(46):e2407096121. doi: 10.1073/pnas.2407096121. Epub 2024 Nov 8. PMID: 39514318; PMCID: PMC11573681.",
     "crumbs": [
-      "<span class='chapter-number'>11</span>  <span class='chapter-title'>Citation</span>"
+      "<span class='chapter-number'>9</span>  <span class='chapter-title'>Citation</span>"
     ]
   },
   {
     "objectID": "Citation.html#tme-signatures",
     "href": "Citation.html#tme-signatures",
-    "title": "11  Citation",
-    "section": "11.2 TME Signatures",
-    "text": "11.2 TME Signatures\nFor signature score estimation, please cite corresponding literature below:\nssgsea: Barbie, D.A. et al (2009). Systematic RNA interference reveals that oncogenic KRAS-driven cancers require TBK1. Nature, 462(5):108-112.\ngsva: Hänzelmann, S., Castelo, R. and Guinney, J. (2013). GSVA: Gene set variation analysis for microarray and RNA-Seq data. BMC Bioinformatics, 14(1):7.\nzscore: Lee, E. et al (2008). Inferring pathway activity toward precise disease classification. PLoS Comp Biol, 4(11):e1000217.",
+    "title": "9  Citation",
+    "section": "9.2 TME Signatures",
+    "text": "9.2 TME Signatures\nFor signature score estimation, please cite corresponding literature below:\nssgsea: Barbie, D.A. et al (2009). Systematic RNA interference reveals that oncogenic KRAS-driven cancers require TBK1. Nature, 462(5):108-112.\ngsva: Hänzelmann, S., Castelo, R. and Guinney, J. (2013). GSVA: Gene set variation analysis for microarray and RNA-Seq data. BMC Bioinformatics, 14(1):7.\nzscore: Lee, E. et al (2008). Inferring pathway activity toward precise disease classification. PLoS Comp Biol, 4(11):e1000217.",
     "crumbs": [
-      "<span class='chapter-number'>11</span>  <span class='chapter-title'>Citation</span>"
+      "<span class='chapter-number'>9</span>  <span class='chapter-title'>Citation</span>"
     ]
   },
   {
     "objectID": "Citation.html#rna-seq-preprocessing-quantification-tools",
     "href": "Citation.html#rna-seq-preprocessing-quantification-tools",
-    "title": "11  Citation",
-    "section": "11.3 RNA-seq preprocessing & quantification tools",
-    "text": "11.3 RNA-seq preprocessing & quantification tools\nfastp: Chen, S., Zhou, Y., Chen, Y., & Gu, J. (2018). fastp: an ultra-fast all-in-one FASTQ preprocessor. Bioinformatics, 34(17), i884–i890. https://doi.org/10.1093/bioinformatics/bty560\nMultiQC: Ewels, P., Magnusson, M., Lundin, S., & Käller, M. (2016). MultiQC: summarize analysis results for multiple tools and samples in a single report. Bioinformatics, 32(19), 3047–3048. https://doi.org/10.1093/bioinformatics/btw354\nSalmon: Patro, R., Duggal, G., Love, M. I., Irizarry, R. A., & Kingsford, C. (2017). Salmon provides fast and bias-aware quantification of transcript expression. Nature Methods, 14(4), 417–419. https://doi.org/10.1038/nmeth.4197\nSTAR: Dobin, A., Davis, C. A., Schlesinger, F., Drenkow, J., Zaleski, C., Jha, S., … Gingeras, T. R. (2013). STAR: ultrafast universal RNA-seq aligner. Bioinformatics, 29(1), 15–21. https://doi.org/10.1093/bioinformatics/bts635",
+    "title": "9  Citation",
+    "section": "9.3 RNA-seq preprocessing & quantification tools",
+    "text": "9.3 RNA-seq preprocessing & quantification tools\nfastp: Chen, S., Zhou, Y., Chen, Y., & Gu, J. (2018). fastp: an ultra-fast all-in-one FASTQ preprocessor. Bioinformatics, 34(17), i884–i890. https://doi.org/10.1093/bioinformatics/bty560\nMultiQC: Ewels, P., Magnusson, M., Lundin, S., & Käller, M. (2016). MultiQC: summarize analysis results for multiple tools and samples in a single report. Bioinformatics, 32(19), 3047–3048. https://doi.org/10.1093/bioinformatics/btw354\nSalmon: Patro, R., Duggal, G., Love, M. I., Irizarry, R. A., & Kingsford, C. (2017). Salmon provides fast and bias-aware quantification of transcript expression. Nature Methods, 14(4), 417–419. https://doi.org/10.1038/nmeth.4197\nSTAR: Dobin, A., Davis, C. A., Schlesinger, F., Drenkow, J., Zaleski, C., Jha, S., … Gingeras, T. R. (2013). STAR: ultrafast universal RNA-seq aligner. Bioinformatics, 29(1), 15–21. https://doi.org/10.1093/bioinformatics/bts635",
     "crumbs": [
-      "<span class='chapter-number'>11</span>  <span class='chapter-title'>Citation</span>"
+      "<span class='chapter-number'>9</span>  <span class='chapter-title'>Citation</span>"
     ]
   }
 ]
