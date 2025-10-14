@@ -39,12 +39,7 @@ th code {
   line-height: inherit;
 }
 
-/* Hide chapter numbers in sidebar for the three example pages */
-#quarto-sidebar .sidebar-item .sidebar-link[href$="/example/example1.html"] .chapter-number,
-#quarto-sidebar .sidebar-item .sidebar-link[href$="example/example1.html"] .chapter-number,
-#quarto-sidebar .sidebar-item .sidebar-link[href$="/example/example2.html"] .chapter-number,
-#quarto-sidebar .sidebar-item .sidebar-link[href$="example/example2.html"] .chapter-number,
-#quarto-sidebar .sidebar-item .sidebar-link[href$="/example/example3.html"] .chapter-number,
-#quarto-sidebar .sidebar-item .sidebar-link[href$="example/example3.html"] .chapter-number {
+/* Sidebar: hide chapter numbers for items inside any part/section (e.g., Examples) */
+#quarto-sidebar .sidebar-item-section .sidebar-section .chapter-number {
   display: none !important;
 }
