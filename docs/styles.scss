@@ -38,3 +38,10 @@ th code {
   font-size: inherit;
   line-height: inherit;
 }
+
+/* Hide chapter number in sidebar for example pages only */
+.sidebar a.sidebar-link[href$="example/example1.html"] .chapter-number,
+.sidebar a.sidebar-link[href$="example/example2.html"] .chapter-number,
+.sidebar a.sidebar-link[href$="example/example3.html"] .chapter-number {
+  display: none;
+}
