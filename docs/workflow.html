@@ -431,11 +431,13 @@ A2M       1.999453226                      0.679106252                      2.81
 <section id="minimal-usage-for-tme_profile" class="level3" data-number="5.6.1">
 <h3 data-number="5.6.1" class="anchored" data-anchor-id="minimal-usage-for-tme_profile"><span class="header-section-number">5.6.1</span> Minimal usage for <code>tme_profile</code></h3>
 <ul>
-<li><code>tme_profile</code> runs the whole TME profiling stack <strong>from a TPM matrix</strong> in one command. It wraps and orchestrates:</li>
+<li><code>tme_profile</code> runs the whole TME profiling stack <strong>from a TPM matrix</strong> in one command. It wraps and orchestrates:
+<ul>
 <li><strong>Signature scoring</strong> → <code>calculate_sig_score</code></li>
 <li><strong>Immune deconvolution (six methods)</strong> → <code>cibersort</code>, <code>IPS</code>, <code>estimate</code>, <code>mcpcounter</code>, <code>quantiseq</code>, <code>epic</code></li>
 <li><strong>Ligand–receptor scoring</strong> → <code>LR_cal</code></li>
 <li>It also <strong>merges</strong> the deconvolution outputs into a single table</li>
+</ul></li>
 </ul>
 <blockquote class="blockquote">
 <p><strong>Inputs</strong>: genes × samples <strong>TPM</strong> matrix <strong>Outputs</strong>: standardized subfolders for signatures, TME deconvolution, and Ligand–receptor scoring<br>
