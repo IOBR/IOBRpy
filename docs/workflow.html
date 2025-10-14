@@ -241,7 +241,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#optional-mouse-to-human-symbol-mapping" id="toc-optional-mouse-to-human-symbol-mapping" class="nav-link" data-scroll-target="#optional-mouse-to-human-symbol-mapping"><span class="header-section-number">5.3</span> (Optional) Mouse to Human symbol mapping</a></li>
   <li><a href="#optional-annotate-deduplicate" id="toc-optional-annotate-deduplicate" class="nav-link" data-scroll-target="#optional-annotate-deduplicate"><span class="header-section-number">5.4</span> (Optional) Annotate / de‑duplicate</a></li>
   <li><a href="#optional-log2-transform" id="toc-optional-log2-transform" class="nav-link" data-scroll-target="#optional-log2-transform"><span class="header-section-number">5.5</span> (Optional) Log2 transform</a></li>
-  <li><a href="#all-in-one-tme-profiling---tme_profile" id="toc-all-in-one-tme-profiling---tme_profile" class="nav-link" data-scroll-target="#all-in-one-tme-profiling---tme_profile"><span class="header-section-number">5.6</span> All-in-one TME profiling - <code>tme_profile</code></a>
+  <li><a href="#all-in-one-tme-profiling" id="toc-all-in-one-tme-profiling" class="nav-link" data-scroll-target="#all-in-one-tme-profiling"><span class="header-section-number">5.6</span> All-in-one TME profiling</a>
   <ul class="collapse">
   <li><a href="#minimal-usage-for-tme_profile" id="toc-minimal-usage-for-tme_profile" class="nav-link" data-scroll-target="#minimal-usage-for-tme_profile"><span class="header-section-number">5.6.1</span> Minimal usage for <code>tme_profile</code></a></li>
   <li><a href="#signature-scoring" id="toc-signature-scoring" class="nav-link" data-scroll-target="#signature-scoring"><span class="header-section-number">5.6.2</span> Signature scoring</a></li>
@@ -426,16 +426,21 @@ A1CF      0.128261135                      0                                0.41
 A2M       1.999453226                      0.679106252                      2.816410018                      2.898826563</code></pre>
 <hr>
 </section>
-<section id="all-in-one-tme-profiling---tme_profile" class="level2" data-number="5.6">
-<h2 data-number="5.6" class="anchored" data-anchor-id="all-in-one-tme-profiling---tme_profile"><span class="header-section-number">5.6</span> All-in-one TME profiling - <code>tme_profile</code></h2>
-<p><code>tme_profile</code> runs the whole TME profiling stack <strong>from a TPM matrix</strong> in one command.<br>
-It wraps and orchestrates: - <strong>Signature scoring</strong> → <code>calculate_sig_score</code> - <strong>Immune deconvolution (six methods)</strong> → <code>cibersort</code>, <code>IPS</code>, <code>estimate</code>, <code>mcpcounter</code>, <code>quantiseq</code>, <code>epic</code> - <strong>Ligand–receptor scoring</strong> → <code>LR_cal</code> - It also <strong>merges</strong> the deconvolution outputs into a single table</p>
-<blockquote class="blockquote">
-<p><strong>Inputs</strong>: genes × samples <strong>TPM</strong> matrix <strong>Outputs</strong>: standardized subfolders for signatures, TME deconvolution, and Ligand–receptor scoring<br>
-<strong>Heads-up:</strong> <code>tme_profile</code> does <strong>not</strong> include <code>deside</code> and clustering.</p>
-</blockquote>
+<section id="all-in-one-tme-profiling" class="level2" data-number="5.6">
+<h2 data-number="5.6" class="anchored" data-anchor-id="all-in-one-tme-profiling"><span class="header-section-number">5.6</span> All-in-one TME profiling</h2>
 <section id="minimal-usage-for-tme_profile" class="level3" data-number="5.6.1">
 <h3 data-number="5.6.1" class="anchored" data-anchor-id="minimal-usage-for-tme_profile"><span class="header-section-number">5.6.1</span> Minimal usage for <code>tme_profile</code></h3>
+<ul>
+<li><code>tme_profile</code> runs the whole TME profiling stack <strong>from a TPM matrix</strong> in one command. It wraps and orchestrates:</li>
+<li><strong>Signature scoring</strong> → <code>calculate_sig_score</code></li>
+<li><strong>Immune deconvolution (six methods)</strong> → <code>cibersort</code>, <code>IPS</code>, <code>estimate</code>, <code>mcpcounter</code>, <code>quantiseq</code>, <code>epic</code></li>
+<li><strong>Ligand–receptor scoring</strong> → <code>LR_cal</code></li>
+<li>It also <strong>merges</strong> the deconvolution outputs into a single table</li>
+</ul>
+<blockquote class="blockquote">
+<p><strong>Inputs</strong>: genes × samples <strong>TPM</strong> matrix <strong>Outputs</strong>: standardized subfolders for signatures, TME deconvolution, and Ligand–receptor scoring<br>
+<strong>Heads-up:</strong> <code>tme_profile</code> does <strong>not</strong> include <code>deside</code> and any clustering (<code>tme_cluster</code>, <code>nmf</code>).</p>
+</blockquote>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb23"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> tme_profile <span class="dt">\</span></span>
 <span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">-i</span> TPM_matrix.csv <span class="dt">\</span></span>
 <span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> /path/to/outdir <span class="dt">\</span></span>
