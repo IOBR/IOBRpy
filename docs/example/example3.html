@@ -297,7 +297,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="all-in-one-tme-profiling---tme_profile" class="level2">
 <h2 class="anchored" data-anchor-id="all-in-one-tme-profiling---tme_profile">All-in-one TME profiling - <code>tme_profile</code></h2>
-<p><code>tme_profile</code> wraps the following functions into one command: - <strong>Signature scoring</strong> → <code>calculate_sig_score</code> - <strong>Immune deconvolution (six methods)</strong> → <code>cibersort</code>, <code>IPS</code>, <code>estimate</code>, <code>mcpcounter</code>, <code>quantiseq</code>, <code>epic</code> - <strong>Ligand–receptor scoring</strong> → <code>LR_cal</code> - It also <strong>merges</strong> the deconvolution outputs into a single table</p>
+<ul>
+<li><code>tme_profile</code> wraps the following functions into one command:</li>
+<li><strong>Signature scoring</strong> → <code>calculate_sig_score</code></li>
+<li><strong>Immune deconvolution (six methods)</strong> → <code>cibersort</code>, <code>IPS</code>, <code>estimate</code>, <code>mcpcounter</code>, <code>quantiseq</code>, <code>epic</code></li>
+<li><strong>Ligand–receptor scoring</strong> → <code>LR_cal</code></li>
+<li>It also <strong>merges</strong> the deconvolution outputs into a single table</li>
+</ul>
 <blockquote class="blockquote">
 <p><strong>Not included:</strong> <code>deside</code> and any clustering (<code>tme_cluster</code>, <code>nmf</code>).<br>
 <strong>Tip:</strong> You can either run each function <strong>step-by-step</strong> (see the sections below for individual commands and options), <strong>or</strong> use <code>tme_profile</code> to execute the full chain in one go.</p>
