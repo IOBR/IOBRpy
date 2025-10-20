@@ -205,7 +205,7 @@ iobrpy runall \
 |---|---|
 | `--mode {salmon / star}` | Select backend (Salmon quant vs. STAR align+count) |
 | `--outdir <DIR>` | Root output directory (creates the standardized layout) |
-| `--fastq <DIR>` | Raw FASTQ dir, forwarded to `fastq_qc --path1_fastq` |
+| `--fastq <DIR>` | Raw FASTQ dir |
 | `--index <DIR>` | Salmon : path to **Salmon index**; STAR : path to **STAR index** |
 | `--project <STR>` | Prefix for merged outputs |
 | `--threads <INT>` / `--batch_size <INT>` | Global concurrency/batching |
