@@ -91,7 +91,7 @@ conda install -y -c conda-forge -c bioconda iobrpy=0.1.4
 
 ### Docker
 
-> **Official site:** [Docker](https://www.docker.com/)
+> **Docker Hub website:** [Docker Hub](https://hub.docker.com/)
 
 <details><summary><strong>Show Docker pull</strong></summary>
 
