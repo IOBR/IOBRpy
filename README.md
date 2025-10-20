@@ -18,12 +18,15 @@ A complete documentation for IOBRpy can be found at https://iobr.github.io/IOBRp
   <a href="#pypi"><img alt="PyPI" src="https://img.shields.io/badge/PyPI-pip%20install-blue?style=for-the-badge"></a>
   <a href="#conda"><img alt="Conda" src="https://img.shields.io/badge/Conda-bioconda-green?style=for-the-badge"></a>
   <a href="#docker"><img alt="Docker" src="https://img.shields.io/badge/Docker-pull-2496ED?style=for-the-badge"></a>
-  <a href="installation.md"><img alt="Full guide" src="https://img.shields.io/badge/Full%20guide-more%20options-lightgrey?style=for-the-badge"></a>
 </p>
 
 ### Quick install
 
 ```bash
+# Creating a virtual environment is recommended
+conda create -n iobrpy python=3.9 -y
+conda activate iobrpy
+
 # PyPI
 pip install iobrpy
 
@@ -34,63 +37,74 @@ conda install -c conda-forge -c bioconda iobrpy=0.1.4
 docker pull hhn123123/iobrpy:latest
 ```
 
-### PyPI {#pypi}
+### PyPI
 
 <details><summary><strong>Show full PyPI steps</strong></summary>
 
 ```bash
-# (Optional) Create & activate a dedicated environment
+# Creating a virtual environment is recommended
 conda create -n iobrpy python=3.9 -y
 conda activate iobrpy
-
-# Upgrade pip and install
+```
+```bash
+# Update pip
 python -m pip install --upgrade pip
+```
+```bash
+# Install iobrpy
 pip install iobrpy
+```
+```bash
+# Install fastp, salmon, STAR and MultiQC
+# Recommended: use mamba for faster solves (if available)
+mamba install -y -c conda-forge -c bioconda \
+  fastp \
+  salmon \
+  star \
+  multiqc
 
-# (Optional) Install external tools used by the pipeline
-#   These are convenient if you plan to run the FASTQ → counts workflow.
-#   mamba is recommended for faster dependency solving (if available).
-mamba install -y -c conda-forge -c bioconda fastp salmon star multiqc
-# or:
-# conda install -y -c conda-forge -c bioconda fastp salmon star multiqc
-
-# (Optional) Verify tools are available
-fastp --version
-salmon --version
-STAR --version
-multiqc --version
+# If you don't have mamba, use conda instead
+conda install -y -c conda-forge -c bioconda \
+  fastp \
+  salmon \
+  star \
+  multiqc
 ```
 </details>
 
-### Conda {#conda}
+### Conda
 
 <details><summary><strong>Show full Conda steps</strong></summary>
 
 ```bash
-# Create & activate environment
+# Creating a virtual environment is recommended
 conda create -n iobrpy python=3.9 -y
 conda activate iobrpy
-
-# Install IOBRpy from bioconda (channel order matters)
-#   mamba is recommended for faster solving
+```
+```bash
+# Install iobrpy 0.1.4 (from bioconda via conda-forge + bioconda)
+# Recommended: use mamba for faster solves (if available)
 mamba install -y -c conda-forge -c bioconda iobrpy=0.1.4
-# or:
-# conda install -y -c conda-forge -c bioconda iobrpy=0.1.4
+
+# If you don't have mamba, use conda instead
+conda install -y -c conda-forge -c bioconda iobrpy=0.1.4
 ```
 </details>
 
-### Docker {#docker}
+### Docker
 
 <details><summary><strong>Show Docker pull & optional run</strong></summary>
 
 ```bash
-# Pull the latest image
+# Option 1: Pull the latest image from Docker Hub
 docker pull hhn123123/iobrpy:latest
-
-# (Optional) Run an example container
-# - Mount your working directory to /work for input/output
-# - Replace the last line with your actual command or `iobrpy -h`
-docker run --rm -it -v $PWD:/work hhn123123/iobrpy:latest iobrpy -h
+```
+```bash
+# Option 2: Offline install (from GitHub Release)
+# 1) Download iobrpy.tar.gz from https://github.com/IOBR/IOBRpy/releases/tag/v1.0.0
+# 2) Change to the directory where the archive is saved and load the image
+cd /path/to/iobrpy.tar.gz
+docker load -i iobrpy.tar.gz
 ```
 </details>
 
