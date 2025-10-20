@@ -206,50 +206,9 @@ iobrpy runall \
 | `--mode {salmon / star}` | Select backend (Salmon quant vs. STAR align+count) |
 | `--outdir <DIR>` | Root output directory (creates the standardized layout) |
 | `--fastq <DIR>` | Raw FASTQ dir, forwarded to `fastq_qc --path1_fastq` |
+| `--index <DIR>` | Salmon : path to **Salmon index**; STAR : path to **STAR index** |
+| `--project <STR>` | Prefix for merged outputs |
 | `--threads <INT>` / `--batch_size <INT>` | Global concurrency/batching |
-| `--resume` | Skip steps whose outputs already exist |
-| `--dry_run` | Print planned commands without executing |
-
-#### Salmon-only
-| Flag | Purpose |
-|---|---|
-| `--index <DIR>` | Salmon index for `batch_salmon` |
-| `--project <STR>` | Prefix for merged outputs in `merge_salmon` |
-| `--return_feature {symbol / ENSG / ENST}` | Output gene ID type in `prepare_salmon` |
-| `--remove_version` | Strip version suffix in `prepare_salmon` |
-
-#### STAR-only
-| Flag | Purpose |
-|---|---|
-| `--index <DIR>` | STAR genomeDir for `batch_star_count` |
-| `--project <STR>` | Prefix for merged counts in `merge_star_count` |
-| `--idtype {ensembl / entrez / symbol / mgi}` | Gene ID type for `count2tpm` |
-| `--org {hsa / mmus}` | Organism for `count2tpm` |
-| `--remove_version` | Strip version suffix before `count2tpm` |
-
-#### Signature scoring
-| Flag | Purpose |
-|---|---|
-| `--method {integration / pca / zscore / ssgsea}` | Scoring method for `calculate_sig_score` |
-| `--signature <set>` | Which signature set to use (`all`, etc.) |
-| `--mini_gene_count <INT>` | Min genes per signature |
-| `--adjust_eset` | Extra filtering after log transform |
-
-#### Deconvolution
-| Flag | Purpose |
-|---|---|
-| `--perm <INT>` / `--QN {true / false}` | CIBERSORT permutations / quantile normalization |
-| `--platform <str>` | ESTIMATE platform |
-| `--features HUGO_symbols` | MCPcounter features |
-| `--arrays` `--tumor` `--scale_mrna` | quanTIseq options |
-| `--reference {TRef / BRef / both}` | EPIC reference profile |
-
-#### Ligand–receptor
-| Flag | Purpose |
-|---|---|
-| `--data_type {tpm / count}` | Input matrix type for `LR_cal` |
-| `--id_type {symbol / ensembl / ...}` | Gene ID type for `LR_cal` |
-| `--verbose` | Verbose logging |
 
 ---
 
