@@ -27,6 +27,7 @@ from iobrpy.workflow.fastq_qc import main as fastq_qc_main
 from iobrpy.utils.print_colorful_message import print_colorful_message
 from iobrpy.workflow import runall as runall_mod
 from iobrpy.workflow.log2_eset import main as log2_eset_main
+from iobrpy.workflow.tme_profile import main as tme_profile_main
 
 VERSION = "0.1.4"
 
@@ -340,7 +341,18 @@ def main():
                 help='Path to input matrix (CSV/TSV/TXT, optionally .gz). Rows=genes, cols=samples.')
     p21.add_argument('-o', '--output', required=True,
                 help='Path to save the log2(x+1) matrix. Extension selects delimiter (.csv/.tsv or mirror input).')
-
+    
+    # tme_profile: signature scoring + immune deconvolution + LR_cal (TPM input)
+    p_tme = subparsers.add_parser(
+        'tme_profile',
+        help='Signature scoring + immune deconvolution + LR_cal from TPM'
+    )
+    p_tme.add_argument('-i', '--input', required=True,
+                       help='TPM matrix (genes x samples). CSV/TSV/.gz supported.')
+    p_tme.add_argument('-o', '--output', required=True,
+                       help='Output directory (01-signatures, 02-tme, 03-LR_cal).')
+    p_tme.add_argument('--threads', type=int, default=1,
+                       help='Threads for ssGSEA and CIBERSORT (default: 1).')
 
     p_runall = subparsers.add_parser('runall', help='Run the end-to-end pipeline (salmon/star)')
     p_runall.add_argument('--mode', choices=['salmon','star'], required=True)
@@ -750,6 +762,14 @@ def main():
             sub_argv.append('--dry_run')
         runall_mod.main(sub_argv + unknown)
         return
+    elif args.command == 'tme_profile':
+        tme_argv = [
+            '-i', args.input,
+            '-o', args.output,
+            '--threads', str(args.threads),
+        ]
+        tme_argv += unknown
+        tme_profile_main(tme_argv)
 
 if __name__ == "__main__":
     main()
