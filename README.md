@@ -14,33 +14,45 @@ A complete documentation for IOBRpy can be found at https://iobr.github.io/IOBRp
 
 ## Installation
 
+<p align="center">
+  <a href="#pypi"><img alt="PyPI" src="https://img.shields.io/badge/PyPI-pip%20install-blue?style=for-the-badge"></a>
+  <a href="#conda"><img alt="Conda" src="https://img.shields.io/badge/Conda-bioconda-green?style=for-the-badge"></a>
+  <a href="#docker"><img alt="Docker" src="https://img.shields.io/badge/Docker-pull-2496ED?style=for-the-badge"></a>
+  <a href="installation.md"><img alt="Full guide" src="https://img.shields.io/badge/Full%20guide-more%20options-lightgrey?style=for-the-badge"></a>
+</p>
+
+### Quick install
+
 ```bash
-# Creating a virtual environment is recommended
+# PyPI
+pip install iobrpy
+
+# Conda (bioconda via conda-forge + bioconda)
+conda install -c conda-forge -c bioconda iobrpy=0.1.4
+
+# Docker
+docker pull hhn123123/iobrpy:latest
+```
+
+### PyPI {#pypi}
+
+<details><summary><strong>Show full PyPI steps</strong></summary>
+
+```bash
+# (Optional) Create & activate a dedicated environment
 conda create -n iobrpy python=3.9 -y
 conda activate iobrpy
 
-# Update pip
+# Upgrade pip and install
 python -m pip install --upgrade pip
-
-# Install iobrpy
 pip install iobrpy
 
-#Install fastp, salmon, STAR and MultiQC
-# Recommended: use mamba for faster solves (if available)
-# Channels order matters: conda-forge first, then bioconda
-mamba install -y -c conda-forge -c bioconda \
-  fastp \
-  salmon \
-  star \
-  multiqc
-
-# If you don't have mamba, use conda instead
-# (slower dependency solving; otherwise equivalent)
-conda install -y -c conda-forge -c bioconda \
-  fastp \
-  salmon \
-  star \
-  multiqc
+# (Optional) Install external tools used by the pipeline
+#   These are convenient if you plan to run the FASTQ → counts workflow.
+#   mamba is recommended for faster dependency solving (if available).
+mamba install -y -c conda-forge -c bioconda fastp salmon star multiqc
+# or:
+# conda install -y -c conda-forge -c bioconda fastp salmon star multiqc
 
 # (Optional) Verify tools are available
 fastp --version
@@ -48,6 +60,39 @@ salmon --version
 STAR --version
 multiqc --version
 ```
+</details>
+
+### Conda {#conda}
+
+<details><summary><strong>Show full Conda steps</strong></summary>
+
+```bash
+# Create & activate environment
+conda create -n iobrpy python=3.9 -y
+conda activate iobrpy
+
+# Install IOBRpy from bioconda (channel order matters)
+#   mamba is recommended for faster solving
+mamba install -y -c conda-forge -c bioconda iobrpy=0.1.4
+# or:
+# conda install -y -c conda-forge -c bioconda iobrpy=0.1.4
+```
+</details>
+
+### Docker {#docker}
+
+<details><summary><strong>Show Docker pull & optional run</strong></summary>
+
+```bash
+# Pull the latest image
+docker pull hhn123123/iobrpy:latest
+
+# (Optional) Run an example container
+# - Mount your working directory to /work for input/output
+# - Replace the last line with your actual command or `iobrpy -h`
+docker run --rm -it -v $PWD:/work hhn123123/iobrpy:latest iobrpy -h
+```
+</details>
 
 ---
 
@@ -103,23 +148,13 @@ multiqc --version
 ---
 
 ## Input Requirements
-- **FASTQ layout**: paired-end by default. Filenames end with `*_1.fastq.gz` / `*_2.fastq.gz` (configurable via `--suffix1`). Use `--se` for single-end in `fastq_qc`.
+- **FASTQ layout**: paired-end by default. Filenames end with `*_1.fastq.gz` / `*_2.fastq.gz` (configurable via `--suffix1`).
 - **Expression matrix orientation**: **genes × samples** by default.
 - **Output file delimiters**: automatically inferred from the file extension; .csv and .tsv/.txt are recommended.
 
 ---
 
 ## Command‑line usage
-
-### Global
-```bash
-iobrpy -h
-iobrpy <command> --help
-# Example: show help for count2tpm
-iobrpy count2tpm --help
-```
-
----
 
 ### From FASTQ to TME - `runall`
 
