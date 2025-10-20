@@ -23,10 +23,6 @@ A complete documentation for IOBRpy can be found at https://iobr.github.io/IOBRp
 ### Quick install
 
 ```bash
-# Creating a virtual environment is recommended
-conda create -n iobrpy python=3.9 -y
-conda activate iobrpy
-
 # PyPI
 pip install iobrpy
 
@@ -93,7 +89,7 @@ conda install -y -c conda-forge -c bioconda iobrpy=0.1.4
 
 ### Docker
 
-<details><summary><strong>Show Docker pull & optional run</strong></summary>
+<details><summary><strong>Show Docker pull</strong></summary>
 
 ```bash
 # Option 1: Pull the latest image from Docker Hub
