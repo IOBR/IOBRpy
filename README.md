@@ -1,3 +1,9 @@
+<p align="center">
+  <a href="#pypi"><img alt="PyPI" src="https://img.shields.io/badge/PyPI-pip%20install-blue"></a>
+  <a href="#conda"><img alt="Conda" src="https://img.shields.io/badge/Conda-bioconda-brightgreen"></a>
+  <a href="#docker"><img alt="Docker" src="https://img.shields.io/badge/Docker-pull-2496ED"></a>
+</p>
+
 # IOBRpy
 
 **IOBRpy** is a **command-line toolkit** for bulk RNA-seq tumor microenvironment (TME) analysis. It wires together FASTQ QC, quantification (Salmon or STAR), matrix assembly, signature scoring, immune deconvolution, clustering, and ligand–receptor scoring.
@@ -14,22 +20,16 @@ A complete documentation for IOBRpy can be found at https://iobr.github.io/IOBRp
 
 ## Installation
 
-<p align="center">
-  <a href="#pypi"><img alt="PyPI" src="https://img.shields.io/badge/PyPI-pip%20install-blue?style=for-the-badge"></a>
-  <a href="#conda"><img alt="Conda" src="https://img.shields.io/badge/Conda-bioconda-green?style=for-the-badge"></a>
-  <a href="#docker"><img alt="Docker" src="https://img.shields.io/badge/Docker-pull-2496ED?style=for-the-badge"></a>
-</p>
-
 ### Quick install
 
 ```bash
-# PyPI
+# Method 1 : PyPI
 pip install iobrpy
 
-# Conda (bioconda via conda-forge + bioconda)
+# Method 2 : Conda (bioconda via conda-forge + bioconda)
 conda install -c conda-forge -c bioconda iobrpy=0.1.4
 
-# Docker
+# Method 3 : Docker
 docker pull hhn123123/iobrpy:latest
 ```
 
