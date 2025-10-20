@@ -68,9 +68,9 @@ conda install -y -c conda-forge -c bioconda \
 ```
 </details>
 
-> **Prerequisite (Conda):** Please install Miniconda or Anaconda first. We recommend [Miniconda](https://docs.anaconda.com/miniconda/).
-
 ### Conda
+
+> **Prerequisite (Conda):** Please install Miniconda or Anaconda first. We recommend [Miniconda](https://docs.anaconda.com/miniconda/).
 
 <details><summary><strong>Show full Conda steps</strong></summary>
 
@@ -89,9 +89,9 @@ conda install -y -c conda-forge -c bioconda iobrpy=0.1.4
 ```
 </details>
 
-> **Official site:** [Docker](https://www.docker.com/)
-
 ### Docker
+
+> **Official site:** [Docker](https://www.docker.com/)
 
 <details><summary><strong>Show Docker pull</strong></summary>
 
