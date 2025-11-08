@@ -28,8 +28,9 @@ from iobrpy.utils.print_colorful_message import print_colorful_message
 from iobrpy.workflow import runall as runall_mod
 from iobrpy.workflow.log2_eset import main as log2_eset_main
 from iobrpy.workflow.tme_profile import main as tme_profile_main
+from iobrpy.workflow.trust4 import main as trust4_main
 
-VERSION = "0.1.4"
+VERSION = "0.1.5"
 
 def main():
     parser = argparse.ArgumentParser(prog='iobrpy', description="Immuno-Oncology Biological Research using Python")
@@ -341,7 +342,12 @@ def main():
                 help='Path to input matrix (CSV/TSV/TXT, optionally .gz). Rows=genes, cols=samples.')
     p21.add_argument('-o', '--output', required=True,
                 help='Path to save the log2(x+1) matrix. Extension selects delimiter (.csv/.tsv or mirror input).')
-    
+
+    p_trust4 = subparsers.add_parser(
+        'trust4',
+        help='Run TRUST4 (TCR/BCR reconstruction)'
+    )
+
     # tme_profile: signature scoring + immune deconvolution + LR_cal (TPM input)
     p_tme = subparsers.add_parser(
         'tme_profile',
@@ -770,6 +776,24 @@ def main():
         ]
         tme_argv += unknown
         tme_profile_main(tme_argv)
+    elif args.command == 'trust4':
+        try:
+            # Call the TRUST4 wrapper; it will sys.exit(...) when done
+            trust4_main(unknown)
+        except SystemExit as e:
+            print("   ")
+            print_colorful_message("#########################################################", "blue")
+            print_colorful_message(" IOBRpy: Immuno-Oncology Biological Research using Python ", "cyan")
+            print_colorful_message(" If you encounter any issues, please report them at ", "cyan")
+            print_colorful_message(" https://github.com/IOBR/IOBRpy/issues ", "cyan")
+            print_colorful_message("#########################################################", "blue")
+            print(" Author: Haonan Huang, Dongqiang Zeng")
+            print(" Email: interlaken@smu.edu.cn ")
+            print_colorful_message("#########################################################", "blue")
+            print("   ")
+            code = e.code if isinstance(e.code, int) else 1
+            _sys.exit(code)
+        return
 
 if __name__ == "__main__":
     main()
