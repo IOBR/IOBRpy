@@ -136,10 +136,10 @@ def run_extract_phase(
         Output root for ExtractHLAread; each sample gets a subdirectory.
     """
     if not samples:
-        print("[hla_typing] No BAM files found; nothing to do.")
+        print("[HLA_typing] No BAM files found; nothing to do.")
         return
 
-    print(f"[hla_typing] Found {len(samples)} samples for ExtractHLAread.")
+    print(f"[HLA_typing] Found {len(samples)} samples for ExtractHLAread.")
     extract_root.mkdir(parents=True, exist_ok=True)
 
     # Dependency check and optional auto-install. Mirrors the CLI wrapper.
@@ -147,14 +147,14 @@ def run_extract_phase(
         ensure_extract_deps(auto_install=True)
     except RuntimeError as exc:
         print(
-            "[hla_typing] ERROR while checking/installing dependencies for "
+            "[HLA_typing] ERROR while checking/installing dependencies for "
             f"ExtractHLAread:\n{exc}",
             file=sys.stderr,
         )
         sys.exit(1)
 
     total = len(samples)
-    print("[hla_typing] Starting ExtractHLAread for all samples...")
+    print("[HLA_typing] Starting ExtractHLAread for all samples...")
 
     for idx, (sample_id, bam_path) in enumerate(
         tqdm(samples, desc="[ExtractHLAread]", unit="sample", total=total),
@@ -163,7 +163,7 @@ def run_extract_phase(
         sample_outdir = extract_root / sample_id
         sample_outdir.mkdir(parents=True, exist_ok=True)
  
-        tqdm.write(f"[hla_typing] [ExtractHLAread] Sample {sample_id} ({idx}/{total})")
+        tqdm.write(f"[HLA_typing] [ExtractHLAread] Sample {sample_id} ({idx}/{total})")
         run_extraction(
             sample_id=sample_id,
             bam_path=bam_path,
@@ -230,7 +230,7 @@ def run_spechla_phase(
         per sample named after -n (sample id).
     """
     if not samples:
-        print("[hla_typing] No samples to process in SpecHLA phase.")
+        print("[HLA_typing] No samples to process in SpecHLA phase.")
         return
 
     spechla_outdir.mkdir(parents=True, exist_ok=True)
@@ -248,7 +248,7 @@ def run_spechla_phase(
     ensure_bowtie2_index(spec_hla_root, bowtie2_build_path, drb_ref_relpath)
 
     total = len(samples)
-    print(f"[hla_typing] Starting SpecHLA for {total} samples...")
+    print(f"[HLA_typing] Starting SpecHLA for {total} samples...")
 
     for idx, (sample_id, _bam_path) in enumerate(
         tqdm(samples, desc="[SpecHLA]", unit="sample", total=total),
@@ -257,7 +257,7 @@ def run_spechla_phase(
         sample_dir = extract_root / sample_id
         r1, r2 = find_fastqs_for_sample(sample_dir, sample_id)
 
-        tqdm.write(f"[hla_typing] [SpecHLA] Sample {sample_id} ({idx}/{total})")
+        tqdm.write(f"[HLA_typing] [SpecHLA] Sample {sample_id} ({idx}/{total})")
         # SpecHLA_RNAseq.sh is expected to put results into
         #   <spechla_outdir>/<sample_id>/
         # (this is the default layout of the upstream workflow).
@@ -316,7 +316,7 @@ def merge_hla_results(
                 break
         if found is None:
             print(
-                f"[hla_typing] WARNING: no hla.result(s).txt found for sample "
+                f"[HLA_typing] WARNING: no hla.result(s).txt found for sample "
                 f"{sample_id} under {sample_dir}; skipping this sample.",
                 file=sys.stderr,
             )
@@ -325,14 +325,14 @@ def merge_hla_results(
 
     if not sample_result_files:
         print(
-            "[hla_typing] WARNING: no HLA result files were found; "
+            "[HLA_typing] WARNING: no HLA result files were found; "
             "merged table will not be created.",
             file=sys.stderr,
         )
         return
 
     merged_path = outdir / "hla_result_merged.txt"
-    print(f"[hla_typing] Merging HLA result tables into: {merged_path}")
+    print(f"[HLA_typing] Merging HLA result tables into: {merged_path}")
 
     with merged_path.open("w", encoding="utf-8") as out_f:
         wrote_header = False
@@ -346,7 +346,7 @@ def merge_hla_results(
             lines = [ln for ln in lines if ln.strip() != ""]
             if not lines:
                 print(
-                    f"[hla_typing] WARNING: HLA result file for sample "
+                    f"[HLA_typing] WARNING: HLA result file for sample "
                     f"{sample_id} is empty: {hla_file}",
                     file=sys.stderr,
                 )
@@ -362,7 +362,7 @@ def merge_hla_results(
 
             if idx >= len(lines):
                 print(
-                    f"[hla_typing] WARNING: HLA result file for sample "
+                    f"[HLA_typing] WARNING: HLA result file for sample "
                     f"{sample_id} does not contain a header line: {hla_file}",
                     file=sys.stderr,
                 )
@@ -387,7 +387,7 @@ def merge_hla_results(
                     continue
                 out_f.write(data_line + "\n")
 
-    print(f"[hla_typing] HLA result tables merged successfully.")
+    print(f"[HLA_typing] HLA result tables merged successfully.")
 
 
 # ---------------------------------------------------------------------------
@@ -468,11 +468,11 @@ def main(argv: List[str] | None = None) -> None:
     if not samples:
         parser.error(f"No .bam files found under directory: {bam_dir}")
 
-    print(f"[hla_typing] Using BAM dir : {bam_dir}")
-    print(f"[hla_typing] Output root  : {outdir}")
-    print(f"[hla_typing] Reference    : {args.ref}")
-    print(f"[hla_typing] Threads      : {args.threads}")
-    print(f"[hla_typing] Detected {len(samples)} sample(s).")
+    print(f"[HLA_typing] Using BAM dir : {bam_dir}")
+    print(f"[HLA_typing] Output root  : {outdir}")
+    print(f"[HLA_typing] Reference    : {args.ref}")
+    print(f"[HLA_typing] Threads      : {args.threads}")
+    print(f"[HLA_typing] Detected {len(samples)} sample(s).")
 
     # 1) Run ExtractHLAread for all samples.
     run_extract_phase(samples, args.ref, extract_root)
