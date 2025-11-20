@@ -1,8 +1,8 @@
 import argparse
-import pandas as pd
 import pickle
 from pathlib import Path
 import sys as _sys
+import pandas as pd
 from iobrpy.workflow.prepare_salmon import prepare_salmon_tpm as prepare_salmon_tpm_main
 from iobrpy.workflow.count2tpm import count2tpm as count2tpm_main
 from iobrpy.workflow.anno_eset import main as anno_eset_main
@@ -29,6 +29,9 @@ from iobrpy.workflow import runall as runall_mod
 from iobrpy.workflow.log2_eset import main as log2_eset_main
 from iobrpy.workflow.tme_profile import main as tme_profile_main
 from iobrpy.workflow.trust4 import main as trust4_main
+from iobrpy.SpecHLA.SpecHLA import main as spechla_main
+from iobrpy.SpecHLA.extract_hla_read import main as extract_hla_read_main
+from iobrpy.workflow.hla_typing import main as hla_typing_main
 
 VERSION = "0.1.5"
 
@@ -346,6 +349,21 @@ def main():
     p_trust4 = subparsers.add_parser(
         'trust4',
         help='Run TRUST4 (TCR/BCR reconstruction)'
+    )
+
+    spechla_parser = subparsers.add_parser(
+        'spechla',
+        help='Run SpecHLA (RNA-seq exon-level HLA typing)',
+    )
+
+    p_extract_hla = subparsers.add_parser(
+        'extract_hla_read',
+        help='Extract HLA-related reads using SpecHLA helper script',
+    )
+
+    p_hla_typing = subparsers.add_parser(
+        'hla_typing',
+        help='Batch HLA typing: ExtractHLAread + SpecHLA from a BAM directory',
     )
 
     # tme_profile: signature scoring + immune deconvolution + LR_cal (TPM input)
@@ -794,6 +812,12 @@ def main():
             code = e.code if isinstance(e.code, int) else 1
             _sys.exit(code)
         return
+    elif args.command == 'spechla':
+        return spechla_main(unknown)
+    elif args.command == 'extract_hla_read':
+        return extract_hla_read_main(unknown)
+    elif args.command == 'hla_typing':
+        return hla_typing_main(unknown)
 
 if __name__ == "__main__":
     main()

@@ -25,6 +25,7 @@ What this revision does (key points):
     04-signatures/         # calculate_sig_score outputs
     05-tme/                # deconvolution outputs (+ deconvo_merged.csv)
     06-LR_cal/             # LR_cal outputs (renamed from 07-LR_cal)
+    07-TCRBCR/             # TRUST4 TCR/BCR repertoire outputs
 """
 
 import argparse
@@ -45,8 +46,8 @@ METHOD_SECTIONS = {
     "prepare_salmon", "count2tpm",
     "calculate_sig_score", "sig_score",
     "cibersort", "IPS", "estimate", "mcpcounter", "quantiseq", "epic",
-    # "tme_cluster",  # removed
     "LR_cal",
+    "trust4",
 }
 
 # --------------------- Utilities ---------------------
@@ -156,6 +157,8 @@ FLAG_BUCKETS: Dict[str, set] = {
     "epic": {"reference"},
     # ligand-receptor
     "LR_cal": {"data_type", "id_type", "cancer_type", "verbose"},
+    # TCR/BCR repertoire (TRUST4 wrapper)
+    "trust4": {"fqdir", "ref"},  # -t threads comes from top-level --threads
 }
 
 def _consume_top_level_scalars(unknown: List[str]) -> Tuple[List[str], Optional[int], Optional[int]]:
@@ -282,10 +285,11 @@ def main(argv: Optional[List[str]] = None) -> None:
     d_sigscore = outdir / "04-signatures"
     d_deconv   = outdir / "05-tme"
     d_lrcal    = outdir / "06-LR_cal"
+    d_tcrbcr   = outdir / "07-TCRBCR"
     d_salmon   = outdir / "02-salmon"
     d_star     = outdir / "02-star"
     # Create common directories (shared across modes)
-    for d in [d_fastp, d_tpm, d_sigscore, d_deconv, d_lrcal]:
+    for d in [d_fastp, d_tpm, d_sigscore, d_deconv, d_lrcal, d_tcrbcr]:
         _ensure_dir(d)
 
     # Create the mode-specific directory only
@@ -604,6 +608,27 @@ def main(argv: Optional[List[str]] = None) -> None:
         rc = _run(cmd, dry=ns.dry_run)
         if rc != 0:
             sys.exit(rc)
+    # 9) TRUST4 TCR/BCR repertoire -> 07-TCRBCR/
+    tcrbcr_done_flag = d_tcrbcr / ".trust4.done"
+    if ns.mode == "star":
+        trust4_input_root = d_star
+        trust4_cli = ["-b", str(trust4_input_root)]
+    else:
+        trust4_input_root = d_fastp
+        trust4_cli = ["--fqdir", str(trust4_input_root)]
+
+    if ns.resume and tcrbcr_done_flag.exists() and _nonempty(d_tcrbcr):
+        print("[resume] trust4 skipped (07-TCRBCR/ already has outputs).")
+    else:
+        cmd = ["iobrpy", "trust4"] + trust4_cli + [
+            "-o", str(d_tcrbcr),
+            "-t", str(threads),
+        ]
+        _append_passthrough(cmd, blocks, "trust4")
+        rc = _run(cmd, dry=ns.dry_run)
+        if rc != 0:
+            sys.exit(rc)
+        tcrbcr_done_flag.write_text("done\n", encoding="utf-8")
 
     print("\n[done] runall finished.")
 

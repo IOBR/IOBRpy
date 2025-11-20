@@ -31,6 +31,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import atexit
 from typing import Dict, List, Optional, Tuple
 
 from importlib.resources import files
@@ -72,6 +73,18 @@ DEFAULT_F = "hg38_bcrtcr.fa"
 DEFAULT_REF = "human_IMGT+C.fa"
 RES_PKG = "iobrpy.resources"
 
+_TRUST4_TMP_DIRS: List[str] = []
+
+def _cleanup_tmp_dirs():
+    for d in list(_TRUST4_TMP_DIRS):
+        try:
+            if d and os.path.isdir(d) and os.path.basename(d).startswith("iobrpy_trust4_"):
+                shutil.rmtree(d, ignore_errors=True)
+        except Exception:
+            pass
+    _TRUST4_TMP_DIRS.clear()
+
+atexit.register(_cleanup_tmp_dirs)
 
 def _extract_resource_to_tmp(name: str) -> Optional[str]:
     """Read a resource file from iobrpy.resources and write it to a temp file."""
@@ -80,11 +93,11 @@ def _extract_resource_to_tmp(name: str) -> Optional[str]:
     except Exception:
         return None
     tmpdir = tempfile.mkdtemp(prefix="iobrpy_trust4_")
+    _TRUST4_TMP_DIRS.append(tmpdir)
     outp = os.path.join(tmpdir, name)
     with open(outp, "wb") as f:
         f.write(data)
     return outp
-
 
 def _append_opt(cmd: List[str], flag: str, value, is_bool: bool = False):
     """Append a CLI option to command if value is present."""
