@@ -36,10 +36,18 @@ from iobrpy.workflow.hla_typing import main as hla_typing_main
 VERSION = "0.1.5"
 
 def main():
-    parser = argparse.ArgumentParser(prog='iobrpy', description="Immuno-Oncology Biological Research using Python")
+    parser = argparse.ArgumentParser(
+        prog='iobrpy',
+        description=(
+            "Immuno-Oncology Biological Research using Python\n"
+            "Authors: Haonan Huang, Dongqiang Zeng\n"
+            "Email:   interlaken@smu.edu.cn"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument('--version', action='version', version=f'iobrpy {VERSION}')
 
-    subparsers = parser.add_subparsers(dest='command', required=True)
+    subparsers = parser.add_subparsers(dest='command', required=True,title='COMMAND',metavar='')
 
     # Step 1: prepare_salmon
     p1 = subparsers.add_parser('prepare_salmon', help='Prepare Salmon data matrix')
