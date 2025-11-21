@@ -41,6 +41,15 @@ requirements:
     - star
     - salmon
     - gzip
+    - trust4
+    - pysam
+    - biopython
+    - samtools
+    - bamutil
+    - bwa
+    - bowtie2
+    - freebayes
+    - htslib
 
 test:
   commands:
