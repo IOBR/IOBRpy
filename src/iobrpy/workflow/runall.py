@@ -349,10 +349,16 @@ def main(argv: Optional[List[str]] = None) -> None:
 
         # 3a) merge_salmon (cwd=02-salmon/)
         if not (ns.resume and _nonempty(d_salmon / ".merge_salmon.done")):
+            merge_args = (blocks.get("merge_salmon") or []) + (blocks.get("salmon") or [])
+            has_project = any(tok == "--project" for tok in merge_args)
+
             cmd = ["iobrpy", "merge_salmon",
-                   "--path_salmon", str(d_salmon),
-                   "--project", "runall",
-                   "--num_processes", str(threads)]
+                   "--path_salmon", str(d_salmon)]
+
+            if not has_project:
+                cmd += ["--project", "runall"]
+
+            cmd += ["--num_processes", str(threads)]
             _append_passthrough(cmd, blocks, "merge_salmon", "salmon")
             rc = _run(cmd, cwd=d_salmon, dry=ns.dry_run)
             if rc != 0:
@@ -417,9 +423,17 @@ def main(argv: Optional[List[str]] = None) -> None:
 
         # 3b) merge_star_count (cwd=02-star/)
         if not (ns.resume and _nonempty(d_star / ".merge_star_count.done")):
+            # Collect passthrough args that may contain --project
+            merge_args = (blocks.get("merge_star_count") or []) + (blocks.get("star") or [])
+            has_project = any(tok == "--project" for tok in merge_args)
+
             cmd = ["iobrpy", "merge_star_count",
-                   "--path", str(d_star),
-                   "--project", "runall"]
+                   "--path", str(d_star)]
+
+            # Only use default project name when user did NOT provide one
+            if not has_project:
+                cmd += ["--project", "runall"]
+
             _append_passthrough(cmd, blocks, "merge_star_count", "star")
             rc = _run(cmd, cwd=d_star, dry=ns.dry_run)
             if rc != 0:
