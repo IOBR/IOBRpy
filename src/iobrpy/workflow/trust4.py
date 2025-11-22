@@ -644,6 +644,17 @@ def main(argv: Optional[List[str]] = None):
                 sample_dir = os.path.join(args.o, folder)
                 os.makedirs(sample_dir, exist_ok=True)
 
+                # Per-sample done flag: if this file exists, skip re-running TRUST4
+                done_flag = os.path.join(sample_dir, f"{folder}.TRUST4.done")
+                if os.path.exists(done_flag):
+                    print(
+                        f"[IOBRpy|trust4] Skip sample {folder}: found done flag {done_flag}",
+                        flush=True,
+                    )
+                    # Still advance the progress bar so that the batch summary is correct
+                    pbar.update(1)
+                    continue
+
                 # File prefix: keep _Aligned, only drop .sortedByCoord.out
                 prefix_base = re.sub(
                     r"\.sortedByCoord\.out$",
@@ -668,6 +679,22 @@ def main(argv: Optional[List[str]] = None):
                     rc = subprocess.run(cmd, check=False).returncode
                 except KeyboardInterrupt:
                     sys.exit(130)
+
+                # If TRUST4 finishes successfully for this sample, create the done flag
+                if rc == 0:
+                    try:
+                        with open(done_flag, "w") as f:
+                            f.write(
+                                f"SUCCESS: TRUST4 finished for sample {folder}\n"
+                            )
+                    except Exception as e:
+                        # Do not fail the whole batch just because we could not write the flag
+                        print(
+                            f"[IOBRpy|trust4] WARNING: could not write done flag for {folder}: {e}",
+                            file=sys.stderr,
+                        )
+                else:
+                    overall_rc = rc
 
                 if rc != 0:
                     overall_rc = rc
@@ -713,6 +740,16 @@ def main(argv: Optional[List[str]] = None):
                 sample_dir = os.path.join(args.o, folder)
                 os.makedirs(sample_dir, exist_ok=True)
 
+                # Per-sample done flag: if this file exists, skip re-running TRUST4
+                done_flag = os.path.join(sample_dir, f"{folder}.TRUST4.done")
+                if os.path.exists(done_flag):
+                    print(
+                        f"[IOBRpy|trust4] Skip sample {folder}: found done flag {done_flag}",
+                        flush=True,
+                    )
+                    pbar.update(1)
+                    continue
+
                 # File prefix: keep _Aligned, only drop .sortedByCoord.out
                 prefix_base = re.sub(
                     r"\.sortedByCoord\.out$",
@@ -739,8 +776,21 @@ def main(argv: Optional[List[str]] = None):
                 except KeyboardInterrupt:
                     sys.exit(130)
 
-                if rc != 0:
+                # If TRUST4 finishes successfully for this sample, create the done flag
+                if rc == 0:
+                    try:
+                        with open(done_flag, "w") as f:
+                            f.write(
+                                f"SUCCESS: TRUST4 finished for sample {folder}\n"
+                            )
+                    except Exception as e:
+                        print(
+                            f"[IOBRpy|trust4] WARNING: could not write done flag for {folder}: {e}",
+                            file=sys.stderr,
+                        )
+                else:
                     overall_rc = rc
+                
                 pbar.update(1)
 
         # After all TRUST4 FASTQ batch runs, run immune post-processing on -o root

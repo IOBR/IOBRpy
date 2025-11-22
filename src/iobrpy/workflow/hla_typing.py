@@ -126,14 +126,14 @@ def run_extract_phase(
     """
     Run ExtractHLAread.sh for all samples.
 
-    Parameters
-    ----------
-    samples :
-        List of (sample_id, bam_path).
-    ref :
-        Reference genome for ExtractHLAread (hg19 or hg38).
-    extract_root :
-        Output root for ExtractHLAread; each sample gets a subdirectory.
+    For each sample, results are written under:
+        <extract_root>/<sample_id>/
+
+    A per-sample "done" marker file is used to support resume / skip:
+        <extract_root>/<sample_id>/<sample_id>.ExtractHLAread.done
+
+    If the marker already exists, the sample is skipped. The marker is
+    created only after ExtractHLAread.sh finishes successfully.
     """
     if not samples:
         print("[HLA_typing] No BAM files found; nothing to do.")
@@ -162,7 +162,16 @@ def run_extract_phase(
     ):
         sample_outdir = extract_root / sample_id
         sample_outdir.mkdir(parents=True, exist_ok=True)
- 
+
+        # Per-sample "done" marker to support resume / skip.
+        done_flag = sample_outdir / f"{sample_id}.ExtractHLAread.done"
+        if done_flag.exists():
+            tqdm.write(
+                f"[HLA_typing] [ExtractHLAread] Sample {sample_id} ({idx}/{total}) "
+                f"already completed (found {done_flag.name}); skipping."
+            )
+            continue
+
         tqdm.write(f"[HLA_typing] [ExtractHLAread] Sample {sample_id} ({idx}/{total})")
         run_extraction(
             sample_id=sample_id,
@@ -170,6 +179,14 @@ def run_extract_phase(
             ref=ref,
             outdir=sample_outdir,
         )
+
+        # Create the done marker only after successful completion.
+        try:
+            done_flag.touch()
+        except Exception as e:
+            tqdm.write(
+                f"[HLA_typing] WARNING: failed to create done marker {done_flag}: {e}"
+            )
 
 # ---------------------------------------------------------------------------
 # SpecHLA phase: locate FASTQs and call run_spechla_rnaseq
@@ -219,15 +236,26 @@ def run_spechla_phase(
     Parameters
     ----------
     samples :
-        List of (sample_id, bam_path).
+        List of (sample_id, bam_path). The BAM path is not used in this phase,
+        because SpecHLA_RNAseq.sh works from the FASTQs produced by
+        ExtractHLAread.sh.
     threads :
         Number of threads for SpecHLA (-j).
     extract_root :
         Root directory that holds ExtractHLAread/<sample_id>/... with FASTQs.
     spechla_outdir :
         Root directory for SpecHLA results.
-        The underlying SpecHLA workflow is assumed to create one folder
-        per sample named after -n (sample id).
+
+    Layout and "done" marker
+    ------------------------
+    The SpecHLA workflow is assumed to create one folder per sample:
+        <spechla_outdir>/<sample_id>/
+
+    This function additionally uses a per-sample marker file:
+        <spechla_outdir>/<sample_id>/<sample_id>.SpecHLA.done
+
+    If the marker already exists, the sample is skipped. The marker is
+    created only after SpecHLA_RNAseq.sh finishes successfully.
     """
     if not samples:
         print("[HLA_typing] No samples to process in SpecHLA phase.")
@@ -254,6 +282,19 @@ def run_spechla_phase(
         tqdm(samples, desc="[SpecHLA]", unit="sample", total=total),
         start=1,
     ):
+        # Directory where SpecHLA stores results for this sample.
+        spechla_sample_dir = spechla_outdir / sample_id
+        done_flag = spechla_sample_dir / f"{sample_id}.SpecHLA.done"
+
+        # Skip sample if the done marker is already present.
+        if done_flag.exists():
+            tqdm.write(
+                f"[HLA_typing] [SpecHLA] Sample {sample_id} ({idx}/{total}) "
+                f"already completed (found {done_flag.name}); skipping."
+            )
+            continue
+
+        # FASTQ files should be located under ExtractHLAread/<sample_id>/.
         sample_dir = extract_root / sample_id
         r1, r2 = find_fastqs_for_sample(sample_dir, sample_id)
 
@@ -269,6 +310,15 @@ def run_spechla_phase(
             outdir=str(spechla_outdir),   # -o
             threads=threads,              # -j
         )
+
+        # Create the done marker only after successful completion.
+        try:
+            spechla_sample_dir.mkdir(parents=True, exist_ok=True)
+            done_flag.touch()
+        except Exception as e:
+            tqdm.write(
+                f"[HLA_typing] WARNING: failed to create done marker {done_flag}: {e}"
+            )
 
 # ---------------------------------------------------------------------------
 # Merge per-sample HLA result tables

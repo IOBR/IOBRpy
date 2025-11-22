@@ -57,14 +57,14 @@ mamba install -y -c conda-forge -c bioconda \
   fastp \
   salmon \
   star \
-  multiqc
+  trust4
 
 # If you don't have mamba, use conda instead
 conda install -y -c conda-forge -c bioconda \
   fastp \
   salmon \
   star \
-  multiqc
+  trust4
 ```
 </details>
 

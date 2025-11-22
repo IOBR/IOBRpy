@@ -42,14 +42,15 @@ requirements:
     - salmon
     - gzip
     - trust4
-    - pysam
+    - pysam ==0.23.3
     - biopython
     - samtools
     - bamutil
     - bwa
     - bowtie2
-    - freebayes
-    - htslib
+    - freebayes ==1.3.8
+    - htslib ==1.21
+    - arpack
 
 test:
   commands:

@@ -88,9 +88,9 @@ def detect_spec_hla_root():
 # ------------------------------------------------------------
 # Python dependencies (pysam, biopython)
 # ------------------------------------------------------------
-def ensure_python_module(mod_name, pip_name=None):
+def ensure_python_module(mod_name, pip_name=None, version=None):
     """
-    Ensure a Python module can be imported. If not, try to install it via pip.
+    Ensure a Python module can be imported, optionally enforcing a specific version.
 
     Parameters
     ----------
@@ -98,32 +98,73 @@ def ensure_python_module(mod_name, pip_name=None):
         Name used in `import mod_name`.
     pip_name : str or None
         Package name for pip install. If None, use mod_name.
+    version : str or None
+        Required module version (e.g. "0.19.0"). If provided, a mismatch will
+        trigger installation of this exact version.
     """
-    try:
-        __import__(mod_name)
-        print(f"[SpecHLA] Python module '{mod_name}' is available.")
-        return
-    except ImportError:
-        install_name = pip_name or mod_name
-        print(f"[SpecHLA] Python module '{mod_name}' not found.")
-        print(f"[SpecHLA] Trying to install '{install_name}' via pip in current environment...")
+    install_name = pip_name or mod_name
+    needs_install = False
 
-        cmd = [sys.executable, "-m", "pip", "install", install_name]
-        try:
-            subprocess.run(cmd, check=True)
-        except subprocess.CalledProcessError as e:
-            print(
-                f"[SpecHLA] ERROR: failed to install '{install_name}' (exit {e.returncode}).\n"
-                f"          Please install it manually in the current conda environment, e.g.\n"
-                f"          conda install -c bioconda {install_name}\n"
-                f"          or: pip install {install_name}",
-                file=sys.stderr,
-            )
-            sys.exit(1)
+    try:
+        m = __import__(mod_name)
+        if version is not None:
+            installed_version = getattr(m, "__version__", None)
+            if installed_version != version:
+                print(
+                    f"[SpecHLA] Python module '{mod_name}' version mismatch: "
+                    f"found {installed_version}, require {version}."
+                )
+                needs_install = True
+            else:
+                print(
+                    f"[SpecHLA] Python module '{mod_name}' is available "
+                    f"with required version {version}."
+                )
+                return
+        else:
+            print(f"[SpecHLA] Python module '{mod_name}' is available.")
+            return
+    except ImportError:
+        print(f"[SpecHLA] Python module '{mod_name}' not found.")
+        needs_install = True
+
+    if not needs_install:
+        return
+
+    # Build install spec with pinned version if requested
+    if version is not None and "==" not in install_name:
+        install_spec = f"{install_name}=={version}"
+    else:
+        install_spec = install_name
+
+    print(
+        f"[SpecHLA] Trying to install '{install_spec}' via pip in current environment..."
+    )
+    cmd = [sys.executable, "-m", "pip", "install", install_spec]
+    try:
+        subprocess.run(cmd, check=True)
+    except subprocess.CalledProcessError as e:
+        print(
+            f"[SpecHLA] ERROR: failed to install '{install_spec}' (exit {e.returncode}).\n"
+            f"          Please install it manually in the current conda environment, e.g.\n"
+            f"          conda install -c bioconda {install_name}={version if version else ''}\n"
+            f"          or: pip install {install_spec}",
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
     # Re-try import after installation
     try:
-        __import__(mod_name)
+        m = __import__(mod_name)
+        if version is not None:
+            installed_version = getattr(m, "__version__", None)
+            if installed_version != version:
+                print(
+                    f"[SpecHLA] ERROR: module '{mod_name}' still not at required "
+                    f"version {version} (found {installed_version}).",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
         print(f"[SpecHLA] Python module '{mod_name}' successfully installed and imported.")
     except ImportError:
         print(
@@ -141,7 +182,9 @@ def ensure_python_deps():
     - pysam  : used by assign_reads_to_genes.py / phase_variants.py
     - Bio    : from biopython, used by g_group_annotation.py
     """
+    # Pin pysam to 0.19.0 to match SpecHLA's expected API / htslib behavior
     ensure_python_module("pysam", "pysam")
+    # biopython does not require a specific version here
     ensure_python_module("Bio", "biopython")
 
 
@@ -169,6 +212,41 @@ def detect_conda_exe():
 
     return None
 
+def is_conda_package_installed(conda_exe, package_name):
+    """
+    Check whether a given package is already installed in the current
+    conda environment.
+
+    This is a best-effort heuristic based on `conda list package_name`.
+    It returns True if the package appears in the output, otherwise False.
+    If anything goes wrong, it falls back to False.
+    """
+    try:
+        result = subprocess.run(
+            [conda_exe, "list", package_name],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=False,
+        )
+    except Exception as e:
+        print(
+            f"[SpecHLA] WARNING: failed to query conda for package '{package_name}': {e}",
+        )
+        return False
+
+    if result.returncode != 0:
+        return False
+
+    for line in result.stdout.splitlines():
+        if not line or line.startswith("#"):
+            continue
+        # Typical `conda list` line: name  version  build  channel
+        cols = line.split()
+        if cols and cols[0] == package_name:
+            return True
+
+    return False
 
 def conda_install_packages(conda_exe, packages):
     """
@@ -196,7 +274,7 @@ def conda_install_packages(conda_exe, packages):
 
 
 # ------------------------------------------------------------
-# External tools (bwa, samtools, freebayes, bgzip, tabix, bowtie2, bcftools)
+# External tools (bwa, samtools, freebayes, bgzip, tabix, bowtie2, bcftools, blastn)
 # ------------------------------------------------------------
 def ensure_external_tools(spec_hla_root):
     """
@@ -207,6 +285,8 @@ def ensure_external_tools(spec_hla_root):
       so bundled tools (bcftools, bwa, etc.) can be picked up.
     - Checks for required tools and tries to auto-install missing ones
       into the current conda environment using `conda install`.
+    - For bcftools and blastn, always prefers the bundled binaries under
+      SpecHLA/bin instead of installing them via conda.
     """
 
     # 1) Make sure SpecHLA/bin and fermikit kit are on PATH.
@@ -217,13 +297,17 @@ def ensure_external_tools(spec_hla_root):
     prepend_to_path(fermikit_dir)
 
     # Required tools and the corresponding conda package providing them.
+    # NOTE:
+    # - blastn is provided as a bundled binary in SpecHLA/bin and is NOT
+    #   auto-installed via conda here.
     tool_to_conda_pkg = {
         "samtools": "samtools",
         "bwa": "bwa",
         "bowtie2": "bowtie2",
-        "freebayes": "freebayes",
-        "bgzip": "htslib",   # bgzip is provided by htslib
-        "tabix": "htslib",   # tabix is also from htslib
+        "freebayes": "freebayes=1.3.8",
+        # htslib provides bgzip/tabix with the versions SpecHLA expects
+        "bgzip": "htslib=1.21",
+        "tabix": "htslib=1.21",
     }
 
     missing_tools = []
@@ -236,28 +320,112 @@ def ensure_external_tools(spec_hla_root):
         else:
             print(f"[SpecHLA] Found {tool}: {path}")
 
-    # Check bcftools separately: SpecHLA prefers the bundled one under bin/.
+    # ---------------- bundled bcftools ----------------
     bcftools_bundled = os.path.join(bin_dir, "bcftools")
-    if os.path.exists(bcftools_bundled) and os.access(bcftools_bundled, os.X_OK):
-        print(f"[SpecHLA] Found bundled bcftools at {bcftools_bundled} (SpecHLA/bin/bcftools).")
-    else:
-        bcftools_path = which("bcftools")
-        if bcftools_path:
-            print(f"[SpecHLA] Found bcftools in PATH: {bcftools_path}")
+
+    if os.path.exists(bcftools_bundled):
+        if os.access(bcftools_bundled, os.X_OK):
+            print(f"[SpecHLA] Using bundled bcftools at {bcftools_bundled}.")
+            os.environ["BCFTOOLS"] = bcftools_bundled
         else:
             print(
-                "[SpecHLA] WARNING: bcftools was not detected.\n"
-                "          SpecHLA will use SpecHLA/bin/bcftools if present.\n"
-                "          If you prefer a system-wide bcftools, install it via:\n"
-                "          conda install -c bioconda bcftools",
-                file=sys.stderr,
+                f"[SpecHLA] Found bundled bcftools at {bcftools_bundled} but it is not executable.\n"
+                f"[SpecHLA] Trying to add execute permission (chmod +x)..."
             )
+            try:
+                st = os.stat(bcftools_bundled)
+                os.chmod(bcftools_bundled, st.st_mode | 0o111)
+            except Exception as e:
+                print(
+                    f"[SpecHLA] ERROR: failed to add execute permission to {bcftools_bundled}: {e}",
+                    file=sys.stderr,
+                )
+                print(
+                    "[SpecHLA]        Please run 'chmod +x' on this file manually and try again.",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
 
+            if os.access(bcftools_bundled, os.X_OK):
+                print(f"[SpecHLA] Successfully made bcftools executable at {bcftools_bundled}.")
+                os.environ["BCFTOOLS"] = bcftools_bundled
+            else:
+                print(
+                    f"[SpecHLA] ERROR: bcftools at {bcftools_bundled} is still not executable after chmod.",
+                    file=sys.stderr,
+                )
+                print(
+                    "[SpecHLA]        Please check file permissions and filesystem mount options.",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
+    else:
+        print(
+            f"[SpecHLA] ERROR: bundled bcftools not found at {bcftools_bundled}.",
+            file=sys.stderr,
+        )
+        print(
+            "[SpecHLA]        Please make sure SpecHLA/bin/bcftools exists, "
+            "for example by copying it from the original SpecHLA package.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    # ---------------- bundled blastn ----------------
+    # Always prefer the blastn binary shipped with SpecHLA under SpecHLA/bin.
+    blastn_bundled = os.path.join(bin_dir, "blastn")
+
+    if os.path.exists(blastn_bundled):
+        if os.access(blastn_bundled, os.X_OK):
+            print(f"[SpecHLA] Using bundled blastn at {blastn_bundled}.")
+        else:
+            print(
+                f"[SpecHLA] Found bundled blastn at {blastn_bundled} but it is not executable.\n"
+                f"[SpecHLA] Trying to add execute permission (chmod +x)..."
+            )
+            try:
+                st = os.stat(blastn_bundled)
+                os.chmod(blastn_bundled, st.st_mode | 0o111)
+            except Exception as e:
+                print(
+                    f"[SpecHLA] ERROR: failed to add execute permission to {blastn_bundled}: {e}",
+                    file=sys.stderr,
+                )
+                print(
+                    "[SpecHLA]        Please run 'chmod +x' on this file manually and try again.",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
+
+            if os.access(blastn_bundled, os.X_OK):
+                print(f"[SpecHLA] Successfully made blastn executable at {blastn_bundled}.")
+            else:
+                print(
+                    f"[SpecHLA] ERROR: blastn at {blastn_bundled} is still not executable after chmod.",
+                    file=sys.stderr,
+                )
+                print(
+                    "[SpecHLA]        Please check file permissions and filesystem mount options.",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
+    else:
+        print(
+            f"[SpecHLA] ERROR: bundled blastn not found at {blastn_bundled}.",
+            file=sys.stderr,
+        )
+        print(
+            "[SpecHLA]        Please make sure SpecHLA/bin/blastn exists, "
+            "for example by copying it from the original SpecHLA package.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    # If all conda-managed tools are available, we are done here.
     if not missing_tools:
-        # Everything is already available.
         return
 
-    # At least one tool is missing: try to install them via conda.
+    # At least one conda-managed tool is missing: try to install them via conda.
     conda_exe = detect_conda_exe()
     if conda_exe is None:
         print(
@@ -290,7 +458,6 @@ def ensure_external_tools(spec_hla_root):
         )
         sys.exit(1)
 
-
 # ------------------------------------------------------------
 # SpecHap / ExtractHAIRs & Bowtie2 index
 # ------------------------------------------------------------
@@ -298,7 +465,17 @@ def ensure_spechap_built(spec_hla_root, threads):
     """
     Make sure SpecHap and ExtractHAIRs are built under SpecHLA/bin.
 
-    If either directory is missing, run install_spechap.sh to build them.
+    Logic
+    -----
+    - If both build directories exist:
+        <SPEC_HLA_ROOT>/bin/SpecHap/build
+        <SPEC_HLA_ROOT>/bin/extractHairs/build
+      then assume they are already built and do nothing.
+    - Otherwise:
+      - Only if ARPACK is not detected in the current conda environment,
+        try to install ARPACK via conda.
+      - Ensure CMake (<3.30) is available (install via conda if needed).
+      - Then run install_spechap.sh to build SpecHap and ExtractHAIRs.
 
     Parameters
     ----------
@@ -307,30 +484,87 @@ def ensure_spechap_built(spec_hla_root, threads):
     threads : int
         Number of threads to pass to install_spechap.sh (if it uses it).
     """
-    # Expected layout:
-    #   <SPEC_HLA_ROOT>/bin/SpecHap
-    #   <SPEC_HLA_ROOT>/bin/extractHairs
-    spec_hap_dir = os.path.join(spec_hla_root, "bin", "SpecHap")
-    extract_hairs_dir = os.path.join(spec_hla_root, "bin", "extractHairs")
+    spec_hap_build_dir = os.path.join(spec_hla_root, "bin", "SpecHap", "build")
+    extract_hairs_build_dir = os.path.join(spec_hla_root, "bin", "extractHairs", "build")
 
-    spec_hap_ok = os.path.isdir(spec_hap_dir)
-    extract_ok = os.path.isdir(extract_hairs_dir)
+    spec_hap_ok = os.path.isdir(spec_hap_build_dir)
+    extract_ok = os.path.isdir(extract_hairs_build_dir)
 
+    # If both build directories exist, we assume SpecHap / ExtractHAIRs are
+    # already compiled and ready to use -> no need to install ARPACK or CMake.
     if spec_hap_ok and extract_ok:
-        print(f"[SpecHLA] Found SpecHap and ExtractHAIRs in {os.path.join(spec_hla_root, 'bin')}")
+        print("[SpecHLA] Found SpecHap and ExtractHAIRs build directories:")
+        print(f"          {spec_hap_build_dir}")
+        print(f"          {extract_hairs_build_dir}")
         return
 
-    print("[SpecHLA] SpecHap or ExtractHAIRs not found under bin/, trying to build them...")
+    print("[SpecHLA] SpecHap or ExtractHAIRs build directory not found;")
+    print("[SpecHLA] will ensure dependencies (ARPACK / CMake) and then build them with install_spechap.sh...")
+
+    # Step 1: detect conda and prepare a list of packages to install
+    conda_exe = detect_conda_exe()
+    pkgs_to_install = []
+
+    # --- ARPACK: only auto-install when build dirs are missing AND ARPACK
+    #             is not already present in the current conda environment. ---
+    if conda_exe is not None:
+        if is_conda_package_installed(conda_exe, "arpack"):
+            print("[SpecHLA] Detected existing ARPACK installation; skip installing it.")
+        else:
+            print("[SpecHLA] ARPACK not detected; will install 'arpack' via conda.")
+            pkgs_to_install.append("arpack")
+    else:
+        print(
+            "[SpecHLA] WARNING: Could not find 'conda'; skipping automatic ARPACK installation.\n"
+            "          If the build fails due to missing ARPACK, please install it manually "
+            "in the current environment (e.g. via conda-forge).",
+            file=sys.stderr,
+        )
+
+    # CMake is required to configure and build SpecHap / ExtractHAIRs
+    cmake_path = which("cmake")
+    if cmake_path is None:
+        print("[SpecHLA] 'cmake' not found in PATH.")
+        if conda_exe is not None:
+            # IMPORTANT: install CMake with version constraint <3.30
+            pkgs_to_install.append("cmake<3.30")
+        else:
+            print(
+                "[SpecHLA] ERROR: 'cmake' is required to build SpecHap/ExtractHAIRs, "
+                "but neither cmake nor conda could be found.\n"
+                "          Please install cmake manually in your environment (e.g. via conda-forge) "
+                "and re-run this command.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+    else:
+        print(f"[SpecHLA] Found cmake: {cmake_path}")
+
+    # Step 2: install missing dependencies via conda (if available)
+    if conda_exe is not None and pkgs_to_install:
+        # conda will skip packages that are already installed with a compatible version
+        conda_install_packages(conda_exe, pkgs_to_install)
+
+        # Re-check cmake after installation to ensure it is now available
+        cmake_path = which("cmake")
+        if cmake_path is None:
+            print(
+                "[SpecHLA] ERROR: 'cmake' is still not available after conda installation.\n"
+                "          Please check your conda environment and install cmake manually.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        else:
+            print(f"[SpecHLA] Using cmake: {cmake_path}")
+
+    # Step 3: run install_spechap.sh to build SpecHap / ExtractHAIRs
     install_script = os.path.join(spec_hla_root, "install_spechap.sh")
     if not os.path.exists(install_script):
         print(f"[SpecHLA] ERROR: install_spechap.sh not found at {install_script}", file=sys.stderr)
         sys.exit(1)
 
-    # Note: ARPACK auto-install is now handled inside install_spechap.sh.
-    # Note: even if 'threads' is ignored by the script, passing it is harmless.
     run_cmd(["bash", install_script, str(threads)])
     print("[SpecHLA] Finished running install_spechap.sh.")
-
 
 def ensure_bowtie2_index(spec_hla_root, bowtie2_build_path, drb_ref_relpath):
     """
@@ -443,6 +677,92 @@ def run_spechla_rnaseq(spec_hla_root, sample_name, read1, read2, outdir, threads
     ]
     run_cmd(cmd)
 
+def merge_hla_results(outdir, merged_filename="hla_result_merged.txt"):
+    """
+    Merge per-sample SpecHLA `hla.result.txt` files into a single table.
+
+    This function scans all immediate subdirectories of `outdir`. For each
+    subdirectory, it looks for a file named `hla.result.txt`. The header
+    line is taken from the first file and reused for all samples. Data
+    lines from all files are concatenated and written to
+    `hla_result_merged.txt` in `outdir`.
+
+    Parameters
+    ----------
+    outdir : str
+        Root output directory used for SpecHLA (the same as `-o`).
+    merged_filename : str, optional
+        Name of the merged output file. Default is `hla_result_merged.txt`.
+    """
+    # We assume `os` and `sys` are already imported at the top of this file.
+    if not os.path.isdir(outdir):
+        # If the output directory does not exist, there is nothing to merge.
+        print(f"[SpecHLA] WARNING: Output directory does not exist: {outdir}", file=sys.stderr)
+        return
+
+    # Collect all immediate subdirectories under the root output directory.
+    # In the standard SpecHLA layout, each folder corresponds to a sample ID.
+    sample_dirs = [
+        d for d in sorted(os.listdir(outdir))
+        if os.path.isdir(os.path.join(outdir, d))
+    ]
+
+    header = None
+    data_lines = []
+
+    for sample_dir in sample_dirs:
+        # Each sample folder is expected to contain `hla.result.txt`.
+        result_path = os.path.join(outdir, sample_dir, "hla.result.txt")
+        if not os.path.isfile(result_path):
+            # Skip this sample if no result file is found.
+            continue
+
+        with open(result_path, "r") as f:
+            for i, line in enumerate(f):
+                # Remove the trailing newline for consistent handling.
+                line = line.rstrip("\n")
+
+                # Skip completely empty lines (if any).
+                if not line:
+                    continue
+
+                if i == 0:
+                    # The first line is the header. We keep it only once.
+                    if header is None:
+                        header = line
+                    elif header != line:
+                        # If headers are different between files, print a warning
+                        # but still continue merging the data rows.
+                        print(
+                            f"[SpecHLA] WARNING: Header mismatch in {result_path}",
+                            file=sys.stderr,
+                        )
+                    # Do not append header lines to `data_lines`.
+                    continue
+
+                # All non-header, non-empty lines are treated as data rows.
+                data_lines.append(line)
+
+    if header is None:
+        # If we never saw any header, it means no `hla.result.txt` files were found.
+        print(
+            f"[SpecHLA] WARNING: No 'hla.result.txt' files found under {outdir}; "
+            f"skip generating merged result.",
+            file=sys.stderr,
+        )
+        return
+
+    merged_path = os.path.join(outdir, merged_filename)
+    with open(merged_path, "w") as out_f:
+        # Write the header once
+        out_f.write(header + "\n")
+        # Then write all collected data rows
+        for line in data_lines:
+            out_f.write(line + "\n")
+
+    print(
+        f"[SpecHLA] Wrote merged HLA typing table with {len(data_lines)} row(s) to: {merged_path}"
+    )
 
 # ------------------------------------------------------------
 # CLI
@@ -505,7 +825,7 @@ def main(argv=None):
     # 2. Ensure Python dependencies (pysam / biopython)
     ensure_python_deps()
 
-    # 3. Ensure external tools (bwa / samtools / freebayes / bgzip / tabix / bowtie2 / bcftools)
+    # 3. Ensure external tools (bwa / samtools / freebayes / bgzip / tabix / bowtie2 / bcftools / blastn)
     ensure_external_tools(spec_hla_root)
 
     # 4. Make sure SpecHap / ExtractHAIRs are built
@@ -526,6 +846,16 @@ def main(argv=None):
         threads=args.threads,
     )
 
+    try:
+        merge_hla_results(args.outdir)
+    except Exception as e:
+        # If merging fails for any reason, we just print a warning
+        # and do not stop the whole pipeline.
+        print(
+            f"[SpecHLA] WARNING: Failed to merge HLA result tables: {e}",
+            file=sys.stderr,
+        )
+
     # ---------------- IOBRpy banner ----------------
     print("   ")
     print_colorful_message("#########################################################", "blue")
@@ -537,6 +867,7 @@ def main(argv=None):
     print(" Email: interlaken@smu.edu.cn ")
     print_colorful_message("#########################################################", "blue")
     print("   ")
+
 
 if __name__ == "__main__":
     main()
