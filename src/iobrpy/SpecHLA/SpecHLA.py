@@ -272,6 +272,155 @@ def conda_install_packages(conda_exe, packages):
     cmd = [conda_exe, "install", "-y", "-c", "bioconda", "-c", "conda-forge"] + unique
     run_cmd(cmd)
 
+def get_conda_package_version(conda_exe, package_name):
+    """
+    Return installed version of a conda package in the current environment, or None.
+
+    This uses `conda list <pkg>` and parses the plain-text table:
+    name  version  build  channel
+    """
+    try:
+        result = subprocess.run(
+            [conda_exe, "list", package_name],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=False,
+        )
+    except Exception as e:
+        print(
+            f"[SpecHLA] WARNING: failed to query conda for package '{package_name}': {e}",
+            file=sys.stderr,
+        )
+        return None
+
+    if result.returncode != 0:
+        return None
+
+    for line in result.stdout.splitlines():
+        if not line or line.startswith("#"):
+            continue
+        cols = line.split()
+        # Typical: name  version  build  channel
+        if cols and cols[0] == package_name and len(cols) >= 2:
+            return cols[1]
+
+    return None
+
+def get_cmake_version(cmake_path):
+    """
+    Query the version of a cmake executable.
+
+    Parameters
+    ----------
+    cmake_path : str
+        Path to the cmake executable (e.g. from shutil.which("cmake")).
+
+    Returns
+    -------
+    tuple[int, int, int] or None
+        Version as (major, minor, patch) if it can be parsed, otherwise None.
+    """
+    try:
+        result = subprocess.run(
+            [cmake_path, "--version"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=False,
+        )
+    except Exception as e:
+        print(
+            f"[SpecHLA] WARNING: failed to query cmake version from '{cmake_path}': {e}",
+            file=sys.stderr,
+        )
+        return None
+
+    if result.returncode != 0 or not result.stdout:
+        return None
+
+    # First line usually looks like: "cmake version 3.29.2"
+    first_line = result.stdout.splitlines()[0].strip()
+    tokens = first_line.split()
+
+    version_str = None
+    for tok in tokens:
+        if tok[0].isdigit():
+            version_str = tok
+            break
+
+    if version_str is None:
+        return None
+
+    parts = []
+    for p in version_str.split("."):
+        # Strip non-digit suffixes, e.g. "3.29.2-rc1"
+        digits = "".join(ch for ch in p if ch.isdigit())
+        if digits:
+            parts.append(int(digits))
+
+    # Normalize to (major, minor, patch)
+    while len(parts) < 3:
+        parts.append(0)
+
+    return tuple(parts[:3])
+
+def ensure_vcflib_after_freebayes():
+    """
+    Ensure that vcflib has the required version *after* resolving freebayes.
+
+    Logic
+    -----
+    - Use `conda list vcflib` to read the installed version.
+    - Require vcflib==1.0.10.
+    - If missing or mismatched, run:
+        conda install -c bioconda -c conda-forge vcflib=1.0.10
+    """
+    required_version = "1.0.10"
+    conda_exe = detect_conda_exe()
+
+    if conda_exe is None:
+        print(
+            "[SpecHLA] ERROR: 'conda' executable not found; cannot check vcflib version via 'conda list'.\n"
+            f"[SpecHLA]        Please make sure vcflib={required_version} is installed in the current environment.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    installed_version = get_conda_package_version(conda_exe, "vcflib")
+    if installed_version == required_version:
+        print(f"[SpecHLA] vcflib is available with required version {required_version}.")
+        return
+
+    # Not installed or wrong version -> try to fix via conda
+    spec = f"vcflib={required_version}"
+    print(
+        f"[SpecHLA] vcflib is missing or has incompatible version "
+        f"(found {installed_version or 'none'}, require {required_version}).\n"
+        f"[SpecHLA] Trying to install '{spec}' via conda...",
+        file=sys.stderr,
+    )
+    cmd = [
+        conda_exe,
+        "install",
+        "-y",
+        "-c",
+        "bioconda",
+        "-c",
+        "conda-forge",
+        spec,
+    ]
+    run_cmd(cmd)
+
+    # Re-check after installation
+    installed_version = get_conda_package_version(conda_exe, "vcflib")
+    if installed_version != required_version:
+        print(
+            f"[SpecHLA] ERROR: vcflib is still not at required version {required_version} "
+            f"after conda installation (found {installed_version or 'none'}).",
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
 # ------------------------------------------------------------
 # External tools (bwa, samtools, freebayes, bgzip, tabix, bowtie2, bcftools, blastn)
@@ -296,12 +445,30 @@ def ensure_external_tools(spec_hla_root):
     prepend_to_path(bin_dir)
     prepend_to_path(fermikit_dir)
 
+    # --- Make sure libwfa2.so.0 in SpecHLA/bin is visible to freebayes ---
+    wfa_lib = os.path.join(bin_dir, "libwfa2.so.0")
+    if os.path.exists(wfa_lib):
+        ld_library_path = os.environ.get("LD_LIBRARY_PATH", "")
+        ld_paths = ld_library_path.split(os.pathsep) if ld_library_path else []
+        if bin_dir not in ld_paths:
+            # Prepend SpecHLA/bin to LD_LIBRARY_PATH so the dynamic linker
+            # can find libwfa2.so.0 when launching freebayes.
+            new_ld = bin_dir if not ld_library_path else bin_dir + os.pathsep + ld_library_path
+            os.environ["LD_LIBRARY_PATH"] = new_ld
+            print(f"[SpecHLA] Prepending '{bin_dir}' to LD_LIBRARY_PATH for libwfa2.so.0")
+    else:
+        print(
+            "[SpecHLA] WARNING: libwfa2.so.0 not found in SpecHLA/bin; "
+            "freebayes may still fail to start.",
+            file=sys.stderr,
+        )
+
     # Required tools and the corresponding conda package providing them.
     # NOTE:
     # - blastn is provided as a bundled binary in SpecHLA/bin and is NOT
     #   auto-installed via conda here.
     tool_to_conda_pkg = {
-        "samtools": "samtools",
+        "samtools": "samtools=1.21",
         "bwa": "bwa",
         "bowtie2": "bowtie2",
         "freebayes": "freebayes=1.3.8",
@@ -423,6 +590,7 @@ def ensure_external_tools(spec_hla_root):
 
     # If all conda-managed tools are available, we are done here.
     if not missing_tools:
+        ensure_vcflib_after_freebayes()
         return
 
     # At least one conda-managed tool is missing: try to install them via conda.
@@ -458,6 +626,8 @@ def ensure_external_tools(spec_hla_root):
         )
         sys.exit(1)
 
+    ensure_vcflib_after_freebayes()
+
 # ------------------------------------------------------------
 # SpecHap / ExtractHAIRs & Bowtie2 index
 # ------------------------------------------------------------
@@ -474,7 +644,8 @@ def ensure_spechap_built(spec_hla_root, threads):
     - Otherwise:
       - Only if ARPACK is not detected in the current conda environment,
         try to install ARPACK via conda.
-      - Ensure CMake (<3.30) is available (install via conda if needed).
+      - Ensure CMake is available and has version <3.30
+        (install cmake<3.30 via conda if needed).
       - Then run install_spechap.sh to build SpecHap and ExtractHAIRs.
 
     Parameters
@@ -499,7 +670,7 @@ def ensure_spechap_built(spec_hla_root, threads):
         return
 
     print("[SpecHLA] SpecHap or ExtractHAIRs build directory not found;")
-    print("[SpecHLA] will ensure dependencies (ARPACK / CMake) and then build them with install_spechap.sh...")
+    print("[SpecHLA] will ensure dependencies (ARPACK / CMake<3.30) and then build them with install_spechap.sh...")
 
     # Step 1: detect conda and prepare a list of packages to install
     conda_exe = detect_conda_exe()
@@ -521,24 +692,47 @@ def ensure_spechap_built(spec_hla_root, threads):
             file=sys.stderr,
         )
 
-    # CMake is required to configure and build SpecHap / ExtractHAIRs
+    # --- CMake: require a version strictly less than 3.30 ---
+    required_cmake_max = (3, 30, 0)
     cmake_path = which("cmake")
-    if cmake_path is None:
-        print("[SpecHLA] 'cmake' not found in PATH.")
+
+    def _require_cmake_via_conda():
         if conda_exe is not None:
-            # IMPORTANT: install CMake with version constraint <3.30
             pkgs_to_install.append("cmake<3.30")
         else:
             print(
-                "[SpecHLA] ERROR: 'cmake' is required to build SpecHap/ExtractHAIRs, "
-                "but neither cmake nor conda could be found.\n"
-                "          Please install cmake manually in your environment (e.g. via conda-forge) "
-                "and re-run this command.",
+                "[SpecHLA] ERROR: 'cmake' (version <3.30) is required to build SpecHap/ExtractHAIRs,\n"
+                "          but neither a suitable cmake nor conda could be found.\n"
+                "          Please install cmake<3.30 manually in your environment (e.g. via conda-forge)\n"
+                "          and re-run this command.",
                 file=sys.stderr,
             )
             sys.exit(1)
+
+    if cmake_path is None:
+        print("[SpecHLA] 'cmake' not found in PATH.")
+        _require_cmake_via_conda()
     else:
-        print(f"[SpecHLA] Found cmake: {cmake_path}")
+        cmake_ver = get_cmake_version(cmake_path)
+        if cmake_ver is None:
+            print(
+                f"[SpecHLA] WARNING: could not determine cmake version from '{cmake_path}'.\n"
+                "[SpecHLA]          Will try to install cmake<3.30 via conda to satisfy SpecHLA's requirement.",
+                file=sys.stderr,
+            )
+            _require_cmake_via_conda()
+        else:
+            if cmake_ver < required_cmake_max:
+                print(
+                    f"[SpecHLA] Found cmake {cmake_ver[0]}.{cmake_ver[1]}.{cmake_ver[2]} "
+                    f"(OK: version < 3.30)."
+                )
+            else:
+                print(
+                    f"[SpecHLA] Detected cmake {cmake_ver[0]}.{cmake_ver[1]}.{cmake_ver[2]}, "
+                    f"but SpecHLA requires cmake<3.30."
+                )
+                _require_cmake_via_conda()
 
     # Step 2: install missing dependencies via conda (if available)
     if conda_exe is not None and pkgs_to_install:
@@ -550,12 +744,25 @@ def ensure_spechap_built(spec_hla_root, threads):
         if cmake_path is None:
             print(
                 "[SpecHLA] ERROR: 'cmake' is still not available after conda installation.\n"
-                "          Please check your conda environment and install cmake manually.",
+                "          Please check your conda environment and install cmake<3.30 manually.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+
+        cmake_ver = get_cmake_version(cmake_path)
+        if cmake_ver is None or not (cmake_ver < required_cmake_max):
+            print(
+                "[SpecHLA] ERROR: After conda installation, cmake does not satisfy the version requirement (<3.30).\n"
+                f"          Detected version: {cmake_ver if cmake_ver is not None else 'unknown'}.\n"
+                "          Please ensure that a cmake version <3.30 is installed and visible in PATH.",
                 file=sys.stderr,
             )
             sys.exit(1)
         else:
-            print(f"[SpecHLA] Using cmake: {cmake_path}")
+            print(
+                f"[SpecHLA] Using cmake {cmake_ver[0]}.{cmake_ver[1]}.{cmake_ver[2]} "
+                f"after conda installation (OK: <3.30)."
+            )
 
     # Step 3: run install_spechap.sh to build SpecHap / ExtractHAIRs
     install_script = os.path.join(spec_hla_root, "install_spechap.sh")
