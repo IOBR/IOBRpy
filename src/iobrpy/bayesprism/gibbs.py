@@ -215,18 +215,32 @@ class GibbsSampler:
         alpha = gibbs_control['alpha']
         gibbs_idx = GibbsSampler.get_gibbs_idx(gibbs_control)
         seed = gibbs_control['seed']
+        sample_seeds = [seed + i for i in range(X.shape[0])] if seed is not None else [None] * X.shape[0]
+        if seed is not None:
+            print(
+                f"Using base seed {seed}; sample-specific seeds derived as base + index "
+                f"(first {sample_seeds[0]}, last {sample_seeds[-1]})."
+            )
+        else:
+            print("No base seed provided; using global numpy RNG without per-sample seeding.")
         print("Start run...")
-        
+
         if not final:
             with multiprocessing.Pool(processes = gibbs_control['n.cores']) as pool:
                 X_input = [X[i, :] for i in np.arange(X.shape[0])]
-                star_input = zip(X_input, repeat(phi), repeat(alpha), repeat(gibbs_idx), repeat(seed), repeat(compute_elbo))
+                star_input = [
+                    (x_i, phi, alpha, gibbs_idx, sample_seeds[i], compute_elbo)
+                    for i, x_i in enumerate(X_input)
+                ]
                 gibbs_list = pool.starmap(GibbsSampler.sample_Z_theta_n, tqdm.tqdm(star_input, total=len(X_input)))
             return joint_post.JointPost.new(self.X.index, self.X.columns, phi.index, gibbs_list)
         else:
             with multiprocessing.Pool(processes = gibbs_control['n.cores']) as pool:
                 X_input = [X[i, :] for i in np.arange(X.shape[0])]
-                star_input = zip(X_input, repeat(phi), repeat(alpha), repeat(gibbs_idx), repeat(seed))
+                star_input = [
+                    (x_i, phi, alpha, gibbs_idx, sample_seeds[i])
+                    for i, x_i in enumerate(X_input)
+                ]
                 gibbs_list = pool.starmap(GibbsSampler.sample_theta_n , tqdm.tqdm(star_input, total=len(X_input)))
             return theta_post.ThetaPost.new(self.X.index, self.X.columns, gibbs_list)
 
@@ -242,14 +256,22 @@ class GibbsSampler:
         alpha = gibbs_control['alpha']
         gibbs_idx = GibbsSampler.get_gibbs_idx(gibbs_control)
         seed = gibbs_control['seed']
+        sample_seeds = [seed + i for i in range(X.shape[0])] if seed is not None else [None] * X.shape[0]
+        if seed is not None:
+            print(
+                f"Using base seed {seed}; sample-specific seeds derived as base + index "
+                f"(first {sample_seeds[0]}, last {sample_seeds[-1]})."
+            )
+        else:
+            print("No base seed provided; using global numpy RNG without per-sample seeding.")
         print("Start run...")
- 
+
         star_input = []
         for i in range(X.shape[0]):
             psi_mal_n = pd.DataFrame(psi_mal.iloc[i, :]).T
             phi_n = pd.concat([psi_mal_n, psi_env])
             nonzero_idx = np.max(phi_n, axis = 0) > 0
-            star_input.append((X[i, nonzero_idx], phi_n.loc[:, nonzero_idx], alpha, gibbs_idx, seed))
+            star_input.append((X[i, nonzero_idx], phi_n.loc[:, nonzero_idx], alpha, gibbs_idx, sample_seeds[i]))
 
         with multiprocessing.Pool(processes = gibbs_control['n.cores']) as pool:
             gibbs_list = pool.starmap(GibbsSampler.sample_theta_n , star_input)
