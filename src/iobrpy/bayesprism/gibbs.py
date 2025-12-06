@@ -77,17 +77,10 @@ class GibbsSampler:
         
         multinom_coef = 0
         
-        # prob_mat = phi * theta_n_i[:, np.newaxis]
-
         for i in range(np.max(gibbs_idx)):
             prob_mat = phi * theta_n_i[:, np.newaxis]
-
-            # pvals = prob_mat / np.sum(prob_mat, axis=0)
-            # Z_n_i = multinomial_rvs(X_n, pvals.T)
-
-            for g in range(G):
-                pvals = prob_mat[:, g] / np.sum(prob_mat[:, g])
-                Z_n_i[g, :] = np.random.multinomial(n = X_n[g], pvals = pvals)
+            pvals = prob_mat.T / prob_mat.sum(axis = 0)[:, np.newaxis]
+            Z_n_i = multinomial_rvs(X_n, pvals)
             
             Z_nk_i = np.sum(Z_n_i, axis = 0)
             theta_n_i = GibbsSampler.rdirichlet(alpha = Z_nk_i + alpha)
@@ -128,9 +121,8 @@ class GibbsSampler:
         
         for i in range(np.max(gibbs_idx)):
             prob_mat = phi * theta_n_i[:, np.newaxis]
-            for g in range(G):
-                pvals = prob_mat[:, g] / np.sum(prob_mat[:, g])
-                Z_n_i[g, :] = np.random.multinomial(n = X_n[g], pvals = pvals)
+            pvals = prob_mat.T / prob_mat.sum(axis = 0)[:, np.newaxis]
+            Z_n_i = multinomial_rvs(X_n, pvals)
                 
             theta_n_i = GibbsSampler.rdirichlet(alpha = np.sum(Z_n_i, axis = 0) + alpha)
             
