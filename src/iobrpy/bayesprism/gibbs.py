@@ -182,37 +182,40 @@ class GibbsSampler:
         if not final:
             assert isinstance(ref, references.RefPhi), "Gibbs is not final but ref is not refPhi"
             GibbsSampler.sample_Z_theta_n(
-                X_n = X[0, :], 
+                X_n = X[0, :],
                 phi = ref.phi,
                 alpha = gibbs_control['alpha'],
                 gibbs_idx = GibbsSampler.get_gibbs_idx(
-                    {'chain.length' : chain_length, 
-                     'burn.in' : chain_length * gibbs_control['burn.in'] / gibbs_control['chain.length'], 
-                     'thinning' : gibbs_control['thinning']}), 
+                    {'chain.length' : chain_length,
+                     'burn.in' : chain_length * gibbs_control['burn.in'] / gibbs_control['chain.length'],
+                     'thinning' : gibbs_control['thinning']}),
+                chain_length=chain_length,
                 seed = gibbs_control['seed'],
                 compute_elbo = False)
         else:
             if isinstance(ref, references.RefPhi):
                 GibbsSampler.sample_theta_n(
-                    X_n = X[0, :], 
-                    phi = ref.phi, 
-                    alpha = gibbs_control['alpha'], 
+                    X_n = X[0, :],
+                    phi = ref.phi,
+                    alpha = gibbs_control['alpha'],
                     gibbs_idx = GibbsSampler.get_gibbs_idx(
-                        {'chain.length' : chain_length, 
-                         'burn.in' : chain_length * gibbs_control['burn.in'] / gibbs_control['chain.length'], 
+                        {'chain.length' : chain_length,
+                         'burn.in' : chain_length * gibbs_control['burn.in'] / gibbs_control['chain.length'],
                          'thinning' : gibbs_control['thinning']}),
+                    chain_length=chain_length,
                     seed = gibbs_control['seed'])
             if isinstance(ref, references.RefTumor):
                 phi_1 = pd.concat([pd.DataFrame(ref.psi_mal.iloc[0, :]).T, ref.psi_env])
                 nonzero_idx = np.max(phi_1, axis = 0) > 0
                 GibbsSampler.sample_theta_n(
-                    X_n = X[0, nonzero_idx], 
-                    phi = phi_1.loc[:, nonzero_idx], 
-                    alpha = gibbs_control['alpha'], 
+                    X_n = X[0, nonzero_idx],
+                    phi = phi_1.loc[:, nonzero_idx],
+                    alpha = gibbs_control['alpha'],
                     gibbs_idx = GibbsSampler.get_gibbs_idx(
-                        {'chain.length' : chain_length, 
-                         'burn.in' : chain_length*gibbs_control['burn.in'] / gibbs_control['chain.length'], 
+                        {'chain.length' : chain_length,
+                         'burn.in' : chain_length*gibbs_control['burn.in'] / gibbs_control['chain.length'],
                          'thinning' : gibbs_control['thinning']}),
+                    chain_length=chain_length,
                     seed = gibbs_control['seed'])
         
         total_time = time.process_time() - ptm
