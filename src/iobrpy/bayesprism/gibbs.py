@@ -64,13 +64,15 @@ class GibbsSampler:
 
 
     def _make_rng(seed):
-        """Return a dedicated Generator to avoid cross-process state sharing."""
+        """Return a dedicated MT19937-based Generator to mirror R's RNG."""
 
-        if seed is None:
-            return np.random.default_rng()
-        if isinstance(seed, np.random.SeedSequence):
-            return np.random.default_rng(seed)
-        return np.random.default_rng(np.random.SeedSequence(seed))
+        bit_gen = np.random.MT19937()
+
+        if seed is not None:
+            seed_seq = seed if isinstance(seed, np.random.SeedSequence) else np.random.SeedSequence(seed)
+            bit_gen = np.random.MT19937(seed_seq)
+
+        return np.random.Generator(bit_gen)
 
     def sample_Z_theta_n(
         X_n,
