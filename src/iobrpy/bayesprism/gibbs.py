@@ -54,8 +54,12 @@ class GibbsSampler:
         return thinned_idx
 
 
-    def rdirichlet(alpha):
-        x = np.random.gamma(alpha, size = len(alpha))
+    def rdirichlet(alpha, rng=None):
+        """Dirichlet sampling using the provided RNG for determinism."""
+
+        if rng is None:
+            rng = np.random.default_rng()
+        x = rng.gamma(alpha, size=len(alpha))
         return x / np.sum(x)
 
 
@@ -103,7 +107,7 @@ class GibbsSampler:
                 Z_n_i[g, :] = rng.multinomial(n=X_n[g], pvals=prob_mat[:, g])
 
             Z_nk_i = np.sum(Z_n_i, axis=0)
-            theta_n_i = GibbsSampler.rdirichlet(alpha=Z_nk_i + alpha)
+            theta_n_i = GibbsSampler.rdirichlet(alpha=Z_nk_i + alpha, rng=rng)
 
             if i in gibbs_idx:
                 Z_n_sum += Z_n_i
@@ -149,7 +153,7 @@ class GibbsSampler:
             for g in range(G):
                 Z_n_i[g, :] = rng.multinomial(n=X_n[g], pvals=prob_mat[:, g])
 
-            theta_n_i = GibbsSampler.rdirichlet(alpha=np.sum(Z_n_i, axis=0) + alpha)
+            theta_n_i = GibbsSampler.rdirichlet(alpha=np.sum(Z_n_i, axis=0) + alpha, rng=rng)
 
             if i in gibbs_idx:
                 theta_n_sum += theta_n_i
