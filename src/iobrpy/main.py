@@ -32,6 +32,7 @@ from iobrpy.workflow.trust4 import main as trust4_main
 from iobrpy.SpecHLA.SpecHLA import main as spechla_main
 from iobrpy.SpecHLA.extract_hla_read import main as extract_hla_read_main
 from iobrpy.workflow.hla_typing import main as hla_typing_main
+from iobrpy.bayesprism.bayesprism import main as bayesprism_main
 
 VERSION = "0.1.5"
 
@@ -392,6 +393,31 @@ def main():
     p_runall.add_argument('--fastq', required=True)
     p_runall.add_argument('--resume', action='store_true')
     p_runall.add_argument('--dry_run', action='store_true')
+
+    # BayesPrism: Python implementation for bulk RNA-seq deconvolution
+    p_bp = subparsers.add_parser(
+        'bayesprism',
+        help='Run BayesPrism (Python) deconvolution for bulk RNA-seq'
+    )
+    p_bp.add_argument(
+        '-i', '--input',
+        dest='input',
+        required=True,
+        help='Bulk expression matrix (genes x samples). Rows=genes, cols=samples.'
+    )
+    p_bp.add_argument(
+        '-o', '--output',
+        dest='output',
+        required=True,
+        help='Output directory for BayesPrism results (theta.csv, theta_cv.csv, Z_tumor.csv).'
+    )
+    p_bp.add_argument(
+        '--threads',
+        dest='threads',
+        type=int,
+        default=1,
+        help='Number of CPU cores for BayesPrism (n_cores).'
+    )
 
     args, unknown = parser.parse_known_args()
 
@@ -826,6 +852,15 @@ def main():
         return extract_hla_read_main(unknown)
     elif args.command == 'hla_typing':
         return hla_typing_main(unknown)
+    elif args.command == 'bayesprism':
+        # Forward top-level CLI args to the bayesprism submodule
+        bp_argv = [
+            '-i', args.input,
+            '-o', args.output,
+            '--threads', str(args.threads),
+        ]
+        bp_argv += unknown
+        bayesprism_main(bp_argv)
 
 if __name__ == "__main__":
     main()
