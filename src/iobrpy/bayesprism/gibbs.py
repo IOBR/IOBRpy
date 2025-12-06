@@ -242,11 +242,10 @@ class GibbsSampler:
         gibbs_idx = GibbsSampler.get_gibbs_idx(gibbs_control)
         chain_length = gibbs_control['chain.length']
         seed = gibbs_control['seed']
-        seed_seq = np.random.SeedSequence(seed) if seed is not None else None
         print("Start run...")
 
         if not final:
-            seeds = seed_seq.spawn(X.shape[0]) if seed_seq is not None else [None] * X.shape[0]
+            seeds = [seed] * X.shape[0]
             with multiprocessing.Pool(processes = gibbs_control['n.cores']) as pool:
                 X_input = [X[i, :] for i in np.arange(X.shape[0])]
                 star_input = zip(
@@ -261,7 +260,7 @@ class GibbsSampler:
                 gibbs_list = pool.starmap(GibbsSampler.sample_Z_theta_n, tqdm.tqdm(star_input, total=len(X_input)))
             return joint_post.JointPost.new(self.X.index, self.X.columns, phi.index, gibbs_list)
         else:
-            seeds = seed_seq.spawn(X.shape[0]) if seed_seq is not None else [None] * X.shape[0]
+            seeds = [seed] * X.shape[0]
             with multiprocessing.Pool(processes = gibbs_control['n.cores']) as pool:
                 X_input = [X[i, :] for i in np.arange(X.shape[0])]
                 star_input = zip(
@@ -288,7 +287,6 @@ class GibbsSampler:
         gibbs_idx = GibbsSampler.get_gibbs_idx(gibbs_control)
         chain_length = gibbs_control['chain.length']
         seed = gibbs_control['seed']
-        seed_seq = np.random.SeedSequence(seed) if seed is not None else None
         print("Start run...")
 
         star_input = []
@@ -296,8 +294,7 @@ class GibbsSampler:
             psi_mal_n = pd.DataFrame(psi_mal.iloc[i, :]).T
             phi_n = pd.concat([psi_mal_n, psi_env])
             nonzero_idx = np.max(phi_n, axis = 0) > 0
-            child_seed = seed_seq.spawn(1)[0] if seed_seq is not None else None
-            star_input.append((X[i, nonzero_idx], phi_n.loc[:, nonzero_idx], alpha, gibbs_idx, chain_length, child_seed))
+            star_input.append((X[i, nonzero_idx], phi_n.loc[:, nonzero_idx], alpha, gibbs_idx, chain_length, seed))
 
         with multiprocessing.Pool(processes = gibbs_control['n.cores']) as pool:
             gibbs_list = pool.starmap(GibbsSampler.sample_theta_n , star_input)
