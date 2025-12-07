@@ -58,11 +58,14 @@ except Exception:
 # -------------------- small, fast utilities --------------------
 def zscore1d(a: np.ndarray) -> np.ndarray:
     """
-    Safe 1D z-score for float32 arrays. Returns zeros if variance is zero.
+    Safe 1D z-score for float32 arrays using sample variance (ddof=1).
+    Returns zeros if variance is zero or array length is <2.
     """
     a = a.astype(np.float32, copy=False)
+    if a.size < 2:
+        return np.zeros_like(a, dtype=np.float32)
     m = a.mean(dtype=np.float64)
-    v = a.var(dtype=np.float64)
+    v = a.var(dtype=np.float64, ddof=1)
     if v == 0.0:
         return np.zeros_like(a, dtype=np.float32)
     return (a - m) / np.sqrt(v)
@@ -233,14 +236,14 @@ def cibersort(input_path, perm=100, QN=True, absolute=False, abs_method='sig.sco
 
     # 6) Standardize signature globally (mean/std over all entries)
     X_mean = X.mean(dtype=np.float64)
-    X_std = X.std(dtype=np.float64)
+    X_std = X.std(dtype=np.float64, ddof=1)
     if X_std == 0.0:
         raise ValueError("Signature matrix has zero variance.")
     X = (X - X_mean) / X_std
     X = X.astype(np.float32, copy=False)
 
     # 7) Z-score mixture per sample (column-wise)
-    Yz = (Y - Y.mean(axis=0, keepdims=True)) / (Y.std(axis=0, keepdims=True) + 1e-12)
+    Yz = (Y - Y.mean(axis=0, keepdims=True)) / (Y.std(axis=0, keepdims=True, ddof=1) + 1e-12)
     Yz = Yz.astype(np.float32, copy=False)
 
     # 8) Build null distribution via permutations (parallel with progress)

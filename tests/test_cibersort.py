@@ -139,3 +139,11 @@ def test_pvalue_uses_r_formula_with_ge_counts(tmp_path, monkeypatch, sig_df):
     np.testing.assert_allclose(
         result["P-value"].to_numpy(dtype=np.float32), expected_p.astype(np.float32)
     )
+
+
+def test_zscore1d_uses_sample_std():
+    arr = np.array([1.0, 3.0, 5.0], dtype=np.float32)
+    # Sample variance of [1,3,5] is 4 -> std = 2
+    expected = np.array([-1.0, 0.0, 1.0], dtype=np.float32)
+    out = cibersort_module.zscore1d(arr)
+    np.testing.assert_allclose(out, expected)
