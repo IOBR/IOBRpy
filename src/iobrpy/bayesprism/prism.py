@@ -55,7 +55,8 @@ class Prism:
                 'n.cores': 1,
                 'seed': 123,
                 'alpha': 1,
-                'fast.multinomial': False}
+                'fast.multinomial': False,
+                'rng.backend': 'generator'}
 
         namc = list(control.keys())
        
@@ -70,6 +71,11 @@ class Prism:
 
         if not isinstance(ctrl['fast.multinomial'], bool):
             raise ValueError("fast.multinomial must be a boolean flag")
+
+        if ctrl['rng.backend'].lower() not in ['generator', 'randomstate']:
+            raise ValueError("rng.backend must be either 'generator' or 'randomstate'")
+
+        ctrl['rng.backend'] = ctrl['rng.backend'].lower()
 
         return ctrl
 

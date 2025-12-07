@@ -24,7 +24,7 @@ def multinomial_rvs(count, p, rng=None, method="binomial"):
     p : ndarray
         Probability matrix where the last axis enumerates categories.
     rng : np.random.RandomState or np.random.Generator, optional
-        RNG to use; defaults to a new RandomState.
+        RNG to use; defaults to a new Generator.
     method : {"binomial", "sequential"}
         "binomial" uses a fast chain of binomial draws (distributionally
         equivalent but consumes RNG state differently from ``Generator.multinomial``).
@@ -37,7 +37,7 @@ def multinomial_rvs(count, p, rng=None, method="binomial"):
         Samples with the same shape as ``p``.
     """
     if rng is None:
-        rng = np.random.RandomState()
+        rng = np.random.default_rng()
 
     p = np.asarray(p)
     count = np.array(count, copy=True)
@@ -83,40 +83,46 @@ class GibbsSampler:
         return thinned_idx
 
 
-    def rdirichlet(alpha, rng=None):
+    def rdirichlet(alpha, rng=None, backend="generator"):
         """Dirichlet sampling using the provided RNG for determinism."""
 
         if rng is None:
-            rng = GibbsSampler._make_rng(None)
+            rng = GibbsSampler._make_rng(None, backend=backend)
         x = rng.gamma(alpha, size=len(alpha))
         return x / np.sum(x)
 
 
-    def _normalize_seed(seed):
-        if isinstance(seed, np.random.SeedSequence):
-            return int(seed.generate_state(1, dtype=np.uint32)[0])
-        return seed
+    def _make_rng(seed, backend="generator"):
+        """Return a dedicated RNG for Gibbs sampling.
 
-    def _make_rng(seed):
-        """Return a dedicated MT19937-backed RandomState.
-
-        Using RandomState mirrors the legacy sampling routines and R defaults
-        more closely than Generator-backed draws, improving reproducibility and
-        downstream correlation checks.
+        The backend can be ``generator`` (default, MT19937-based Generator)
+        or ``randomstate`` to mirror legacy NumPy behaviour. The seed can be a
+        SeedSequence, Generator, RandomState, int, or None.
         """
 
-        if isinstance(seed, np.random.RandomState):
-            return seed
-        if isinstance(seed, np.random.Generator):
-            bit_generator = seed.bit_generator
-            try:
-                return np.random.RandomState(bit_generator)
-            except TypeError:
-                seed_int = GibbsSampler._normalize_seed(bit_generator.seed_seq)
-                return np.random.RandomState(seed_int)
+        backend = backend.lower()
+        if backend not in {"generator", "randomstate"}:
+            raise ValueError("Unsupported RNG backend; use 'generator' or 'randomstate'")
 
-        normalized_seed = GibbsSampler._normalize_seed(seed)
-        return np.random.RandomState(normalized_seed)
+        if backend == "randomstate":
+            if isinstance(seed, np.random.RandomState):
+                return seed
+            if isinstance(seed, np.random.SeedSequence):
+                seed = int(seed.generate_state(1, dtype=np.uint32)[0])
+            if isinstance(seed, np.random.Generator):
+                seed = seed.integers(0, np.iinfo(np.uint32).max, dtype=np.uint32)
+            return np.random.RandomState(seed)
+
+        # Generator backend
+        if isinstance(seed, np.random.Generator):
+            return seed
+        if isinstance(seed, np.random.RandomState):
+            seed = seed.randint(0, np.iinfo(np.uint32).max, dtype=np.uint32)
+        if isinstance(seed, np.random.SeedSequence):
+            return np.random.Generator(np.random.MT19937(seed))
+        if seed is None:
+            return np.random.Generator(np.random.MT19937())
+        return np.random.Generator(np.random.MT19937(seed))
 
     def sample_Z_theta_n(
         X_n,
@@ -125,11 +131,12 @@ class GibbsSampler:
         gibbs_idx,
         chain_length,
         seed=None,
+        rng_backend="generator",
         compute_elbo=False,
         fast_multinomial=False,
     ):
 
-        rng = GibbsSampler._make_rng(seed)
+        rng = GibbsSampler._make_rng(seed, backend=rng_backend)
 
         phi = phi.to_numpy()
         G = phi.shape[1]
@@ -158,7 +165,7 @@ class GibbsSampler:
             )
 
             Z_nk_i = np.sum(Z_n_i, axis=0)
-            theta_n_i = GibbsSampler.rdirichlet(alpha=Z_nk_i + alpha, rng=rng)
+            theta_n_i = GibbsSampler.rdirichlet(alpha=Z_nk_i + alpha, rng=rng, backend=rng_backend)
 
             if i in gibbs_idx:
                 Z_n_sum += Z_n_i
@@ -182,9 +189,9 @@ class GibbsSampler:
             'gibbs.constant': gibbs_constant,
         }
 
-    def sample_theta_n(X_n, phi, alpha, gibbs_idx, chain_length, seed=None, fast_multinomial=False):
+    def sample_theta_n(X_n, phi, alpha, gibbs_idx, chain_length, seed=None, rng_backend="generator", fast_multinomial=False):
 
-        rng = GibbsSampler._make_rng(seed)
+        rng = GibbsSampler._make_rng(seed, backend=rng_backend)
 
         phi = phi.to_numpy()
         G = phi.shape[1]
@@ -208,7 +215,7 @@ class GibbsSampler:
                 method="binomial" if fast_multinomial else "sequential",
             )
 
-            theta_n_i = GibbsSampler.rdirichlet(alpha=np.sum(Z_n_i, axis=0) + alpha, rng=rng)
+            theta_n_i = GibbsSampler.rdirichlet(alpha=np.sum(Z_n_i, axis=0) + alpha, rng=rng, backend=rng_backend)
 
             if i in gibbs_idx:
                 theta_n_sum += theta_n_i
@@ -237,6 +244,7 @@ class GibbsSampler:
         X = self.X.to_numpy()
         gibbs_control = self.gibbs_control
         fast_mult = gibbs_control.get('fast.multinomial', False)
+        rng_backend = gibbs_control.get('rng.backend', 'generator')
         ptm = time.process_time()
         
         if not final:
@@ -251,6 +259,7 @@ class GibbsSampler:
                      'thinning' : gibbs_control['thinning']}),
                 chain_length=chain_length,
                 seed = gibbs_control['seed'],
+                rng_backend = rng_backend,
                 compute_elbo = False,
                 fast_multinomial = fast_mult,
             )
@@ -266,6 +275,7 @@ class GibbsSampler:
                          'thinning' : gibbs_control['thinning']}),
                     chain_length=chain_length,
                     seed = gibbs_control['seed'],
+                    rng_backend = rng_backend,
                     fast_multinomial = fast_mult,
                 )
             if isinstance(ref, references.RefTumor):
@@ -281,6 +291,7 @@ class GibbsSampler:
                          'thinning' : gibbs_control['thinning']}),
                     chain_length=chain_length,
                     seed = gibbs_control['seed'],
+                    rng_backend = rng_backend,
                     fast_multinomial = fast_mult,
                 )
         
@@ -300,6 +311,7 @@ class GibbsSampler:
         gibbs_control = self.gibbs_control
         alpha = gibbs_control['alpha']
         fast_mult = gibbs_control.get('fast.multinomial', False)
+        rng_backend = gibbs_control.get('rng.backend', 'generator')
         gibbs_idx = GibbsSampler.get_gibbs_idx(gibbs_control)
         chain_length = gibbs_control['chain.length']
         seed = gibbs_control['seed']
@@ -317,6 +329,7 @@ class GibbsSampler:
                     repeat(gibbs_idx),
                     repeat(chain_length),
                     seeds,
+                    repeat(rng_backend),
                     repeat(compute_elbo),
                     repeat(fast_mult),
                 )
@@ -333,6 +346,7 @@ class GibbsSampler:
                     repeat(gibbs_idx),
                     repeat(chain_length),
                     seeds,
+                    repeat(rng_backend),
                     repeat(fast_mult),
                 )
                 gibbs_list = pool.starmap(GibbsSampler.sample_theta_n , tqdm.tqdm(star_input, total=len(X_input)))
@@ -349,6 +363,7 @@ class GibbsSampler:
         gibbs_control = self.gibbs_control
         alpha = gibbs_control['alpha']
         fast_mult = gibbs_control.get('fast.multinomial', False)
+        rng_backend = gibbs_control.get('rng.backend', 'generator')
         gibbs_idx = GibbsSampler.get_gibbs_idx(gibbs_control)
         chain_length = gibbs_control['chain.length']
         seed = gibbs_control['seed']
@@ -361,7 +376,16 @@ class GibbsSampler:
             phi_n = pd.concat([psi_mal_n, psi_env])
             nonzero_idx = np.max(phi_n, axis = 0) > 0
             child_seed = seed_seq.spawn(1)[0] if seed_seq is not None else None
-            star_input.append((X[i, nonzero_idx], phi_n.loc[:, nonzero_idx], alpha, gibbs_idx, chain_length, child_seed, fast_mult))
+            star_input.append((
+                X[i, nonzero_idx],
+                phi_n.loc[:, nonzero_idx],
+                alpha,
+                gibbs_idx,
+                chain_length,
+                child_seed,
+                rng_backend,
+                fast_mult,
+            ))
 
         with multiprocessing.Pool(processes = gibbs_control['n.cores']) as pool:
             gibbs_list = pool.starmap(GibbsSampler.sample_theta_n , star_input)
