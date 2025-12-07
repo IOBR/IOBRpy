@@ -58,21 +58,24 @@ except Exception:
 # -------------------- small, fast utilities --------------------
 def zscore1d(a: np.ndarray) -> np.ndarray:
     """
-    Safe 1D z-score for float32 arrays. Returns zeros if variance is zero.
+    Safe 1D z-score using sample variance (ddof=1).
+    Returns zeros if variance is zero or array length is <2.
     """
-    a = a.astype(np.float32, copy=False)
+    a = a.astype(np.float64, copy=False)
+    if a.size < 2:
+        return np.zeros_like(a, dtype=np.float64)
     m = a.mean(dtype=np.float64)
-    v = a.var(dtype=np.float64)
+    v = a.var(dtype=np.float64, ddof=1)
     if v == 0.0:
-        return np.zeros_like(a, dtype=np.float32)
+        return np.zeros_like(a, dtype=np.float64)
     return (a - m) / np.sqrt(v)
 
 def corr_pearson_fast(a: np.ndarray, b: np.ndarray) -> float:
     """
-    Fast Pearson correlation for float32 arrays using a single dot product.
+    Fast Pearson correlation for float arrays using a single dot product.
     """
-    a = a.astype(np.float32, copy=False)
-    b = b.astype(np.float32, copy=False)
+    a = a.astype(np.float64, copy=False)
+    b = b.astype(np.float64, copy=False)
     am = a.mean(dtype=np.float64)
     bm = b.mean(dtype=np.float64)
     av = a - am
@@ -128,15 +131,15 @@ def core_alg(X: np.ndarray, y: np.ndarray, absolute=False, abs_method='sig.score
         w = np.dot(coef, SV).ravel().astype(np.float32)  # celltypes
         w[w < 0] = 0.0                        # clamp negatives
 
-        if absolute:
-            w_use = w
+        s = w.sum()
+        if s <= 0:
+            # fallback to uniform weights to avoid NaNs
+            w_use = np.full_like(w, 1.0 / max(len(w), 1), dtype=np.float32)
+            w_raw = w_use
+            s = float(w_raw.sum())
         else:
-            s = w.sum()
-            if s <= 0:
-                # fallback to uniform weights to avoid NaNs
-                w_use = np.full_like(w, 1.0 / max(len(w), 1), dtype=np.float32)
-            else:
-                w_use = w / s
+            w_use = w / s
+            w_raw = w
 
         # Reconstruct the mixture and evaluate fit
         k = X @ w_use                          # G
@@ -146,9 +149,15 @@ def core_alg(X: np.ndarray, y: np.ndarray, absolute=False, abs_method='sig.score
         if (rmse < best_rmse) or (rmse == best_rmse and r > best_corr):
             best_rmse = rmse
             best_corr = r
-            best = (w_use, rmse, r)
+            best = (w_use, w_raw, s, rmse, r)
 
-    return {"w": best[0], "mix_rmse": best[1], "mix_r": best[2]}
+    return {
+        "w": best[0],
+        "w_raw": best[1],
+        "w_raw_sum": best[2],
+        "mix_rmse": best[3],
+        "mix_r": best[4],
+    }
 
 # -------------------- permutation helpers --------------------
 def _one_perm_mixr(X: np.ndarray, Y_flat: np.ndarray, absolute: bool, abs_method: str, seed: int):
@@ -207,46 +216,63 @@ def cibersort(input_path, perm=100, QN=True, absolute=False, abs_method='sig.sco
     # Ensure unique gene names to avoid accidental collapse later
     mix_df.index = make_unique(mix_df.index)
 
-    # 2) Intersect genes
-    common = sig_df.index.intersection(mix_df.index)
-    if len(common) == 0:
-        raise ValueError("No overlapping genes found between signature and mixture matrices.")
-    sig_df = sig_df.loc[common].sort_index()
-    mix_df = mix_df.loc[common].sort_index()
+    # 2) Order by gene name to mirror the R workflow
+    sig_df = sig_df.sort_index()
+    mix_df = mix_df.sort_index()
 
-    # 3) To ndarray (float32)
-    X = sig_df.to_numpy(dtype=np.float32, copy=True)   # G x C
-    Y = mix_df.to_numpy(dtype=np.float32, copy=True)   # G x N
-
-    # 4) Back-transform if mixture looks log2-like (heuristic)
+    # 3) Back-transform if mixture looks log2-like (heuristic)
+    Y = mix_df.to_numpy(dtype=np.float64, copy=True)   # G x N
     if np.max(Y) < 50:  # typical log2 TPM values are < ~20
         np.exp2(Y, out=Y)
 
-    # 5) Optional quantile normalization (columns = samples)
+    # 4) Optional quantile normalization (columns = samples)
     if QN:
         Y = quantile_normalize_fast(Y)
 
-    # 6) Standardize signature globally (mean/std over all entries)
+    # 5) Store the pre-standardization mixture matrix for absolute mode scaling
+    Yorig = np.array(Y, copy=True)
+    Ymedian = max(float(np.median(Yorig)), 1.0)
+
+    # 6) Intersect genes (after QN to match R ordering)
+    mix_common_mask = mix_df.index.isin(sig_df.index)
+    mix_common = mix_df.index[mix_common_mask]
+    if len(mix_common) == 0:
+        raise ValueError("No overlapping genes found between signature and mixture matrices.")
+    Y = Y[mix_common_mask]
+    mix_df = mix_df.loc[mix_common]
+    sig_df = sig_df.loc[mix_df.index]
+
+    # 7) To ndarray (float64)
+    X = sig_df.to_numpy(dtype=np.float64, copy=True)   # G x C
+    Y = Y.astype(np.float64, copy=False)               # G x N
+
+    # 8) Standardize signature globally (mean/std over all entries)
     X_mean = X.mean(dtype=np.float64)
-    X_std = X.std(dtype=np.float64)
+    X_std = X.std(dtype=np.float64, ddof=1)
     if X_std == 0.0:
         raise ValueError("Signature matrix has zero variance.")
     X = (X - X_mean) / X_std
-    X = X.astype(np.float32, copy=False)
+    X = X.astype(np.float64, copy=False)
 
-    # 7) Z-score mixture per sample (column-wise)
-    Yz = (Y - Y.mean(axis=0, keepdims=True)) / (Y.std(axis=0, keepdims=True) + 1e-12)
-    Yz = Yz.astype(np.float32, copy=False)
+    # 9) Z-score mixture per sample (column-wise)
+    Yz = (Y - Y.mean(axis=0, keepdims=True)) / (Y.std(axis=0, keepdims=True, ddof=1) + 1e-12)
+    Yz = Yz.astype(np.float64, copy=False)
 
-    # 8) Build null distribution via permutations (parallel with progress)
+    # 10) Build null distribution via permutations (parallel with progress)
     nulldist = do_perm(perm, X, Y, absolute, abs_method, n_jobs=n_jobs)
 
-    # 9) Solve each sample in parallel (with progress)
+    # 11) Solve each sample in parallel (with progress)
     _, N = Yz.shape
 
     def _solve_one(i):
         res = core_alg(X, Yz[:, i], absolute, abs_method)
-        return res["w"], res["mix_r"], res["mix_rmse"]
+        return (
+            res["w"],
+            res.get("w_raw", res["w"]),
+            res.get("w_raw_sum", float(np.sum(res["w"]))),
+            res["mix_r"],
+            res["mix_rmse"],
+        )
 
     with tqdm_joblib(tqdm(total=N, desc="Deconvolving samples", unit="sample",
                           dynamic_ncols=True, mininterval=0.2)):
@@ -255,23 +281,34 @@ def cibersort(input_path, perm=100, QN=True, absolute=False, abs_method='sig.sco
         )
 
     # 10) Assemble results
-    weights = [o[0] for o in outs]
-    rs = np.array([o[1] for o in outs], dtype=np.float32)
-    rmses = np.array([o[2] for o in outs], dtype=np.float32)
+    weights_norm = [o[0] for o in outs]
+    weights_raw = [o[1] for o in outs]
+    raw_sums = np.array([o[2] for o in outs], dtype=np.float32)
+    rs = np.array([o[3] for o in outs], dtype=np.float32)
+    rmses = np.array([o[4] for o in outs], dtype=np.float32)
 
     if nulldist is not None:
-        # One-sided p-value: proportion of null correlations >= observed r
-        ranks = np.searchsorted(nulldist, rs, side='right')
-        pvals = 1.0 - (ranks / len(nulldist))
+        # One-sided p-value: count(null >= r) / perm, matching the R script
+        # Use direct counting to avoid any precision quirks from searchsorted
+        counts = (nulldist[np.newaxis, :] >= rs[:, np.newaxis]).sum(axis=1)
+        pvals = counts / len(nulldist)
     else:
         pvals = np.full(N, 9999.0, dtype=np.float32)
 
     rows = []
     for i in range(N):
-        w = weights[i]
+        w = weights_norm[i]
+        abs_score = None
+        if absolute:
+            if abs_method == "sig.score":
+                w = w * (float(np.median(Y[:, i])) / Ymedian)
+                abs_score = float(np.sum(w))
+            elif abs_method == "no.sumto1":
+                w = weights_raw[i]
+                abs_score = float(raw_sums[i])
         row = list(w) + [float(pvals[i]), float(rs[i]), float(rmses[i])]
         if absolute:
-            row.append(float(np.sum(w)))
+            row.append(abs_score if abs_score is not None else float(np.sum(w)))
         rows.append(row)
 
     colnames = list(sig_df.columns) + ['P-value', 'Correlation', 'RMSE']
