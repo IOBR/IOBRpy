@@ -211,30 +211,37 @@ def cibersort(input_path, perm=100, QN=True, absolute=False, abs_method='sig.sco
     # Ensure unique gene names to avoid accidental collapse later
     mix_df.index = make_unique(mix_df.index)
 
-    # 2) Intersect genes
-    common = sig_df.index.intersection(mix_df.index)
-    if len(common) == 0:
-        raise ValueError("No overlapping genes found between signature and mixture matrices.")
-    sig_df = sig_df.loc[common].sort_index()
-    mix_df = mix_df.loc[common].sort_index()
+    # 2) Order by gene name to mirror the R workflow
+    sig_df = sig_df.sort_index()
+    mix_df = mix_df.sort_index()
 
-    # 3) To ndarray (float32)
-    X = sig_df.to_numpy(dtype=np.float64, copy=True)   # G x C
+    # 3) Back-transform if mixture looks log2-like (heuristic)
     Y = mix_df.to_numpy(dtype=np.float64, copy=True)   # G x N
-
-    # 4) Back-transform if mixture looks log2-like (heuristic)
     if np.max(Y) < 50:  # typical log2 TPM values are < ~20
         np.exp2(Y, out=Y)
 
-    # 5) Optional quantile normalization (columns = samples)
+    # 4) Optional quantile normalization (columns = samples)
     if QN:
         Y = quantile_normalize_fast(Y)
 
-    # Store the pre-standardization mixture matrix for absolute mode scaling
+    # 5) Store the pre-standardization mixture matrix for absolute mode scaling
     Yorig = np.array(Y, copy=True)
     Ymedian = max(float(np.median(Yorig)), 1.0)
 
-    # 6) Standardize signature globally (mean/std over all entries)
+    # 6) Intersect genes (after QN to match R ordering)
+    mix_common_mask = mix_df.index.isin(sig_df.index)
+    mix_common = mix_df.index[mix_common_mask]
+    if len(mix_common) == 0:
+        raise ValueError("No overlapping genes found between signature and mixture matrices.")
+    Y = Y[mix_common_mask]
+    mix_df = mix_df.loc[mix_common]
+    sig_df = sig_df.loc[mix_df.index]
+
+    # 7) To ndarray (float64)
+    X = sig_df.to_numpy(dtype=np.float64, copy=True)   # G x C
+    Y = Y.astype(np.float64, copy=False)               # G x N
+
+    # 8) Standardize signature globally (mean/std over all entries)
     X_mean = X.mean(dtype=np.float64)
     X_std = X.std(dtype=np.float64, ddof=1)
     if X_std == 0.0:
@@ -242,14 +249,14 @@ def cibersort(input_path, perm=100, QN=True, absolute=False, abs_method='sig.sco
     X = (X - X_mean) / X_std
     X = X.astype(np.float64, copy=False)
 
-    # 7) Z-score mixture per sample (column-wise)
+    # 9) Z-score mixture per sample (column-wise)
     Yz = (Y - Y.mean(axis=0, keepdims=True)) / (Y.std(axis=0, keepdims=True, ddof=1) + 1e-12)
     Yz = Yz.astype(np.float64, copy=False)
 
-    # 8) Build null distribution via permutations (parallel with progress)
+    # 10) Build null distribution via permutations (parallel with progress)
     nulldist = do_perm(perm, X, Y, absolute, abs_method, n_jobs=n_jobs)
 
-    # 9) Solve each sample in parallel (with progress)
+    # 11) Solve each sample in parallel (with progress)
     _, N = Yz.shape
 
     def _solve_one(i):
