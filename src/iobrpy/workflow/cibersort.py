@@ -226,6 +226,10 @@ def cibersort(input_path, perm=100, QN=True, absolute=False, abs_method='sig.sco
     if QN:
         Y = quantile_normalize_fast(Y)
 
+    # Store the pre-standardization mixture matrix for absolute mode scaling
+    Yorig = np.array(Y, copy=True)
+    Ymedian = max(float(np.median(Yorig)), 1.0)
+
     # 6) Standardize signature globally (mean/std over all entries)
     X_mean = X.mean(dtype=np.float64)
     X_std = X.std(dtype=np.float64)
@@ -269,6 +273,8 @@ def cibersort(input_path, perm=100, QN=True, absolute=False, abs_method='sig.sco
     rows = []
     for i in range(N):
         w = weights[i]
+        if absolute and abs_method == "sig.score":
+            w = w * (float(np.median(Y[:, i])) / Ymedian)
         row = list(w) + [float(pvals[i]), float(rs[i]), float(rmses[i])]
         if absolute:
             row.append(float(np.sum(w)))
