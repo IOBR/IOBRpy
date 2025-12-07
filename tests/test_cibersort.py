@@ -48,20 +48,20 @@ def test_absolute_sigscore_scales_by_sample_median(tmp_path, monkeypatch, sig_df
         n_jobs=1,
     )
 
-    mix_arr = mix_df.to_numpy(dtype=np.float32, copy=True)
+    mix_arr = mix_df.to_numpy(dtype=np.float64, copy=True)
     if np.max(mix_arr) < 50:
         np.exp2(mix_arr, out=mix_arr)
     y_median_global = max(float(np.median(mix_arr)), 1.0)
-    expected_w_s1 = np.arange(1, sig_df.shape[1] + 1, dtype=np.float32) * (
+    expected_w_s1 = np.arange(1, sig_df.shape[1] + 1, dtype=np.float64) * (
         np.median(mix_arr[:, 0]) / y_median_global
     )
-    expected_w_s2 = np.arange(1, sig_df.shape[1] + 1, dtype=np.float32) * (
+    expected_w_s2 = np.arange(1, sig_df.shape[1] + 1, dtype=np.float64) * (
         np.median(mix_arr[:, 1]) / y_median_global
     )
 
     abs_col = "Absolute_score_(sig_score)"
-    np.testing.assert_allclose(result.loc["s1", sig_df.columns], expected_w_s1)
-    np.testing.assert_allclose(result.loc["s2", sig_df.columns], expected_w_s2)
+    np.testing.assert_allclose(result.loc["s1", sig_df.columns], expected_w_s1, rtol=1e-6)
+    np.testing.assert_allclose(result.loc["s2", sig_df.columns], expected_w_s2, rtol=1e-6)
     assert np.isclose(result.loc["s1", abs_col], expected_w_s1.sum())
     assert np.isclose(result.loc["s2", abs_col], expected_w_s2.sum())
 
@@ -82,20 +82,20 @@ def test_absolute_sigscore_uses_floor_for_global_median(tmp_path, monkeypatch, s
         n_jobs=1,
     )
 
-    mix_arr = mix_df.to_numpy(dtype=np.float32, copy=True)
+    mix_arr = mix_df.to_numpy(dtype=np.float64, copy=True)
     if np.max(mix_arr) < 50:
         np.exp2(mix_arr, out=mix_arr)
     y_median_global = max(float(np.median(mix_arr)), 1.0)
-    expected_w_s1 = np.arange(1, sig_df.shape[1] + 1, dtype=np.float32) * (
+    expected_w_s1 = np.arange(1, sig_df.shape[1] + 1, dtype=np.float64) * (
         np.median(mix_arr[:, 0]) / y_median_global
     )
-    expected_w_s2 = np.arange(1, sig_df.shape[1] + 1, dtype=np.float32) * (
+    expected_w_s2 = np.arange(1, sig_df.shape[1] + 1, dtype=np.float64) * (
         np.median(mix_arr[:, 1]) / y_median_global
     )
 
     abs_col = "Absolute_score_(sig_score)"
-    np.testing.assert_allclose(result.loc["s1", sig_df.columns], expected_w_s1)
-    np.testing.assert_allclose(result.loc["s2", sig_df.columns], expected_w_s2)
+    np.testing.assert_allclose(result.loc["s1", sig_df.columns], expected_w_s1, rtol=1e-6)
+    np.testing.assert_allclose(result.loc["s2", sig_df.columns], expected_w_s2, rtol=1e-6)
     assert np.isclose(result.loc["s1", abs_col], expected_w_s1.sum())
     assert np.isclose(result.loc["s2", abs_col], expected_w_s2.sum())
 

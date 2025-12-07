@@ -58,24 +58,24 @@ except Exception:
 # -------------------- small, fast utilities --------------------
 def zscore1d(a: np.ndarray) -> np.ndarray:
     """
-    Safe 1D z-score for float32 arrays using sample variance (ddof=1).
+    Safe 1D z-score using sample variance (ddof=1).
     Returns zeros if variance is zero or array length is <2.
     """
-    a = a.astype(np.float32, copy=False)
+    a = a.astype(np.float64, copy=False)
     if a.size < 2:
-        return np.zeros_like(a, dtype=np.float32)
+        return np.zeros_like(a, dtype=np.float64)
     m = a.mean(dtype=np.float64)
     v = a.var(dtype=np.float64, ddof=1)
     if v == 0.0:
-        return np.zeros_like(a, dtype=np.float32)
+        return np.zeros_like(a, dtype=np.float64)
     return (a - m) / np.sqrt(v)
 
 def corr_pearson_fast(a: np.ndarray, b: np.ndarray) -> float:
     """
-    Fast Pearson correlation for float32 arrays using a single dot product.
+    Fast Pearson correlation for float arrays using a single dot product.
     """
-    a = a.astype(np.float32, copy=False)
-    b = b.astype(np.float32, copy=False)
+    a = a.astype(np.float64, copy=False)
+    b = b.astype(np.float64, copy=False)
     am = a.mean(dtype=np.float64)
     bm = b.mean(dtype=np.float64)
     av = a - am
@@ -219,8 +219,8 @@ def cibersort(input_path, perm=100, QN=True, absolute=False, abs_method='sig.sco
     mix_df = mix_df.loc[common].sort_index()
 
     # 3) To ndarray (float32)
-    X = sig_df.to_numpy(dtype=np.float32, copy=True)   # G x C
-    Y = mix_df.to_numpy(dtype=np.float32, copy=True)   # G x N
+    X = sig_df.to_numpy(dtype=np.float64, copy=True)   # G x C
+    Y = mix_df.to_numpy(dtype=np.float64, copy=True)   # G x N
 
     # 4) Back-transform if mixture looks log2-like (heuristic)
     if np.max(Y) < 50:  # typical log2 TPM values are < ~20
@@ -240,11 +240,11 @@ def cibersort(input_path, perm=100, QN=True, absolute=False, abs_method='sig.sco
     if X_std == 0.0:
         raise ValueError("Signature matrix has zero variance.")
     X = (X - X_mean) / X_std
-    X = X.astype(np.float32, copy=False)
+    X = X.astype(np.float64, copy=False)
 
     # 7) Z-score mixture per sample (column-wise)
     Yz = (Y - Y.mean(axis=0, keepdims=True)) / (Y.std(axis=0, keepdims=True, ddof=1) + 1e-12)
-    Yz = Yz.astype(np.float32, copy=False)
+    Yz = Yz.astype(np.float64, copy=False)
 
     # 8) Build null distribution via permutations (parallel with progress)
     nulldist = do_perm(perm, X, Y, absolute, abs_method, n_jobs=n_jobs)
