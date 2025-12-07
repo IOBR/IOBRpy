@@ -264,9 +264,9 @@ def cibersort(input_path, perm=100, QN=True, absolute=False, abs_method='sig.sco
     rmses = np.array([o[2] for o in outs], dtype=np.float32)
 
     if nulldist is not None:
-        # One-sided p-value: proportion of null correlations >= observed r
-        ranks = np.searchsorted(nulldist, rs, side='right')
-        pvals = 1.0 - (ranks / len(nulldist))
+        # One-sided p-value: (count(null >= r) + 1) / (perm + 1), matching R impl
+        ranks = np.searchsorted(nulldist, rs, side='left')
+        pvals = (len(nulldist) - ranks + 1) / (len(nulldist) + 1)
     else:
         pvals = np.full(N, 9999.0, dtype=np.float32)
 

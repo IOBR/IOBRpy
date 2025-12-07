@@ -98,3 +98,44 @@ def test_absolute_sigscore_uses_floor_for_global_median(tmp_path, monkeypatch, s
     np.testing.assert_allclose(result.loc["s2", sig_df.columns], expected_w_s2)
     assert np.isclose(result.loc["s1", abs_col], expected_w_s1.sum())
     assert np.isclose(result.loc["s2", abs_col], expected_w_s2.sum())
+
+
+def test_pvalue_uses_r_formula_with_ge_counts(tmp_path, monkeypatch, sig_df):
+    mix_df = _make_mixture(sig_df.index, np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32))
+    mix_path = tmp_path / "mix_pval.tsv"
+    mix_df.to_csv(mix_path, sep="\t")
+
+    rs_values = np.array([0.5, 0.9], dtype=np.float32)
+    r_iter = iter(rs_values.tolist())
+
+    def _core_alg_with_r(X, y, absolute=False, abs_method="sig.score"):
+        return {
+            "w": np.ones(X.shape[1], dtype=np.float32),
+            "mix_r": next(r_iter),
+            "mix_rmse": 0.0,
+        }
+
+    nulldist = np.array([0.1, 0.2, 0.5, 0.5, 0.9, 1.2], dtype=np.float32)
+
+    monkeypatch.setattr(cibersort_module, "core_alg", _core_alg_with_r)
+    monkeypatch.setattr(
+        cibersort_module,
+        "do_perm",
+        lambda perm, X, Y, absolute, abs_method, n_jobs: nulldist,
+    )
+
+    result = cibersort_module.cibersort(
+        input_path=mix_path,
+        perm=5,
+        QN=False,
+        absolute=False,
+        abs_method="sig.score",
+        n_jobs=1,
+    )
+
+    expected_ranks = np.searchsorted(nulldist, rs_values, side="left")
+    expected_p = (len(nulldist) - expected_ranks + 1) / (len(nulldist) + 1)
+
+    np.testing.assert_allclose(
+        result["P-value"].to_numpy(dtype=np.float32), expected_p.astype(np.float32)
+    )
