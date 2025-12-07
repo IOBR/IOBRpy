@@ -23,8 +23,8 @@ def multinomial_rvs(count, p, rng=None, method="binomial"):
         without relying on the last axis.
     p : ndarray
         Probability matrix where the last axis enumerates categories.
-    rng : np.random.Generator, optional
-        RNG to use; defaults to a new Generator.
+    rng : np.random.RandomState or np.random.Generator, optional
+        RNG to use; defaults to a new RandomState.
     method : {"binomial", "sequential"}
         "binomial" uses a fast chain of binomial draws (distributionally
         equivalent but consumes RNG state differently from ``Generator.multinomial``).
@@ -37,7 +37,7 @@ def multinomial_rvs(count, p, rng=None, method="binomial"):
         Samples with the same shape as ``p``.
     """
     if rng is None:
-        rng = np.random.default_rng()
+        rng = np.random.RandomState()
 
     p = np.asarray(p)
     count = np.array(count, copy=True)
@@ -87,27 +87,36 @@ class GibbsSampler:
         """Dirichlet sampling using the provided RNG for determinism."""
 
         if rng is None:
-            rng = np.random.default_rng()
+            rng = GibbsSampler._make_rng(None)
         x = rng.gamma(alpha, size=len(alpha))
         return x / np.sum(x)
 
 
-    def _make_rng(seed):
-        """Return a dedicated MT19937-backed Generator.
+    def _normalize_seed(seed):
+        if isinstance(seed, np.random.SeedSequence):
+            return int(seed.generate_state(1, dtype=np.uint32)[0])
+        return seed
 
-        Using MT19937 mirrors the RandomState-based sampling used prior to the
-        multinomial refactor and better aligns with R's default RNG, improving
-        reproducibility/correlation when validating against reference outputs.
+    def _make_rng(seed):
+        """Return a dedicated MT19937-backed RandomState.
+
+        Using RandomState mirrors the legacy sampling routines and R defaults
+        more closely than Generator-backed draws, improving reproducibility and
+        downstream correlation checks.
         """
 
-        if isinstance(seed, np.random.SeedSequence):
-            bitgen = np.random.MT19937(seed)
-        elif seed is None:
-            bitgen = np.random.MT19937()
-        else:
-            bitgen = np.random.MT19937(seed)
+        if isinstance(seed, np.random.RandomState):
+            return seed
+        if isinstance(seed, np.random.Generator):
+            bit_generator = seed.bit_generator
+            try:
+                return np.random.RandomState(bit_generator)
+            except TypeError:
+                seed_int = GibbsSampler._normalize_seed(bit_generator.seed_seq)
+                return np.random.RandomState(seed_int)
 
-        return np.random.Generator(bitgen)
+        normalized_seed = GibbsSampler._normalize_seed(seed)
+        return np.random.RandomState(normalized_seed)
 
     def sample_Z_theta_n(
         X_n,
