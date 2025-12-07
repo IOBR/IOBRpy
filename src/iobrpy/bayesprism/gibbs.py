@@ -13,7 +13,7 @@ from . import theta_post
 
 
 #https://stackoverflow.com/questions/55818845/fast-vectorized-multinomial-in-python
-def multinomial_rvs(count, p):
+def multinomial_rvs(count, p, rng=None):
     """
     Sample from the multinomial distribution with multiple p vectors.
 
@@ -23,14 +23,18 @@ def multinomial_rvs(count, p):
 
     The return value has the same shape as p.
     """
+    if rng is None:
+        rng = np.random.default_rng()
+
     out = np.zeros(p.shape, dtype=int)
     ps = p.cumsum(axis=-1)
     # Conditional probabilities
     with np.errstate(divide='ignore', invalid='ignore'):
         condp = p / ps
     condp[np.isnan(condp)] = 0.0
+    count = np.array(count, copy=True)
     for i in range(p.shape[-1]-1, 0, -1):
-        binsample = np.random.binomial(count, condp[..., i])
+        binsample = rng.binomial(count, condp[..., i])
         out[..., i] = binsample
         count -= binsample
     out[..., 0] = count
@@ -103,8 +107,7 @@ class GibbsSampler:
             prob_mat = phi * theta_n_i[:, np.newaxis]
             prob_mat /= prob_mat.sum(axis=0, keepdims=True)
 
-            for g in range(G):
-                Z_n_i[g, :] = rng.multinomial(n=X_n[g], pvals=prob_mat[:, g])
+            Z_n_i = multinomial_rvs(count=X_n, p=prob_mat.T, rng=rng)
 
             Z_nk_i = np.sum(Z_n_i, axis=0)
             theta_n_i = GibbsSampler.rdirichlet(alpha=Z_nk_i + alpha, rng=rng)
@@ -150,8 +153,7 @@ class GibbsSampler:
         for i in range(iterations):
             prob_mat = phi * theta_n_i[:, np.newaxis]
             prob_mat /= prob_mat.sum(axis=0, keepdims=True)
-            for g in range(G):
-                Z_n_i[g, :] = rng.multinomial(n=X_n[g], pvals=prob_mat[:, g])
+            Z_n_i = multinomial_rvs(count=X_n, p=prob_mat.T, rng=rng)
 
             theta_n_i = GibbsSampler.rdirichlet(alpha=np.sum(Z_n_i, axis=0) + alpha, rng=rng)
 
