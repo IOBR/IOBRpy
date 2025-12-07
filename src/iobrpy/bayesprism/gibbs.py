@@ -93,13 +93,21 @@ class GibbsSampler:
 
 
     def _make_rng(seed):
-        """Return a dedicated Generator to avoid cross-process state sharing."""
+        """Return a dedicated MT19937-backed Generator.
 
-        if seed is None:
-            return np.random.default_rng()
+        Using MT19937 mirrors the RandomState-based sampling used prior to the
+        multinomial refactor and better aligns with R's default RNG, improving
+        reproducibility/correlation when validating against reference outputs.
+        """
+
         if isinstance(seed, np.random.SeedSequence):
-            return np.random.default_rng(seed)
-        return np.random.default_rng(np.random.SeedSequence(seed))
+            bitgen = np.random.MT19937(seed)
+        elif seed is None:
+            bitgen = np.random.MT19937()
+        else:
+            bitgen = np.random.MT19937(seed)
+
+        return np.random.Generator(bitgen)
 
     def sample_Z_theta_n(
         X_n,
