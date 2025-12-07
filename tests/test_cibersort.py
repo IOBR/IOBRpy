@@ -134,15 +134,13 @@ def test_pvalue_uses_r_formula_with_ge_counts(tmp_path, monkeypatch, sig_df):
         n_jobs=1,
     )
 
-    expected_ranks = np.searchsorted(nulldist, rs_values, side="left")
-    expected_p = (len(nulldist) - expected_ranks + 1) / (len(nulldist) + 1)
+    counts = (nulldist[np.newaxis, :] >= rs_values[:, np.newaxis]).sum(axis=1)
+    expected_p = counts.astype(np.float32) / len(nulldist)
 
-    np.testing.assert_allclose(
-        result["P-value"].to_numpy(dtype=np.float32), expected_p.astype(np.float32)
-    )
+    np.testing.assert_allclose(result["P-value"].to_numpy(dtype=np.float32), expected_p)
 
 
-def test_pvalue_minimum_is_positive(monkeypatch, tmp_path, sig_df):
+def test_pvalue_can_be_zero_when_no_null_exceeds(monkeypatch, tmp_path, sig_df):
     cibersort_module = importlib.import_module("iobrpy.workflow.cibersort")
 
     # Fake mixture (genes x samples) with two samples using signature genes for overlap
@@ -178,8 +176,8 @@ def test_pvalue_minimum_is_positive(monkeypatch, tmp_path, sig_df):
         n_jobs=1,
     )
 
-    min_expected = 1.0 / (len(nulldist) + 1)
-    assert np.all(result["P-value"].to_numpy() >= min_expected)
+    expected = np.array([4 / len(nulldist), 0.0], dtype=np.float32)
+    np.testing.assert_allclose(result["P-value"].to_numpy(dtype=np.float32), expected)
 
 
 def test_zscore1d_uses_sample_std():
