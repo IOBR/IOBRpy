@@ -13,18 +13,44 @@ from . import theta_post
 
 
 #https://stackoverflow.com/questions/55818845/fast-vectorized-multinomial-in-python
-def multinomial_rvs(count, p, rng=None):
-    """
-    Sample from the multinomial distribution with multiple p vectors.
+def multinomial_rvs(count, p, rng=None, method="binomial"):
+    """Vectorized multinomial sampling.
 
-    * count must be an (n-1)-dimensional numpy array.
-    * p must an n-dimensional numpy array, n >= 1.  The last axis of p
-      holds the sequence of probabilities for a multinomial distribution.
+    Parameters
+    ----------
+    count : array-like
+        Total counts for each independent draw. Should broadcast to ``p``
+        without relying on the last axis.
+    p : ndarray
+        Probability matrix where the last axis enumerates categories.
+    rng : np.random.Generator, optional
+        RNG to use; defaults to a new Generator.
+    method : {"binomial", "sequential"}
+        "binomial" uses a fast chain of binomial draws (distributionally
+        equivalent but consumes RNG state differently from ``Generator.multinomial``).
+        "sequential" mirrors the per-vector ``rng.multinomial`` calls for
+        deterministic compatibility with the legacy sampler.
 
-    The return value has the same shape as p.
+    Returns
+    -------
+    ndarray
+        Samples with the same shape as ``p``.
     """
     if rng is None:
         rng = np.random.default_rng()
+
+    p = np.asarray(p)
+    count = np.array(count, copy=True)
+
+    if method == "sequential":
+        flat_samples = np.array(
+            [rng.multinomial(int(n), prob) for n, prob in zip(count.reshape(-1), p.reshape(-1, p.shape[-1]))],
+            dtype=int,
+        )
+        return flat_samples.reshape(p.shape)
+
+    if method != "binomial":
+        raise ValueError("Unsupported multinomial sampling method")
 
     out = np.zeros(p.shape, dtype=int)
     ps = p.cumsum(axis=-1)
@@ -32,7 +58,6 @@ def multinomial_rvs(count, p, rng=None):
     with np.errstate(divide='ignore', invalid='ignore'):
         condp = p / ps
     condp[np.isnan(condp)] = 0.0
-    count = np.array(count, copy=True)
     for i in range(p.shape[-1]-1, 0, -1):
         binsample = rng.binomial(count, condp[..., i])
         out[..., i] = binsample
@@ -84,6 +109,7 @@ class GibbsSampler:
         chain_length,
         seed=None,
         compute_elbo=False,
+        fast_multinomial=False,
     ):
 
         rng = GibbsSampler._make_rng(seed)
@@ -107,7 +133,12 @@ class GibbsSampler:
             prob_mat = phi * theta_n_i[:, np.newaxis]
             prob_mat /= prob_mat.sum(axis=0, keepdims=True)
 
-            Z_n_i = multinomial_rvs(count=X_n, p=prob_mat.T, rng=rng)
+            Z_n_i = multinomial_rvs(
+                count=X_n,
+                p=prob_mat.T,
+                rng=rng,
+                method="binomial" if fast_multinomial else "sequential",
+            )
 
             Z_nk_i = np.sum(Z_n_i, axis=0)
             theta_n_i = GibbsSampler.rdirichlet(alpha=Z_nk_i + alpha, rng=rng)
@@ -134,7 +165,7 @@ class GibbsSampler:
             'gibbs.constant': gibbs_constant,
         }
 
-    def sample_theta_n(X_n, phi, alpha, gibbs_idx, chain_length, seed=None):
+    def sample_theta_n(X_n, phi, alpha, gibbs_idx, chain_length, seed=None, fast_multinomial=False):
 
         rng = GibbsSampler._make_rng(seed)
 
@@ -153,7 +184,12 @@ class GibbsSampler:
         for i in range(iterations):
             prob_mat = phi * theta_n_i[:, np.newaxis]
             prob_mat /= prob_mat.sum(axis=0, keepdims=True)
-            Z_n_i = multinomial_rvs(count=X_n, p=prob_mat.T, rng=rng)
+            Z_n_i = multinomial_rvs(
+                count=X_n,
+                p=prob_mat.T,
+                rng=rng,
+                method="binomial" if fast_multinomial else "sequential",
+            )
 
             theta_n_i = GibbsSampler.rdirichlet(alpha=np.sum(Z_n_i, axis=0) + alpha, rng=rng)
 
@@ -183,6 +219,7 @@ class GibbsSampler:
         ref = self.reference
         X = self.X.to_numpy()
         gibbs_control = self.gibbs_control
+        fast_mult = gibbs_control.get('fast.multinomial', False)
         ptm = time.process_time()
         
         if not final:
@@ -197,7 +234,9 @@ class GibbsSampler:
                      'thinning' : gibbs_control['thinning']}),
                 chain_length=chain_length,
                 seed = gibbs_control['seed'],
-                compute_elbo = False)
+                compute_elbo = False,
+                fast_multinomial = fast_mult,
+            )
         else:
             if isinstance(ref, references.RefPhi):
                 GibbsSampler.sample_theta_n(
@@ -209,7 +248,9 @@ class GibbsSampler:
                          'burn.in' : chain_length * gibbs_control['burn.in'] / gibbs_control['chain.length'],
                          'thinning' : gibbs_control['thinning']}),
                     chain_length=chain_length,
-                    seed = gibbs_control['seed'])
+                    seed = gibbs_control['seed'],
+                    fast_multinomial = fast_mult,
+                )
             if isinstance(ref, references.RefTumor):
                 phi_1 = pd.concat([pd.DataFrame(ref.psi_mal.iloc[0, :]).T, ref.psi_env])
                 nonzero_idx = np.max(phi_1, axis = 0) > 0
@@ -222,7 +263,9 @@ class GibbsSampler:
                          'burn.in' : chain_length*gibbs_control['burn.in'] / gibbs_control['chain.length'],
                          'thinning' : gibbs_control['thinning']}),
                     chain_length=chain_length,
-                    seed = gibbs_control['seed'])
+                    seed = gibbs_control['seed'],
+                    fast_multinomial = fast_mult,
+                )
         
         total_time = time.process_time() - ptm
         estimated_time = gibbs_control['chain.length'] / chain_length * total_time * np.ceil(X.shape[0] / gibbs_control['n.cores']) * 2
@@ -239,6 +282,7 @@ class GibbsSampler:
         X = self.X.to_numpy()
         gibbs_control = self.gibbs_control
         alpha = gibbs_control['alpha']
+        fast_mult = gibbs_control.get('fast.multinomial', False)
         gibbs_idx = GibbsSampler.get_gibbs_idx(gibbs_control)
         chain_length = gibbs_control['chain.length']
         seed = gibbs_control['seed']
@@ -257,6 +301,7 @@ class GibbsSampler:
                     repeat(chain_length),
                     seeds,
                     repeat(compute_elbo),
+                    repeat(fast_mult),
                 )
                 gibbs_list = pool.starmap(GibbsSampler.sample_Z_theta_n, tqdm.tqdm(star_input, total=len(X_input)))
             return joint_post.JointPost.new(self.X.index, self.X.columns, phi.index, gibbs_list)
@@ -271,6 +316,7 @@ class GibbsSampler:
                     repeat(gibbs_idx),
                     repeat(chain_length),
                     seeds,
+                    repeat(fast_mult),
                 )
                 gibbs_list = pool.starmap(GibbsSampler.sample_theta_n , tqdm.tqdm(star_input, total=len(X_input)))
             return theta_post.ThetaPost.new(self.X.index, self.X.columns, gibbs_list)
@@ -285,6 +331,7 @@ class GibbsSampler:
         X = self.X.to_numpy()
         gibbs_control = self.gibbs_control
         alpha = gibbs_control['alpha']
+        fast_mult = gibbs_control.get('fast.multinomial', False)
         gibbs_idx = GibbsSampler.get_gibbs_idx(gibbs_control)
         chain_length = gibbs_control['chain.length']
         seed = gibbs_control['seed']
@@ -297,7 +344,7 @@ class GibbsSampler:
             phi_n = pd.concat([psi_mal_n, psi_env])
             nonzero_idx = np.max(phi_n, axis = 0) > 0
             child_seed = seed_seq.spawn(1)[0] if seed_seq is not None else None
-            star_input.append((X[i, nonzero_idx], phi_n.loc[:, nonzero_idx], alpha, gibbs_idx, chain_length, child_seed))
+            star_input.append((X[i, nonzero_idx], phi_n.loc[:, nonzero_idx], alpha, gibbs_idx, chain_length, child_seed, fast_mult))
 
         with multiprocessing.Pool(processes = gibbs_control['n.cores']) as pool:
             gibbs_list = pool.starmap(GibbsSampler.sample_theta_n , star_input)

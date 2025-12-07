@@ -49,12 +49,13 @@ class Prism:
 
 
     def valid_gibbs_control(control):
-        ctrl = {'chain.length': 1000, 
-                'burn.in': 500, 
-                'thinning': 2, 
-                'n.cores': 1, 
-                'seed': 123, 
-                'alpha': 1}
+        ctrl = {'chain.length': 1000,
+                'burn.in': 500,
+                'thinning': 2,
+                'n.cores': 1,
+                'seed': 123,
+                'alpha': 1,
+                'fast.multinomial': False}
 
         namc = list(control.keys())
        
@@ -66,7 +67,10 @@ class Prism:
 
         if ctrl['alpha'] < 0:
             raise ValueError("alpha needs to be positive")
-        
+
+        if not isinstance(ctrl['fast.multinomial'], bool):
+            raise ValueError("fast.multinomial must be a boolean flag")
+
         return ctrl
 
 
