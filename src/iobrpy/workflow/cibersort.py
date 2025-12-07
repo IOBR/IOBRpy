@@ -128,15 +128,16 @@ def core_alg(X: np.ndarray, y: np.ndarray, absolute=False, abs_method='sig.score
         w = np.dot(coef, SV).ravel().astype(np.float32)  # celltypes
         w[w < 0] = 0.0                        # clamp negatives
 
-        if absolute:
-            w_use = w
-        else:
+        normalize = (not absolute) or (abs_method != 'no.sumto1')
+        if normalize:
             s = w.sum()
             if s <= 0:
                 # fallback to uniform weights to avoid NaNs
                 w_use = np.full_like(w, 1.0 / max(len(w), 1), dtype=np.float32)
             else:
                 w_use = w / s
+        else:
+            w_use = w
 
         # Reconstruct the mixture and evaluate fit
         k = X @ w_use                          # G
