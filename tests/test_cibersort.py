@@ -193,13 +193,14 @@ def test_absolute_no_sumto1_preserves_weights_and_uses_raw_sum(tmp_path, monkeyp
     mix_path = tmp_path / "mix_abs.tsv"
     mix_df.to_csv(mix_path, sep="\t")
 
-    norm_weights = np.linspace(1, sig_df.shape[1], sig_df.shape[1], dtype=np.float32)
-    norm_weights /= norm_weights.sum()
-    raw_sum = 7.5
+    raw_weights = np.linspace(1, sig_df.shape[1], sig_df.shape[1], dtype=np.float32)
+    norm_weights = raw_weights / raw_weights.sum()
+    raw_sum = float(raw_weights.sum())
 
     def _core_alg_no_sumto1(X, y, absolute=False, abs_method="sig.score"):
         return {
             "w": norm_weights,
+            "w_raw": raw_weights,
             "w_raw_sum": raw_sum,
             "mix_r": 0.8,
             "mix_rmse": 0.05,
@@ -216,8 +217,8 @@ def test_absolute_no_sumto1_preserves_weights_and_uses_raw_sum(tmp_path, monkeyp
         n_jobs=1,
     )
 
-    np.testing.assert_allclose(result.loc["s1", sig_df.columns], norm_weights)
-    np.testing.assert_allclose(result.loc["s2", sig_df.columns], norm_weights)
+    np.testing.assert_allclose(result.loc["s1", sig_df.columns], raw_weights)
+    np.testing.assert_allclose(result.loc["s2", sig_df.columns], raw_weights)
     abs_col = "Absolute_score_(no_sumto1)"
     assert np.isclose(result.loc["s1", abs_col], raw_sum)
     assert np.isclose(result.loc["s2", abs_col], raw_sum)
