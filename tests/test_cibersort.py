@@ -186,3 +186,38 @@ def test_zscore1d_uses_sample_std():
     expected = np.array([-1.0, 0.0, 1.0], dtype=np.float32)
     out = cibersort_module.zscore1d(arr)
     np.testing.assert_allclose(out, expected)
+
+
+def test_absolute_no_sumto1_preserves_weights_and_uses_raw_sum(tmp_path, monkeypatch, sig_df):
+    mix_df = _make_mixture(sig_df.index, np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32))
+    mix_path = tmp_path / "mix_abs.tsv"
+    mix_df.to_csv(mix_path, sep="\t")
+
+    norm_weights = np.linspace(1, sig_df.shape[1], sig_df.shape[1], dtype=np.float32)
+    norm_weights /= norm_weights.sum()
+    raw_sum = 7.5
+
+    def _core_alg_no_sumto1(X, y, absolute=False, abs_method="sig.score"):
+        return {
+            "w": norm_weights,
+            "w_raw_sum": raw_sum,
+            "mix_r": 0.8,
+            "mix_rmse": 0.05,
+        }
+
+    monkeypatch.setattr(cibersort_module, "core_alg", _core_alg_no_sumto1)
+
+    result = cibersort_module.cibersort(
+        input_path=mix_path,
+        perm=0,
+        QN=False,
+        absolute=True,
+        abs_method="no.sumto1",
+        n_jobs=1,
+    )
+
+    np.testing.assert_allclose(result.loc["s1", sig_df.columns], norm_weights)
+    np.testing.assert_allclose(result.loc["s2", sig_df.columns], norm_weights)
+    abs_col = "Absolute_score_(no_sumto1)"
+    assert np.isclose(result.loc["s1", abs_col], raw_sum)
+    assert np.isclose(result.loc["s2", abs_col], raw_sum)

@@ -131,16 +131,12 @@ def core_alg(X: np.ndarray, y: np.ndarray, absolute=False, abs_method='sig.score
         w = np.dot(coef, SV).ravel().astype(np.float32)  # celltypes
         w[w < 0] = 0.0                        # clamp negatives
 
-        normalize = (not absolute) or (abs_method != 'no.sumto1')
-        if normalize:
-            s = w.sum()
-            if s <= 0:
-                # fallback to uniform weights to avoid NaNs
-                w_use = np.full_like(w, 1.0 / max(len(w), 1), dtype=np.float32)
-            else:
-                w_use = w / s
+        s = w.sum()
+        if s <= 0:
+            # fallback to uniform weights to avoid NaNs
+            w_use = np.full_like(w, 1.0 / max(len(w), 1), dtype=np.float32)
         else:
-            w_use = w
+            w_use = w / s
 
         # Reconstruct the mixture and evaluate fit
         k = X @ w_use                          # G
@@ -150,9 +146,9 @@ def core_alg(X: np.ndarray, y: np.ndarray, absolute=False, abs_method='sig.score
         if (rmse < best_rmse) or (rmse == best_rmse and r > best_corr):
             best_rmse = rmse
             best_corr = r
-            best = (w_use, rmse, r)
+            best = (w_use, s, rmse, r)
 
-    return {"w": best[0], "mix_rmse": best[1], "mix_r": best[2]}
+    return {"w": best[0], "w_raw_sum": best[1], "mix_rmse": best[2], "mix_r": best[3]}
 
 # -------------------- permutation helpers --------------------
 def _one_perm_mixr(X: np.ndarray, Y_flat: np.ndarray, absolute: bool, abs_method: str, seed: int):
@@ -261,7 +257,7 @@ def cibersort(input_path, perm=100, QN=True, absolute=False, abs_method='sig.sco
 
     def _solve_one(i):
         res = core_alg(X, Yz[:, i], absolute, abs_method)
-        return res["w"], res["mix_r"], res["mix_rmse"]
+        return res["w"], res.get("w_raw_sum", float(np.sum(res["w"]))), res["mix_r"], res["mix_rmse"]
 
     with tqdm_joblib(tqdm(total=N, desc="Deconvolving samples", unit="sample",
                           dynamic_ncols=True, mininterval=0.2)):
@@ -271,8 +267,9 @@ def cibersort(input_path, perm=100, QN=True, absolute=False, abs_method='sig.sco
 
     # 10) Assemble results
     weights = [o[0] for o in outs]
-    rs = np.array([o[1] for o in outs], dtype=np.float32)
-    rmses = np.array([o[2] for o in outs], dtype=np.float32)
+    raw_sums = np.array([o[1] for o in outs], dtype=np.float32)
+    rs = np.array([o[2] for o in outs], dtype=np.float32)
+    rmses = np.array([o[3] for o in outs], dtype=np.float32)
 
     if nulldist is not None:
         # One-sided p-value: count(null >= r) / perm, matching the R script
@@ -285,11 +282,16 @@ def cibersort(input_path, perm=100, QN=True, absolute=False, abs_method='sig.sco
     rows = []
     for i in range(N):
         w = weights[i]
-        if absolute and abs_method == "sig.score":
-            w = w * (float(np.median(Y[:, i])) / Ymedian)
+        abs_score = None
+        if absolute:
+            if abs_method == "sig.score":
+                w = w * (float(np.median(Y[:, i])) / Ymedian)
+                abs_score = float(np.sum(w))
+            elif abs_method == "no.sumto1":
+                abs_score = float(raw_sums[i])
         row = list(w) + [float(pvals[i]), float(rs[i]), float(rmses[i])]
         if absolute:
-            row.append(float(np.sum(w)))
+            row.append(abs_score if abs_score is not None else float(np.sum(w)))
         rows.append(row)
 
     colnames = list(sig_df.columns) + ['P-value', 'Correlation', 'RMSE']
