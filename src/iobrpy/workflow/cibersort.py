@@ -276,8 +276,9 @@ def cibersort(input_path, perm=100, QN=True, absolute=False, abs_method='sig.sco
 
     if nulldist is not None:
         # One-sided p-value: (count(null >= r) + 1) / (perm + 1), matching R impl
-        ranks = np.searchsorted(nulldist, rs, side='left')
-        pvals = (len(nulldist) - ranks + 1) / (len(nulldist) + 1)
+        # Use direct counting to avoid any precision quirks from searchsorted
+        counts = (nulldist[np.newaxis, :] >= rs[:, np.newaxis]).sum(axis=1)
+        pvals = (counts + 1) / (len(nulldist) + 1)
     else:
         pvals = np.full(N, 9999.0, dtype=np.float32)
 

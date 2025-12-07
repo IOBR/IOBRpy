@@ -1,3 +1,4 @@
+import importlib
 import numpy as np
 import pandas as pd
 import pytest
@@ -139,6 +140,46 @@ def test_pvalue_uses_r_formula_with_ge_counts(tmp_path, monkeypatch, sig_df):
     np.testing.assert_allclose(
         result["P-value"].to_numpy(dtype=np.float32), expected_p.astype(np.float32)
     )
+
+
+def test_pvalue_minimum_is_positive(monkeypatch, tmp_path, sig_df):
+    cibersort_module = importlib.import_module("iobrpy.workflow.cibersort")
+
+    # Fake mixture (genes x samples) with two samples using signature genes for overlap
+    mix_df = _make_mixture(sig_df.index, np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]], dtype=np.float32))
+    mix_path = tmp_path / "mix.tsv"
+    mix_df.to_csv(mix_path, sep="\t")
+
+    rs_values = np.array([0.5, 1.5], dtype=np.float32)
+    r_iter = iter(rs_values.tolist())
+
+    def _core_alg_with_r(X, y, absolute=False, abs_method="sig.score"):
+        return {
+            "w": np.ones(X.shape[1], dtype=np.float32),
+            "mix_r": next(r_iter),
+            "mix_rmse": 0.0,
+        }
+
+    nulldist = np.array([0.1, 0.2, 0.5, 0.5, 0.9, 1.2], dtype=np.float32)
+
+    monkeypatch.setattr(cibersort_module, "core_alg", _core_alg_with_r)
+    monkeypatch.setattr(
+        cibersort_module,
+        "do_perm",
+        lambda perm, X, Y, absolute, abs_method, n_jobs: nulldist,
+    )
+
+    result = cibersort_module.cibersort(
+        input_path=mix_path,
+        perm=5,
+        QN=False,
+        absolute=False,
+        abs_method="sig.score",
+        n_jobs=1,
+    )
+
+    min_expected = 1.0 / (len(nulldist) + 1)
+    assert np.all(result["P-value"].to_numpy() >= min_expected)
 
 
 def test_zscore1d_uses_sample_std():
