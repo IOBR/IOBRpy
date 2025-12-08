@@ -83,7 +83,7 @@ class GibbsSampler:
         return thinned_idx
 
 
-    def rdirichlet(alpha, rng=None, backend="randomstate"):
+    def rdirichlet(alpha, rng=None, backend="generator"):
         """Dirichlet sampling using the provided RNG for determinism."""
 
         if rng is None:
@@ -92,12 +92,12 @@ class GibbsSampler:
         return x / np.sum(x)
 
 
-    def _make_rng(seed, backend="randomstate"):
+    def _make_rng(seed, backend="generator"):
         """Return a dedicated RNG for Gibbs sampling.
 
-        The backend can be ``generator`` (MT19937-based Generator) or
-        ``randomstate`` (default) to mirror legacy NumPy behaviour. The seed
-        can be a SeedSequence, Generator, RandomState, int, or None.
+        The backend can be ``generator`` (default MT19937-based Generator) or
+        ``randomstate`` to mirror legacy NumPy behaviour. The seed can be a
+        SeedSequence, Generator, RandomState, int, or None.
         """
 
         backend = backend.lower()
@@ -131,7 +131,7 @@ class GibbsSampler:
         gibbs_idx,
         chain_length,
         seed=None,
-        rng_backend="randomstate",
+        rng_backend="generator",
         compute_elbo=False,
         fast_multinomial=False,
     ):
@@ -189,7 +189,7 @@ class GibbsSampler:
             'gibbs.constant': gibbs_constant,
         }
 
-    def sample_theta_n(X_n, phi, alpha, gibbs_idx, chain_length, seed=None, rng_backend="randomstate", fast_multinomial=False):
+    def sample_theta_n(X_n, phi, alpha, gibbs_idx, chain_length, seed=None, rng_backend="generator", fast_multinomial=False):
 
         rng = GibbsSampler._make_rng(seed, backend=rng_backend)
 
@@ -244,7 +244,7 @@ class GibbsSampler:
         X = self.X.to_numpy()
         gibbs_control = self.gibbs_control
         fast_mult = gibbs_control.get('fast.multinomial', False)
-        rng_backend = gibbs_control.get('rng.backend', 'randomstate')
+        rng_backend = gibbs_control.get('rng.backend', 'generator')
         ptm = time.process_time()
         
         if not final:
@@ -311,7 +311,7 @@ class GibbsSampler:
         gibbs_control = self.gibbs_control
         alpha = gibbs_control['alpha']
         fast_mult = gibbs_control.get('fast.multinomial', False)
-        rng_backend = gibbs_control.get('rng.backend', 'randomstate')
+        rng_backend = gibbs_control.get('rng.backend', 'generator')
         gibbs_idx = GibbsSampler.get_gibbs_idx(gibbs_control)
         chain_length = gibbs_control['chain.length']
         seed = gibbs_control['seed']
@@ -363,7 +363,7 @@ class GibbsSampler:
         gibbs_control = self.gibbs_control
         alpha = gibbs_control['alpha']
         fast_mult = gibbs_control.get('fast.multinomial', False)
-        rng_backend = gibbs_control.get('rng.backend', 'randomstate')
+        rng_backend = gibbs_control.get('rng.backend', 'generator')
         gibbs_idx = GibbsSampler.get_gibbs_idx(gibbs_control)
         chain_length = gibbs_control['chain.length']
         seed = gibbs_control['seed']
