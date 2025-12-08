@@ -5,12 +5,11 @@ EPIC (Racle et al. 2017, eLife) — accelerated Python implementation
 Goal: keep CLI and outputs compatible with the existing iobrpy entrypoint,
 but make the core deconvolution loop much faster and keep NKcells close to R.
 Key changes (internal only, no new flags):
-  • Use weighted NNLS (Lawson–Hanson) for the default objective instead of
-    per-sample SLSQP/trust-constr when range_based_optim is OFF.
+  • Use a constrained weighted least-squares solve for the default objective
+    instead of per-sample SLSQP/trust-constr when range_based_optim is OFF.
   • Vectorized preprocessing (duplicate merge, scaling) and reduced copies.
-  • Simplex projection to enforce the "sum ≤ 1" constraint efficiently.
-  • NK-preserving floor (1e-12) under the simplex constraint so tiny NK signals
-    are not hard-zeroed by NNLS sparsity (closer to R EPIC outcomes).
+  • Linear (sum/non-negativity) constraints are solved directly rather than
+    enforced by a post-hoc simplex projection.
 
 If you need the exact legacy solver behaviour, pass --rangeBasedOptim to
 force the original minimize()-based path (still available).
@@ -21,7 +20,7 @@ import pickle
 import warnings
 import numpy as np
 import pandas as pd
-from scipy.optimize import nnls, minimize
+from scipy.optimize import Bounds, LinearConstraint, minimize
 from scipy.stats import pearsonr, spearmanr
 from tqdm import tqdm
 from importlib.resources import files
@@ -43,7 +42,7 @@ mRNA_cell_default = {
     'default': 0.4000
 }
 
-# Minimal positive floor for NKcells inside the simplex (keeps tiny signals)
+# Minimal positive floor for NKcells inside the simplex (legacy path only)
 _NK_FLOOR = 1e-12
 
 # ---------------- INTERNAL UTILITIES -------------------
@@ -116,20 +115,6 @@ def _parse_sigfile(path: str) -> list:
                 genes.extend(parts[2:])
         return list(dict.fromkeys(genes))
     return [g for g in path.split(',') if g]
-
-
-def _project_to_simplex_leq(x: np.ndarray, R: float = 1.0) -> np.ndarray:
-    """Project x onto the nonnegative simplex of radius R (sum(x) ≤ R)."""
-    x = np.maximum(x, 0.0)
-    s = x.sum()
-    if s <= R:
-        return x
-    # Euclidean projection onto simplex (Duchi et al., 2008)
-    u = np.sort(x)[::-1]
-    cssv = np.cumsum(u)
-    rho = np.nonzero(u * np.arange(1, len(u)+1) > (cssv - R))[0][-1]
-    theta = (cssv[rho] - R) / (rho + 1.0)
-    return np.maximum(x - theta, 0.0)
 
 
 def _find_nk_index(cell_types) -> int:
@@ -222,37 +207,51 @@ def EPIC(bulk: pd.DataFrame,
     mprops = np.empty((n_samples, nC), dtype=float)
     gof_list = []
 
-    # choose path: fast (NNLS) vs legacy minimize
+    # choose path: fast constrained WLS vs legacy minimize
     use_fast = not range_based_optim
+
+    # Precompute quadratic pieces for the constrained solver
+    hess = Aw.T.dot(Aw)
+    bounds = Bounds(0, np.inf)
+    sum_constraint = None
+    if constrained_sum:
+        cMin = 0.0 if with_other_cells else 0.99
+        sum_constraint = LinearConstraint(np.ones(nC), cMin, 1.0)
+    base = 1.0 / nC if (constrained_sum and not with_other_cells) else (1 - 1e-5) / nC
+    x0_base = np.full(nC, base)
 
     with tqdm(total=n_samples, desc="EPIC deconvolution", unit="sample", leave=False) as pbar:
         for i in range(n_samples):
             pbar.update(1)
             b = B[:, i]
             if use_fast:
-                # Weighted NNLS: minimize ||sqrt(W)(A x - b)||^2  s.t. x ≥ 0
                 bw = b * sqrtw
-                x, _ = nnls(Aw, bw)
 
-                # ---- NK-preserving projection under constraints ----
-                if constrained_sum:
-                    if with_other_cells:
-                        if nk_idx >= 0:
-                            # Reserve a tiny quota for NK, project the rest to radius (1 - eps)
-                            eps = _NK_FLOOR
-                            # Project to simplex of radius (1 - eps)
-                            x = _project_to_simplex_leq(x, R=1.0 - eps)
-                            # Give the reserved quota to NK (ensures NK ≥ eps)
-                            x[nk_idx] += eps
-                        else:
-                            x = _project_to_simplex_leq(x, R=1.0)
+                def fun(z):
+                    r = Aw.dot(z) - bw
+                    return 0.5 * np.dot(r, r)
+
+                def jac(z):
+                    r = Aw.dot(z) - bw
+                    return Aw.T.dot(r)
+
+                res = minimize(
+                    fun,
+                    x0_base,
+                    method='trust-constr',
+                    jac=jac,
+                    hess=lambda z: hess,
+                    bounds=bounds,
+                    constraints=() if sum_constraint is None else (sum_constraint,),
+                    options={'maxiter': 200, 'verbose': 0},
+                )
+                x = res.x
+                if not with_other_cells and constrained_sum:
+                    sx = x.sum()
+                    if sx > 0:
+                        x = x / sx
                     else:
-                        s = x.sum()
-                        if s > 0:
-                            x = x / s
-                        else:
-                            x[:] = 0.0
-                # ----------------------------------------------------
+                        x[:] = 0.0
 
             else:
                 # Legacy minimize() path (range-based objective or if user insists)
@@ -317,8 +316,8 @@ def EPIC(bulk: pd.DataFrame,
             rmse0 = np.sqrt(np.mean(resid0 * resid0))
 
             gof_list.append({
-                'convergeCode': 0 if use_fast else getattr(res, 'status', np.nan),
-                'convergeMessage': 'nnls' if use_fast else str(getattr(res, 'message', '')),
+                'convergeCode': getattr(res, 'status', 0 if use_fast else np.nan),
+                'convergeMessage': str(getattr(res, 'message', '')),
                 'RMSE_weighted': rmse,
                 'Root_mean_squared_geneExpr_weighted': rmse0,
                 'spearmanR': sp.correlation, 'spearmanP': sp.pvalue,
