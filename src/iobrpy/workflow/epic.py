@@ -257,18 +257,23 @@ def EPIC(bulk: pd.DataFrame,
                     nk_num_resid = np.dot(nk_vec, sqrtw * residual)
                     nk_coeff_resid = nk_num_resid / nk_den if nk_den > 0 else 0.0
 
-                    # Also compute an unconstrained 1D fit directly on b; when NK is
-                    # heavily collinear with other immune profiles, the residual-based
-                    # update can collapse to ~0 for every sample. Falling back to the
-                    # direct estimate restores the sample-to-sample variation seen in
-                    # the R implementation while still preserving non-negativity.
-                    nk_num_full = np.dot(nk_vec, sqrtw * b)
-                    nk_coeff_full = nk_num_full / nk_den if nk_den > 0 else 0.0
+                    # Also compute unconstrained 1D fits directly on b in both weighted
+                    # and unweighted space; the R implementation can keep NK variation
+                    # even when the residual-based weighted update collapses.
+                    nk_num_full_w = np.dot(nk_vec, sqrtw * b)
+                    nk_coeff_full_w = nk_num_full_w / nk_den if nk_den > 0 else 0.0
 
-                    if nk_coeff_resid <= _NK_FLOOR and nk_coeff_full > 0:
-                        nk_coeff = nk_coeff_full
-                    else:
+                    nk_vec_unw = A[:, nk_idx]
+                    nk_den_unw = np.dot(nk_vec_unw, nk_vec_unw)
+                    nk_num_full_unw = np.dot(nk_vec_unw, b)
+                    nk_coeff_full_unw = nk_num_full_unw / nk_den_unw if nk_den_unw > 0 else 0.0
+
+                    if nk_coeff_resid > _NK_FLOOR:
                         nk_coeff = nk_coeff_resid
+                    elif nk_coeff_full_w > _NK_FLOOR:
+                        nk_coeff = nk_coeff_full_w
+                    else:
+                        nk_coeff = nk_coeff_full_unw
 
                     nk_coeff = max(nk_coeff, _NK_FLOOR)
 
