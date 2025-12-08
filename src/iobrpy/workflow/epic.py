@@ -20,7 +20,7 @@ import pickle
 import warnings
 import numpy as np
 import pandas as pd
-from scipy.optimize import Bounds, LinearConstraint, minimize
+from scipy.optimize import LinearConstraint, minimize
 from scipy.stats import pearsonr, spearmanr
 from tqdm import tqdm
 from importlib.resources import files
@@ -194,7 +194,6 @@ def EPIC(bulk: pd.DataFrame,
     # 6) precompute matrices for fast path
     A = ref_s.to_numpy(dtype=float, copy=False)
     sqrtw = np.sqrt(w, dtype=float)
-    Aw = (A.T * sqrtw).T  # weight rows by sqrt(w) once
     gene_order = ref_s.index
     B = bulk_s.loc[gene_order].to_numpy(dtype=float, copy=False)
 
@@ -211,13 +210,18 @@ def EPIC(bulk: pd.DataFrame,
     use_fast = not range_based_optim
 
     # Precompute quadratic pieces for the constrained solver
-    hess = Aw.T.dot(Aw)
-    bounds = Bounds(0, np.inf)
-    sum_constraint = None
-    if constrained_sum:
+    def make_constraints():
+        """Linear constraints mirroring R's constrOptim ui/ci definition."""
         cMin = 0.0 if with_other_cells else 0.99
-        sum_constraint = LinearConstraint(np.ones(nC), cMin, 1.0)
-    base = 1.0 / nC if (constrained_sum and not with_other_cells) else (1 - 1e-5) / nC
+        ui = np.eye(nC)
+        ci = np.zeros(nC)
+        if constrained_sum:
+            ui = np.vstack([ui, np.ones((1, nC)), -np.ones((1, nC))])
+            ci = np.concatenate([ci, [cMin, -1.0]])
+        return LinearConstraint(ui, ci, np.inf)
+
+    lin_con = make_constraints()
+    base = (min(1.0, 1.0) - 1e-5) / nC
     x0_base = np.full(nC, base)
 
     with tqdm(total=n_samples, desc="EPIC deconvolution", unit="sample", leave=False) as pbar:
@@ -225,28 +229,28 @@ def EPIC(bulk: pd.DataFrame,
             pbar.update(1)
             b = B[:, i]
             if use_fast:
-                bw = b * sqrtw
-
+                # Weighted least-squares objective mirroring R's minFun
                 def fun(z):
-                    r = Aw.dot(z) - bw
-                    return 0.5 * np.dot(r, r)
+                    r = A.dot(z) - b
+                    return np.nansum(w * (r * r))
 
                 def jac(z):
-                    r = Aw.dot(z) - bw
-                    return Aw.T.dot(r)
+                    r = A.dot(z) - b
+                    return 2.0 * A.T.dot(w * r)
+
+                hess = 2.0 * (A * w[:, None]).T.dot(A)
 
                 res = minimize(
                     fun,
                     x0_base,
                     method='trust-constr',
                     jac=jac,
-                    hess=lambda z: hess,
-                    bounds=bounds,
-                    constraints=() if sum_constraint is None else (sum_constraint,),
-                    options={'maxiter': 200, 'verbose': 0},
+                    hess=lambda _: hess,
+                    constraints=(lin_con,),
+                    options={'maxiter': 500, 'verbose': 0},
                 )
-                x = res.x
-                if not with_other_cells and constrained_sum:
+                x = np.clip(res.x, 0, None)
+                if constrained_sum and not with_other_cells:
                     sx = x.sum()
                     if sx > 0:
                         x = x / sx
