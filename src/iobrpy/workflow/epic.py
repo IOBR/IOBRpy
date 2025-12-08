@@ -222,12 +222,25 @@ def EPIC(bulk: pd.DataFrame,
 
     lin_con = make_constraints()
     base = (min(1.0, 1.0) - 1e-5) / nC
-    x0_base = np.full(nC, base)
 
     with tqdm(total=n_samples, desc="EPIC deconvolution", unit="sample", leave=False) as pbar:
         for i in range(n_samples):
             pbar.update(1)
             b = B[:, i]
+            # Start from the weighted least-squares closed form to keep the
+            # initial point sample-specific and strictly feasible for the
+            # constraints; this mirrors the R code's per-sample initialization
+            # while avoiding collapses when the optimizer fails.
+            Aw = A * sqrtw[:, None]
+            bw = b * sqrtw
+            x0_ls, *_ = np.linalg.lstsq(Aw, bw, rcond=None)
+            x0 = np.clip(x0_ls, 0, None)
+            if constrained_sum:
+                sx0 = x0.sum()
+                if sx0 > 1:
+                    x0 = x0 / sx0
+            if not np.all(np.isfinite(x0)):
+                x0 = np.full(nC, base)
             if use_fast:
                 # Weighted least-squares objective mirroring R's minFun
                 def fun(z):
@@ -242,13 +255,22 @@ def EPIC(bulk: pd.DataFrame,
 
                 res = minimize(
                     fun,
-                    x0_base,
+                    x0,
                     method='trust-constr',
                     jac=jac,
                     hess=lambda _: hess,
                     constraints=(lin_con,),
                     options={'maxiter': 500, 'verbose': 0},
                 )
+                if not res.success:
+                    res = minimize(
+                        fun,
+                        x0,
+                        method='SLSQP',
+                        jac=jac,
+                        constraints=(lin_con,),
+                        options={'maxiter': 500, 'ftol': 1e-12},
+                    )
                 x = np.clip(res.x, 0, None)
                 if constrained_sum and not with_other_cells:
                     sx = x.sum()
