@@ -124,6 +124,23 @@ class GibbsSampler:
             return np.random.Generator(np.random.MT19937())
         return np.random.Generator(np.random.MT19937(seed))
 
+    def _spawn_seeds(seed, n_children, backend="generator"):
+        """Create child seeds per worker consistent with the chosen backend."""
+
+        if seed is None:
+            return [None] * n_children
+
+        backend = backend.lower()
+        if backend == "generator":
+            seed_seq = seed if isinstance(seed, np.random.SeedSequence) else np.random.SeedSequence(seed)
+            return seed_seq.spawn(n_children)
+
+        if backend == "randomstate":
+            base_rng = GibbsSampler._make_rng(seed, backend=backend)
+            return [base_rng.randint(0, np.iinfo(np.uint32).max, dtype=np.uint32) for _ in range(n_children)]
+
+        raise ValueError("Unsupported RNG backend; use 'generator' or 'randomstate'")
+
     def sample_Z_theta_n(
         X_n,
         phi,
@@ -315,11 +332,10 @@ class GibbsSampler:
         gibbs_idx = GibbsSampler.get_gibbs_idx(gibbs_control)
         chain_length = gibbs_control['chain.length']
         seed = gibbs_control['seed']
-        seed_seq = np.random.SeedSequence(seed) if seed is not None else None
         print("Start run...")
 
         if not final:
-            seeds = seed_seq.spawn(X.shape[0]) if seed_seq is not None else [None] * X.shape[0]
+            seeds = GibbsSampler._spawn_seeds(seed, X.shape[0], backend=rng_backend)
             with multiprocessing.Pool(processes = gibbs_control['n.cores']) as pool:
                 X_input = [X[i, :] for i in np.arange(X.shape[0])]
                 star_input = zip(
@@ -336,7 +352,7 @@ class GibbsSampler:
                 gibbs_list = pool.starmap(GibbsSampler.sample_Z_theta_n, tqdm.tqdm(star_input, total=len(X_input)))
             return joint_post.JointPost.new(self.X.index, self.X.columns, phi.index, gibbs_list)
         else:
-            seeds = seed_seq.spawn(X.shape[0]) if seed_seq is not None else [None] * X.shape[0]
+            seeds = GibbsSampler._spawn_seeds(seed, X.shape[0], backend=rng_backend)
             with multiprocessing.Pool(processes = gibbs_control['n.cores']) as pool:
                 X_input = [X[i, :] for i in np.arange(X.shape[0])]
                 star_input = zip(
@@ -367,7 +383,6 @@ class GibbsSampler:
         gibbs_idx = GibbsSampler.get_gibbs_idx(gibbs_control)
         chain_length = gibbs_control['chain.length']
         seed = gibbs_control['seed']
-        seed_seq = np.random.SeedSequence(seed) if seed is not None else None
         print("Start run...")
 
         star_input = []
@@ -375,7 +390,7 @@ class GibbsSampler:
             psi_mal_n = pd.DataFrame(psi_mal.iloc[i, :]).T
             phi_n = pd.concat([psi_mal_n, psi_env])
             nonzero_idx = np.max(phi_n, axis = 0) > 0
-            child_seed = seed_seq.spawn(1)[0] if seed_seq is not None else None
+            child_seed = GibbsSampler._spawn_seeds(seed, 1, backend=rng_backend)[0]
             star_input.append((
                 X[i, nonzero_idx],
                 phi_n.loc[:, nonzero_idx],
