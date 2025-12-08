@@ -46,8 +46,8 @@ mRNA_cell_default = {
 # Minimal positive floor for NKcells inside the simplex (keeps tiny signals)
 _NK_FLOOR = 1e-12
 
-# Allow tiny slack on the total-sum constraint (R EPIC tolerates small drift)
-_SUM_TOL = 1e-3
+# Allow only numerical-noise slack on the total-sum constraint (R EPIC drift ~1e-10)
+_SUM_TOL = 1e-10
 
 # ---------------- INTERNAL UTILITIES -------------------
 def infer_sep(filepath: str) -> str:
