@@ -46,6 +46,9 @@ mRNA_cell_default = {
 # Minimal positive floor for NKcells inside the simplex (keeps tiny signals)
 _NK_FLOOR = 1e-12
 
+# Allow tiny slack on the total-sum constraint (R EPIC tolerates small drift)
+_SUM_TOL = 1e-3
+
 # ---------------- INTERNAL UTILITIES -------------------
 def infer_sep(filepath: str) -> str:
     ext = os.path.splitext(filepath)[1].lower()
@@ -255,11 +258,11 @@ def EPIC(bulk: pd.DataFrame,
 
                     if constrained_sum:
                         if with_other_cells:
-                            budget = max(0.0, 1.0 - nk_coeff)
+                            budget = max(0.0, 1.0 + _SUM_TOL - nk_coeff)
                             x_others = _project_to_simplex_leq(x_others, R=budget)
                         else:
                             s_other = x_others.sum()
-                            if s_other > 0:
+                            if s_other > 1.0 + _SUM_TOL:
                                 x_others *= (1.0 - nk_coeff) / s_other
                             else:
                                 x_others[:] = 0.0
@@ -271,10 +274,10 @@ def EPIC(bulk: pd.DataFrame,
                 else:
                     if constrained_sum:
                         if with_other_cells:
-                            x = _project_to_simplex_leq(x, R=1.0)
+                            x = _project_to_simplex_leq(x, R=1.0 + _SUM_TOL)
                         else:
                             s = x.sum()
-                            if s > 0:
+                            if s > 1.0 + _SUM_TOL:
                                 x = x / s
                             else:
                                 x[:] = 0.0
@@ -314,7 +317,7 @@ def EPIC(bulk: pd.DataFrame,
                     if constrained_sum:
                         cMin = 0 if with_other_cells else 0.99
                         cons.append({'type': 'ineq', 'fun': lambda z: np.sum(z) - cMin})
-                        cons.append({'type': 'ineq', 'fun': lambda z: 1 - np.sum(z)})
+                        cons.append({'type': 'ineq', 'fun': lambda z: 1 + _SUM_TOL - np.sum(z)})
                     return cons
 
                 method = 'trust-constr' if solver == 'trust-constr' else 'SLSQP'
@@ -322,7 +325,7 @@ def EPIC(bulk: pd.DataFrame,
                 x = res.x
                 if not with_other_cells and constrained_sum:
                     sx = x.sum()
-                    if sx > 0:
+                    if sx > 1.0 + _SUM_TOL:
                         x = x / sx
 
             mprops[i, :] = x
