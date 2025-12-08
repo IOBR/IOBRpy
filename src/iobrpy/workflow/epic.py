@@ -360,11 +360,23 @@ def EPIC(bulk: pd.DataFrame,
 
     mRNA_df = pd.DataFrame(mprops, index=bulk_s.columns, columns=cell_types)
     if with_other_cells:
-        mRNA_df['otherCells'] = 1 - mRNA_df.sum(axis=1)
+        slack = 1 - mRNA_df.sum(axis=1)
+        # Keep negative slack at zero (sum can exceed 1+_SUM_TOL under the lenient rule)
+        mRNA_df['otherCells'] = np.where(slack < -_SUM_TOL, 0.0, np.maximum(slack, 0.0))
+
     # Convert mRNA to cell fractions using per-cell mRNA content
     denom = [mRNA_cell.get(c, mRNA_cell.get('default', 1.0)) for c in mRNA_df.columns]
     cf_raw = mRNA_df.div(denom, axis=1)
-    cf = cf_raw.div(cf_raw.sum(axis=1), axis=0)
+
+    # Only renormalize when sums materially exceed the tolerated slack; otherwise
+    # preserve the slight drift allowed by the R implementation.
+    row_sum = cf_raw.sum(axis=1)
+    if constrained_sum and not with_other_cells:
+        over = row_sum > (1.0 + _SUM_TOL)
+        cf = cf_raw.copy()
+        cf.loc[over] = cf_raw.loc[over].div(row_sum[over], axis=0)
+    else:
+        cf = cf_raw
 
     gof_df = pd.DataFrame(gof_list, index=bulk_s.columns)
     return {'mRNAProportions': mRNA_df, 'cellFractions': cf, 'fit_gof': gof_df}
