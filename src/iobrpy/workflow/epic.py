@@ -20,7 +20,7 @@ import pickle
 import warnings
 import numpy as np
 import pandas as pd
-from scipy.optimize import LinearConstraint, minimize
+from scipy.optimize import Bounds, LinearConstraint, minimize
 from scipy.stats import pearsonr, spearmanr
 from tqdm import tqdm
 from importlib.resources import files
@@ -221,37 +221,40 @@ def EPIC(bulk: pd.DataFrame,
         return LinearConstraint(ui, ci, np.inf)
 
     lin_con = make_constraints()
-    base = (min(1.0, 1.0) - 1e-5) / nC
+    bounds = Bounds(0.0, np.inf)
+    Aw = A * sqrtw[:, None]
+    hess_base = 2.0 * (A * w[:, None]).T.dot(A)
+    ridge = 1e-6
 
     with tqdm(total=n_samples, desc="EPIC deconvolution", unit="sample", leave=False) as pbar:
         for i in range(n_samples):
             pbar.update(1)
             b = B[:, i]
             # Start from the weighted least-squares closed form to keep the
-            # initial point sample-specific and strictly feasible for the
-            # constraints; this mirrors the R code's per-sample initialization
-            # while avoiding collapses when the optimizer fails.
-            Aw = A * sqrtw[:, None]
+            # initial point sample-specific while letting the constrained
+            # solver adjust toward feasibility.
             bw = b * sqrtw
-            x0_ls, *_ = np.linalg.lstsq(Aw, bw, rcond=None)
-            x0 = np.clip(x0_ls, 0, None)
+            x0, *_ = np.linalg.lstsq(Aw, bw, rcond=None)
+            x0 = np.maximum(x0, 0.0)
+            uniform = np.full(nC, 1.0 / nC)
+            x0 = 0.7 * uniform + 0.3 * x0
             if constrained_sum:
                 sx0 = x0.sum()
                 if sx0 > 1:
                     x0 = x0 / sx0
             if not np.all(np.isfinite(x0)):
-                x0 = np.full(nC, base)
+                x0 = np.full(nC, 1.0 / nC)
             if use_fast:
                 # Weighted least-squares objective mirroring R's minFun
                 def fun(z):
                     r = A.dot(z) - b
-                    return np.nansum(w * (r * r))
+                    return np.nansum(w * (r * r)) + ridge * np.dot(z, z)
 
                 def jac(z):
                     r = A.dot(z) - b
-                    return 2.0 * A.T.dot(w * r)
+                    return 2.0 * A.T.dot(w * r) + 2.0 * ridge * z
 
-                hess = 2.0 * (A * w[:, None]).T.dot(A)
+                hess = hess_base + 2.0 * ridge * np.eye(nC)
 
                 res = minimize(
                     fun,
@@ -260,7 +263,8 @@ def EPIC(bulk: pd.DataFrame,
                     jac=jac,
                     hess=lambda _: hess,
                     constraints=(lin_con,),
-                    options={'maxiter': 500, 'verbose': 0},
+                    bounds=bounds,
+                    options={'maxiter': 800, 'verbose': 0, 'gtol': 4e-9},
                 )
                 if not res.success:
                     res = minimize(
@@ -269,9 +273,10 @@ def EPIC(bulk: pd.DataFrame,
                         method='SLSQP',
                         jac=jac,
                         constraints=(lin_con,),
-                        options={'maxiter': 500, 'ftol': 1e-12},
+                        bounds=bounds,
+                        options={'maxiter': 800, 'ftol': 1e-12},
                     )
-                x = np.clip(res.x, 0, None)
+                x = np.maximum(res.x, 0.0)
                 if constrained_sum and not with_other_cells:
                     sx = x.sum()
                     if sx > 0:

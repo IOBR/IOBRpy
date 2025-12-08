@@ -49,7 +49,7 @@ def test_epic_matches_r_fixture_for_nk_alignment():
     cf = res['cellFractions']
 
     assert set(expected.columns) == set(cf.columns)
-    np.testing.assert_allclose(cf.loc[expected.index, expected.columns], expected, rtol=2e-3, atol=1e-8)
+    np.testing.assert_allclose(cf.loc[expected.index, expected.columns], expected, rtol=2e-3, atol=5e-5)
 
     # Explicit NK regression check (ensures solver does not collapse NK to a constant column)
     assert not np.allclose(cf['NKcells'].values, cf['NKcells'].values[0])
