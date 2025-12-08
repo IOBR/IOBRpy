@@ -251,9 +251,25 @@ def EPIC(bulk: pd.DataFrame,
                     x_others = x.copy()
                     x_others[nk_idx] = 0.0
                     residual = b - A.dot(x_others)
-                    nk_num = np.dot(sqrtw * A[:, nk_idx], sqrtw * residual)
-                    nk_den = np.dot(sqrtw * A[:, nk_idx], sqrtw * A[:, nk_idx])
-                    nk_coeff = nk_num / nk_den if nk_den > 0 else 0.0
+                    nk_vec = sqrtw * A[:, nk_idx]
+                    nk_den = np.dot(nk_vec, nk_vec)
+
+                    nk_num_resid = np.dot(nk_vec, sqrtw * residual)
+                    nk_coeff_resid = nk_num_resid / nk_den if nk_den > 0 else 0.0
+
+                    # Also compute an unconstrained 1D fit directly on b; when NK is
+                    # heavily collinear with other immune profiles, the residual-based
+                    # update can collapse to ~0 for every sample. Falling back to the
+                    # direct estimate restores the sample-to-sample variation seen in
+                    # the R implementation while still preserving non-negativity.
+                    nk_num_full = np.dot(nk_vec, sqrtw * b)
+                    nk_coeff_full = nk_num_full / nk_den if nk_den > 0 else 0.0
+
+                    if nk_coeff_resid <= _NK_FLOOR and nk_coeff_full > 0:
+                        nk_coeff = nk_coeff_full
+                    else:
+                        nk_coeff = nk_coeff_resid
+
                     nk_coeff = max(nk_coeff, _NK_FLOOR)
 
                     if constrained_sum:
