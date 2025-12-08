@@ -125,15 +125,22 @@ class GibbsSampler:
         return np.random.Generator(np.random.MT19937(seed))
 
     def _spawn_seeds(seed, n_children, backend="generator"):
-        """Create child seeds per worker consistent with the chosen backend."""
+        """Create child seeds per worker consistent with the chosen backend.
+
+        For generator-backed sampling, child seeds are drawn sequentially from a
+        single MT19937 stream to mirror the order of serial sampling. This
+        keeps parallel runs closer to single-threaded behaviour while still
+        allowing independent workers. RandomState continues to draw integer
+        seeds from a dedicated base RNG for parity with legacy behaviour.
+        """
 
         if seed is None:
             return [None] * n_children
 
         backend = backend.lower()
         if backend == "generator":
-            seed_seq = seed if isinstance(seed, np.random.SeedSequence) else np.random.SeedSequence(seed)
-            return seed_seq.spawn(n_children)
+            base_rng = GibbsSampler._make_rng(seed, backend=backend)
+            return [base_rng.integers(0, np.iinfo(np.uint32).max, dtype=np.uint32) for _ in range(n_children)]
 
         if backend == "randomstate":
             base_rng = GibbsSampler._make_rng(seed, backend=backend)
