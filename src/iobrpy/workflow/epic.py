@@ -242,23 +242,42 @@ def EPIC(bulk: pd.DataFrame,
                 x, _ = nnls(Aw, bw)
 
                 # ---- NK-preserving projection under constraints ----
-                if constrained_sum:
-                    if with_other_cells:
-                        if nk_idx >= 0:
-                            # Reserve a tiny quota for NK, project the rest to radius (1 - eps)
-                            eps = _NK_FLOOR
-                            # Project to simplex of radius (1 - eps)
-                            x = _project_to_simplex_leq(x, R=1.0 - eps)
-                            # Give the reserved quota to NK (ensures NK ≥ eps)
-                            x[nk_idx] += eps
+                if nk_idx >= 0:
+                    # Re-estimate NK with others fixed (1D weighted LS) to
+                    # counteract NNLS sparsity that tends to zero-out NK.
+                    x_others = x.copy()
+                    x_others[nk_idx] = 0.0
+                    residual = b - A.dot(x_others)
+                    nk_num = np.dot(sqrtw * A[:, nk_idx], sqrtw * residual)
+                    nk_den = np.dot(sqrtw * A[:, nk_idx], sqrtw * A[:, nk_idx])
+                    nk_coeff = nk_num / nk_den if nk_den > 0 else 0.0
+                    nk_coeff = max(nk_coeff, _NK_FLOOR)
+
+                    if constrained_sum:
+                        if with_other_cells:
+                            budget = max(0.0, 1.0 - nk_coeff)
+                            x_others = _project_to_simplex_leq(x_others, R=budget)
                         else:
-                            x = _project_to_simplex_leq(x, R=1.0)
+                            s_other = x_others.sum()
+                            if s_other > 0:
+                                x_others *= (1.0 - nk_coeff) / s_other
+                            else:
+                                x_others[:] = 0.0
+                        x = x_others
+                        x[nk_idx] = nk_coeff
                     else:
-                        s = x.sum()
-                        if s > 0:
-                            x = x / s
+                        x = x_others
+                        x[nk_idx] = nk_coeff
+                else:
+                    if constrained_sum:
+                        if with_other_cells:
+                            x = _project_to_simplex_leq(x, R=1.0)
                         else:
-                            x[:] = 0.0
+                            s = x.sum()
+                            if s > 0:
+                                x = x / s
+                            else:
+                                x[:] = 0.0
                 # ----------------------------------------------------
 
             else:
