@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import warnings
 
 from .gibbs import GibbsSampler
 from .joint_post import JointPost
@@ -48,12 +49,14 @@ class Prism:
 
 
     def valid_gibbs_control(control):
-        ctrl = {'chain.length': 1000, 
-                'burn.in': 500, 
-                'thinning': 2, 
-                'n.cores': 1, 
-                'seed': 123, 
-                'alpha': 1}
+        ctrl = {'chain.length': 1000,
+                'burn.in': 500,
+                'thinning': 2,
+                'n.cores': 1,
+                'seed': 123,
+                'alpha': 1,
+                'fast.multinomial': False,
+                'rng.backend': 'generator'}
 
         namc = list(control.keys())
        
@@ -65,7 +68,15 @@ class Prism:
 
         if ctrl['alpha'] < 0:
             raise ValueError("alpha needs to be positive")
-        
+
+        if not isinstance(ctrl['fast.multinomial'], bool):
+            raise ValueError("fast.multinomial must be a boolean flag")
+
+        if ctrl['rng.backend'].lower() not in ['generator', 'randomstate']:
+            raise ValueError("rng.backend must be either 'generator' or 'randomstate'")
+
+        ctrl['rng.backend'] = ctrl['rng.backend'].lower()
+
         return ctrl
 
 
@@ -109,11 +120,33 @@ class Prism:
         
         process_input.validate_input(reference)
         process_input.validate_input(mixture)
-        
+
+        input_type = input_type.lower()
+        if input_type == "count.matrix":
+            # Keep genes expressed in at least one cell to mirror R BayesPrism's
+            # count-matrix filtering behaviour.
+            expressed_mask = np.sum(reference > 0, axis=0) > 0
+            if expressed_mask.sum() < reference.shape[1]:
+                print(f"Removing {reference.shape[1] - expressed_mask.sum()} genes not expressed in any cell")
+            reference = reference.loc[:, expressed_mask]
+            pseudo_min_to_use = pseudo_min
+        elif input_type in ["tpm", "gep"]:
+            # Collapsed/normalized profiles (e.g., TPM) only support removing
+            # genes with zero abundance across all cell states/types and do not
+            # add pseudo count during normalization.
+            pseudo_min_to_use = 0
+            if pseudo_min != 0:
+                warnings.warn(
+                    "pseudo_min is ignored for normalized input types (TPM/GEP); using 0 instead."
+                )
+            reference = reference.loc[:, np.sum(reference, axis=0) > 0]
+        else:
+            raise ValueError(
+                "Unsupported input_type. Please specify one of ['count.matrix', 'TPM', 'GEP']."
+            )
+
         mixture = process_input.filter_bulk_outlier(mixture, outlier_cut, outlier_fraction)
-        
-        reference = reference.loc[:, np.sum(reference, axis = 0) > 0]
-        
+
         _, gene_index, _ = np.intersect1d(reference.columns, mixture.columns, return_indices = True)
         gene_index.sort()
         gene_shared = [list(reference.columns)[i] for i in gene_index]
@@ -131,14 +164,14 @@ class Prism:
         mixture = mixture.loc[:, gene_shared]
         
         print("Normalizing reference...")
-        ref_cs = process_input.norm_to_one(ref_cs, pseudo_min)
-        ref_ct = process_input.norm_to_one(ref_ct, pseudo_min)
+        ref_cs = process_input.norm_to_one(ref_cs, pseudo_min_to_use)
+        ref_ct = process_input.norm_to_one(ref_ct, pseudo_min_to_use)
         
         map_ = {cell_type: list(set(cell_state_labels[i] for i, ct in enumerate(cell_type_labels) if ct == cell_type)) for cell_type in ref_ct.index}
 
         return Prism(
-            rf.RefPhi(ref_cs, pseudo_min),
-            rf.RefPhi(ref_ct, pseudo_min),
+            rf.RefPhi(ref_cs, pseudo_min_to_use),
+            rf.RefPhi(ref_ct, pseudo_min_to_use),
             map_,
             key,
             mixture
