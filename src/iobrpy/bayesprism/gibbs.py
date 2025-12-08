@@ -158,9 +158,10 @@ class GibbsSampler:
         rng_backend="generator",
         compute_elbo=False,
         fast_multinomial=False,
+        rng=None,
     ):
 
-        rng = GibbsSampler._make_rng(seed, backend=rng_backend)
+        rng = rng or GibbsSampler._make_rng(seed, backend=rng_backend)
 
         phi = phi.to_numpy()
         G = phi.shape[1]
@@ -213,9 +214,19 @@ class GibbsSampler:
             'gibbs.constant': gibbs_constant,
         }
 
-    def sample_theta_n(X_n, phi, alpha, gibbs_idx, chain_length, seed=None, rng_backend="generator", fast_multinomial=False):
+    def sample_theta_n(
+        X_n,
+        phi,
+        alpha,
+        gibbs_idx,
+        chain_length,
+        seed=None,
+        rng_backend="generator",
+        fast_multinomial=False,
+        rng=None,
+    ):
 
-        rng = GibbsSampler._make_rng(seed, backend=rng_backend)
+        rng = rng or GibbsSampler._make_rng(seed, backend=rng_backend)
 
         phi = phi.to_numpy()
         G = phi.shape[1]
@@ -342,37 +353,70 @@ class GibbsSampler:
         print("Start run...")
 
         if not final:
-            seeds = GibbsSampler._spawn_seeds(seed, X.shape[0], backend=rng_backend)
-            with multiprocessing.Pool(processes = gibbs_control['n.cores']) as pool:
-                X_input = [X[i, :] for i in np.arange(X.shape[0])]
-                star_input = zip(
-                    X_input,
-                    repeat(phi),
-                    repeat(alpha),
-                    repeat(gibbs_idx),
-                    repeat(chain_length),
-                    seeds,
-                    repeat(rng_backend),
-                    repeat(compute_elbo),
-                    repeat(fast_mult),
-                )
-                gibbs_list = pool.starmap(GibbsSampler.sample_Z_theta_n, tqdm.tqdm(star_input, total=len(X_input)))
+            if gibbs_control['n.cores'] > 1:
+                seeds = GibbsSampler._spawn_seeds(seed, X.shape[0], backend=rng_backend)
+                with multiprocessing.Pool(processes = gibbs_control['n.cores']) as pool:
+                    X_input = [X[i, :] for i in np.arange(X.shape[0])]
+                    star_input = zip(
+                        X_input,
+                        repeat(phi),
+                        repeat(alpha),
+                        repeat(gibbs_idx),
+                        repeat(chain_length),
+                        seeds,
+                        repeat(rng_backend),
+                        repeat(compute_elbo),
+                        repeat(fast_mult),
+                    )
+                    gibbs_list = pool.starmap(GibbsSampler.sample_Z_theta_n, tqdm.tqdm(star_input, total=len(X_input)))
+            else:
+                base_rng = GibbsSampler._make_rng(seed, backend=rng_backend)
+                gibbs_list = [
+                    GibbsSampler.sample_Z_theta_n(
+                        X_n=X[i, :],
+                        phi=phi,
+                        alpha=alpha,
+                        gibbs_idx=gibbs_idx,
+                        chain_length=chain_length,
+                        rng_backend=rng_backend,
+                        compute_elbo=compute_elbo,
+                        fast_multinomial=fast_mult,
+                        rng=base_rng,
+                    )
+                    for i in np.arange(X.shape[0])
+                ]
             return joint_post.JointPost.new(self.X.index, self.X.columns, phi.index, gibbs_list)
         else:
-            seeds = GibbsSampler._spawn_seeds(seed, X.shape[0], backend=rng_backend)
-            with multiprocessing.Pool(processes = gibbs_control['n.cores']) as pool:
-                X_input = [X[i, :] for i in np.arange(X.shape[0])]
-                star_input = zip(
-                    X_input,
-                    repeat(phi),
-                    repeat(alpha),
-                    repeat(gibbs_idx),
-                    repeat(chain_length),
-                    seeds,
-                    repeat(rng_backend),
-                    repeat(fast_mult),
-                )
-                gibbs_list = pool.starmap(GibbsSampler.sample_theta_n , tqdm.tqdm(star_input, total=len(X_input)))
+            if gibbs_control['n.cores'] > 1:
+                seeds = GibbsSampler._spawn_seeds(seed, X.shape[0], backend=rng_backend)
+                with multiprocessing.Pool(processes = gibbs_control['n.cores']) as pool:
+                    X_input = [X[i, :] for i in np.arange(X.shape[0])]
+                    star_input = zip(
+                        X_input,
+                        repeat(phi),
+                        repeat(alpha),
+                        repeat(gibbs_idx),
+                        repeat(chain_length),
+                        seeds,
+                        repeat(rng_backend),
+                        repeat(fast_mult),
+                    )
+                    gibbs_list = pool.starmap(GibbsSampler.sample_theta_n , tqdm.tqdm(star_input, total=len(X_input)))
+            else:
+                base_rng = GibbsSampler._make_rng(seed, backend=rng_backend)
+                gibbs_list = [
+                    GibbsSampler.sample_theta_n(
+                        X_n=X[i, :],
+                        phi=phi,
+                        alpha=alpha,
+                        gibbs_idx=gibbs_idx,
+                        chain_length=chain_length,
+                        rng_backend=rng_backend,
+                        fast_multinomial=fast_mult,
+                        rng=base_rng,
+                    )
+                    for i in np.arange(X.shape[0])
+                ]
             return theta_post.ThetaPost.new(self.X.index, self.X.columns, gibbs_list)
 
 
@@ -394,23 +438,42 @@ class GibbsSampler:
 
         star_input = []
         seeds = GibbsSampler._spawn_seeds(seed, X.shape[0], backend=rng_backend)
-        for i in range(X.shape[0]):
-            psi_mal_n = pd.DataFrame(psi_mal.iloc[i, :]).T
-            phi_n = pd.concat([psi_mal_n, psi_env])
-            nonzero_idx = np.max(phi_n, axis = 0) > 0
-            star_input.append((
-                X[i, nonzero_idx],
-                phi_n.loc[:, nonzero_idx],
-                alpha,
-                gibbs_idx,
-                chain_length,
-                seeds[i],
-                rng_backend,
-                fast_mult,
-            ))
+        if gibbs_control['n.cores'] > 1:
+            for i in range(X.shape[0]):
+                psi_mal_n = pd.DataFrame(psi_mal.iloc[i, :]).T
+                phi_n = pd.concat([psi_mal_n, psi_env])
+                nonzero_idx = np.max(phi_n, axis = 0) > 0
+                star_input.append((
+                    X[i, nonzero_idx],
+                    phi_n.loc[:, nonzero_idx],
+                    alpha,
+                    gibbs_idx,
+                    chain_length,
+                    seeds[i],
+                    rng_backend,
+                    fast_mult,
+                ))
 
-        with multiprocessing.Pool(processes = gibbs_control['n.cores']) as pool:
-            gibbs_list = pool.starmap(GibbsSampler.sample_theta_n , star_input)
+            with multiprocessing.Pool(processes = gibbs_control['n.cores']) as pool:
+                gibbs_list = pool.starmap(GibbsSampler.sample_theta_n , star_input)
+        else:
+            base_rng = GibbsSampler._make_rng(seed, backend=rng_backend)
+            for i in range(X.shape[0]):
+                psi_mal_n = pd.DataFrame(psi_mal.iloc[i, :]).T
+                phi_n = pd.concat([psi_mal_n, psi_env])
+                nonzero_idx = np.max(phi_n, axis = 0) > 0
+                gibbs_list.append(
+                    GibbsSampler.sample_theta_n(
+                        X_n=X[i, nonzero_idx],
+                        phi=phi_n.loc[:, nonzero_idx],
+                        alpha=alpha,
+                        gibbs_idx=gibbs_idx,
+                        chain_length=chain_length,
+                        rng_backend=rng_backend,
+                        fast_multinomial=fast_mult,
+                        rng=base_rng,
+                    )
+                )
 
         print("BayesPrism finished.")
         
