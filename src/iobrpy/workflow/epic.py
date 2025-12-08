@@ -223,11 +223,14 @@ def EPIC(bulk: pd.DataFrame,
     gof_list = []
 
     # choose path: fast (NNLS) vs legacy minimize
-    # Default keeps the legacy minimize() path to mirror the R implementation;
-    # set IOBRPY_EPIC_FAST=1 to opt into the NNLS shortcut when range_based_optim
-    # is False.
-    fast_env = os.getenv("IOBRPY_EPIC_FAST", "0").lower()
-    use_fast = (fast_env in {"1", "true", "yes", "on"}) and not range_based_optim
+    # Default keeps the accelerated NNLS path for speed and closer agreement with
+    # the previous Python implementation. Set IOBRPY_EPIC_LEGACY=1 to force the
+    # minimize() path when range_based_optim is False, or IOBRPY_EPIC_FAST=0 to
+    # explicitly disable the shortcut.
+    legacy_env = os.getenv("IOBRPY_EPIC_LEGACY", "0").lower()
+    fast_env = os.getenv("IOBRPY_EPIC_FAST", "1").lower()
+    force_legacy = legacy_env in {"1", "true", "yes", "on"}
+    use_fast = (not force_legacy) and (fast_env not in {"0", "false", "no", "off"}) and not range_based_optim
 
     with tqdm(total=n_samples, desc="EPIC deconvolution", unit="sample", leave=False) as pbar:
         for i in range(n_samples):
