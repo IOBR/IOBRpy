@@ -386,18 +386,18 @@ class GibbsSampler:
         print("Start run...")
 
         star_input = []
+        seeds = GibbsSampler._spawn_seeds(seed, X.shape[0], backend=rng_backend)
         for i in range(X.shape[0]):
             psi_mal_n = pd.DataFrame(psi_mal.iloc[i, :]).T
             phi_n = pd.concat([psi_mal_n, psi_env])
             nonzero_idx = np.max(phi_n, axis = 0) > 0
-            child_seed = GibbsSampler._spawn_seeds(seed, 1, backend=rng_backend)[0]
             star_input.append((
                 X[i, nonzero_idx],
                 phi_n.loc[:, nonzero_idx],
                 alpha,
                 gibbs_idx,
                 chain_length,
-                child_seed,
+                seeds[i],
                 rng_backend,
                 fast_mult,
             ))
