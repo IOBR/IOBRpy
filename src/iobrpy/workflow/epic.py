@@ -223,7 +223,11 @@ def EPIC(bulk: pd.DataFrame,
     gof_list = []
 
     # choose path: fast (NNLS) vs legacy minimize
-    use_fast = not range_based_optim
+    # Default keeps the legacy minimize() path to mirror the R implementation;
+    # set IOBRPY_EPIC_FAST=1 to opt into the NNLS shortcut when range_based_optim
+    # is False.
+    fast_env = os.getenv("IOBRPY_EPIC_FAST", "0").lower()
+    use_fast = (fast_env in {"1", "true", "yes", "on"}) and not range_based_optim
 
     with tqdm(total=n_samples, desc="EPIC deconvolution", unit="sample", leave=False) as pbar:
         for i in range(n_samples):
