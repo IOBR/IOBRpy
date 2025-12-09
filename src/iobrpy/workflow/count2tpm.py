@@ -47,48 +47,50 @@ def remove_duplicate_genes(df: pd.DataFrame,
                            method: str = "mean",
                            show_progress: bool = True) -> pd.DataFrame:
     """
-    Aggregate rows with duplicate gene symbols.
-    method: "mean", "sd" (std), or "sum".
-    Returns DataFrame indexed by unique gene symbol.
+    Resolve duplicate gene symbols by selecting the highest-scoring row per symbol.
+
+    The scoring follows the R implementation:
+    1. compute a per-row score across numeric columns (mean/sd/sum)
+    2. sort rows by the score in descending order
+    3. keep the first occurrence for each symbol
+
+    Returns a DataFrame indexed by the symbol column with only expression values.
     """
     if column_of_symbol not in df.columns:
         raise ValueError(f"Column '{column_of_symbol}' not found in DataFrame.")
-    symbols = df[column_of_symbol]
-    data = df.drop(columns=[column_of_symbol])
 
-    # No duplicates: set symbol as index
-    if symbols.duplicated().sum() == 0:
-        return df.set_index(column_of_symbol)
+    df = df.copy()
+    sym_col = column_of_symbol
+    value_cols = [c for c in df.columns if c != sym_col]
 
-    # Prepare temp
-    temp = data.copy()
-    temp[column_of_symbol] = symbols
+    # Identify numeric columns for scoring
+    numeric_cols = [c for c in value_cols if pd.api.types.is_numeric_dtype(df[c])]
+    if not numeric_cols:
+        raise ValueError("No numeric columns found for duplicate resolution.")
 
-    # Choose agg function
-    if method == "mean": agg_func = 'mean'
-    elif method == "sd": agg_func = 'std'
-    elif method == "sum": agg_func = 'sum'
-    else: raise ValueError("method must be 'mean', 'sd', or 'sum'")
+    # Compute score per row
+    if method == "mean":
+        score = df[numeric_cols].mean(axis=1, skipna=True)
+    elif method == "sd":
+        score = df[numeric_cols].std(axis=1, skipna=True)
+    elif method == "sum":
+        score = df[numeric_cols].sum(axis=1, skipna=True)
+    else:
+        raise ValueError("method must be 'mean', 'sd', or 'sum'")
 
-    # Order by agg descending (optional)
-    numeric_cols = temp.select_dtypes(include=[np.number]).columns.tolist()
-    if numeric_cols:
-        order_series = getattr(temp[numeric_cols], agg_func)(axis=1)
-        temp['_order'] = order_series
-        temp = temp.sort_values('_order', ascending=False).drop(columns=['_order'])
+    df['_score'] = score
 
-    # Group and aggregate with progress bar
-    groups = temp.groupby(column_of_symbol, as_index=True)
-    iterator = tqdm(groups, total=getattr(groups, 'ngroups', None),
-                    desc="Deduplicating", unit="gene") if show_progress else groups
+    # Sort by score descending so first duplicate kept is highest score
+    df.sort_values('_score', ascending=False, inplace=True)
+    df.drop(columns=['_score'], inplace=True)
 
-    rows, idx = [], []
-    for key, grp in iterator:
-        rows.append(getattr(grp[numeric_cols], agg_func)() if numeric_cols else pd.Series(dtype=float))
-        idx.append(key)
+    # Drop duplicates keeping first occurrence (highest score)
+    df = df.drop_duplicates(subset=[sym_col], keep='first')
 
-    aggregated = pd.DataFrame(rows, index=idx)
-    return aggregated
+    # Select only expression columns and index by symbol
+    df = df.set_index(sym_col)
+    df = df[value_cols]
+    return df
 
 
 def count2tpm(count_mat: pd.DataFrame,
