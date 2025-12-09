@@ -69,6 +69,8 @@ def remove_duplicate_genes(df: pd.DataFrame,
         raise ValueError("No numeric columns found for duplicate resolution.")
 
     # Compute score per row
+    step_iter = tqdm(total=3, disable=not show_progress, desc="Duplicate scoring", unit="step")
+
     if method == "mean":
         score = df[numeric_cols].mean(axis=1, skipna=True)
     elif method == "sd":
@@ -77,15 +79,19 @@ def remove_duplicate_genes(df: pd.DataFrame,
         score = df[numeric_cols].sum(axis=1, skipna=True)
     else:
         raise ValueError("method must be 'mean', 'sd', or 'sum'")
+    step_iter.update(1)
 
     df['_score'] = score
 
     # Sort by score descending so first duplicate kept is highest score
     df.sort_values('_score', ascending=False, inplace=True)
+    step_iter.update(1)
     df.drop(columns=['_score'], inplace=True)
 
     # Drop duplicates keeping first occurrence (highest score)
     df = df.drop_duplicates(subset=[sym_col], keep='first')
+    step_iter.update(1)
+    step_iter.close()
 
     # Select only expression columns and index by symbol
     df = df.set_index(sym_col)
@@ -232,12 +238,18 @@ def count2tpm(count_mat: pd.DataFrame,
     len_series = len_series[symbol_valid]
     symbol_map = symbol_map[symbol_valid]
 
-    # Compute TPM using vectorized operations
-    divisor = len_series / 1000
-    rpk = countMat.div(divisor, axis=0)
-    col_sums = rpk.sum(axis=0)
-    tpm = rpk.div(col_sums, axis=1) * 1e6
-    tpm = tpm.replace([np.inf, -np.inf], 0).fillna(0.0)
+    print("[INFO] Computing TPM (vectorized)...")
+    with tqdm(total=3, desc="TPM pipeline", unit="step") as pbar:
+        divisor = len_series / 1000
+        pbar.update(1)
+
+        rpk = countMat.div(divisor, axis=0)
+        col_sums = rpk.sum(axis=0)
+        pbar.update(1)
+
+        tpm = rpk.div(col_sums, axis=1) * 1e6
+        tpm = tpm.replace([np.inf, -np.inf], 0).fillna(0.0)
+        pbar.update(1)
 
     # Insert symbol as first column
     tpm.insert(0, 'symbol', symbol_map.loc[tpm.index].values)
@@ -245,6 +257,10 @@ def count2tpm(count_mat: pd.DataFrame,
     # Deduplicate by symbol with progress
     print("[INFO] Removing duplicate genes...")
     tpm = remove_duplicate_genes(tpm, 'symbol')
+
+    cols = list(tpm.columns)
+    cols[0] = ""
+    tpm.columns = cols
 
     return tpm
 
