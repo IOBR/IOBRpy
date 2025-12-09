@@ -1,10 +1,10 @@
 import argparse
-import os
+import warnings
 import pandas as pd
 import numpy as np
 from importlib.resources import files
 from iobrpy.utils.print_colorful_message import print_colorful_message
-from iobrpy.utils.remove_version import strip_versions_in_dataframe, deduplicate_after_stripping
+from iobrpy.utils.remove_version import strip_versions_in_dataframe
 
 try:
     from tqdm.auto import tqdm
@@ -47,48 +47,56 @@ def remove_duplicate_genes(df: pd.DataFrame,
                            method: str = "mean",
                            show_progress: bool = True) -> pd.DataFrame:
     """
-    Aggregate rows with duplicate gene symbols.
-    method: "mean", "sd" (std), or "sum".
-    Returns DataFrame indexed by unique gene symbol.
+    Resolve duplicate gene symbols by selecting the highest-scoring row per symbol.
+
+    The scoring follows the R implementation:
+    1. compute a per-row score across numeric columns (mean/sd/sum)
+    2. sort rows by the score in descending order
+    3. keep the first occurrence for each symbol
+
+    Returns a DataFrame indexed by the symbol column with only expression values.
     """
     if column_of_symbol not in df.columns:
         raise ValueError(f"Column '{column_of_symbol}' not found in DataFrame.")
-    symbols = df[column_of_symbol]
-    data = df.drop(columns=[column_of_symbol])
 
-    # No duplicates: set symbol as index
-    if symbols.duplicated().sum() == 0:
-        return df.set_index(column_of_symbol)
+    df = df.copy()
+    sym_col = column_of_symbol
+    value_cols = [c for c in df.columns if c != sym_col]
 
-    # Prepare temp
-    temp = data.copy()
-    temp[column_of_symbol] = symbols
+    # Identify numeric columns for scoring
+    numeric_cols = [c for c in value_cols if pd.api.types.is_numeric_dtype(df[c])]
+    if not numeric_cols:
+        raise ValueError("No numeric columns found for duplicate resolution.")
 
-    # Choose agg function
-    if method == "mean": agg_func = 'mean'
-    elif method == "sd": agg_func = 'std'
-    elif method == "sum": agg_func = 'sum'
-    else: raise ValueError("method must be 'mean', 'sd', or 'sum'")
+    # Compute score per row
+    step_iter = tqdm(total=3, disable=not show_progress, desc="Duplicate scoring", unit="step")
 
-    # Order by agg descending (optional)
-    numeric_cols = temp.select_dtypes(include=[np.number]).columns.tolist()
-    if numeric_cols:
-        order_series = getattr(temp[numeric_cols], agg_func)(axis=1)
-        temp['_order'] = order_series
-        temp = temp.sort_values('_order', ascending=False).drop(columns=['_order'])
+    if method == "mean":
+        score = df[numeric_cols].mean(axis=1, skipna=True)
+    elif method == "sd":
+        score = df[numeric_cols].std(axis=1, skipna=True)
+    elif method == "sum":
+        score = df[numeric_cols].sum(axis=1, skipna=True)
+    else:
+        raise ValueError("method must be 'mean', 'sd', or 'sum'")
+    step_iter.update(1)
 
-    # Group and aggregate with progress bar
-    groups = temp.groupby(column_of_symbol, as_index=True)
-    iterator = tqdm(groups, total=getattr(groups, 'ngroups', None),
-                    desc="Deduplicating", unit="gene") if show_progress else groups
+    df['_score'] = score
 
-    rows, idx = [], []
-    for key, grp in iterator:
-        rows.append(getattr(grp[numeric_cols], agg_func)() if numeric_cols else pd.Series(dtype=float))
-        idx.append(key)
+    # Sort by score descending so first duplicate kept is highest score
+    df.sort_values('_score', ascending=False, inplace=True)
+    step_iter.update(1)
+    df.drop(columns=['_score'], inplace=True)
 
-    aggregated = pd.DataFrame(rows, index=idx)
-    return aggregated
+    # Drop duplicates keeping first occurrence (highest score)
+    df = df.drop_duplicates(subset=[sym_col], keep='first')
+    step_iter.update(1)
+    step_iter.close()
+
+    # Select only expression columns and index by symbol
+    df = df.set_index(sym_col)
+    df = df[value_cols]
+    return df
 
 
 def count2tpm(count_mat: pd.DataFrame,
@@ -152,6 +160,8 @@ def count2tpm(count_mat: pd.DataFrame,
         eff = effLength_df.rename(columns={id_col: 'id', length_col: 'eff_length', gene_symbol_col: 'gene_symbol'})
         eff = eff.drop_duplicates(subset='id').set_index('id')
         common = countMat.index.intersection(eff.index)
+        if common.empty:
+            raise ValueError("Identifier of matrix is not match to references.")
         countMat = countMat.loc[common]
         eff = eff.loc[common]
         len_series = eff['eff_length']
@@ -160,39 +170,47 @@ def count2tpm(count_mat: pd.DataFrame,
         print("Loading lengths from annotation tables.")
         if source != 'local':
             raise NotImplementedError("source='biomart' not implemented.")
+
+        symbol_col = 'symbol'
         if org == 'hsa' and idType.lower() == 'ensembl':
             countMat.index = countMat.index.str[:15]
-            df_ref = anno_grch38[['id', 'eff_length', 'symbol']].copy().set_index('id')
+            df_ref = anno_grch38[['id', 'eff_length', 'symbol']].copy()
         elif org == 'hsa' and idType.lower() == 'entrez':
             print("Fuzzy calculation for Entrez IDs.")
             df_ref = anno_grch38[['entrez', 'eff_length', 'symbol']].copy()
             df_ref.columns = ['id', 'eff_length', 'symbol']
-            df_ref = df_ref.drop_duplicates(subset='id').set_index('id')
         elif org == 'hsa' and idType.lower() == 'symbol':
             print("Fuzzy calculation for gene symbols.")
             df_ref = anno_grch38[['symbol', 'eff_length', 'gc']].copy()
             df_ref.columns = ['id', 'eff_length', 'gc']
-            df_ref = df_ref.drop_duplicates(subset='id').set_index('id')
+            symbol_col = 'id'
         elif org == 'mmus' and idType.lower() == 'ensembl':
             print("Using mmus annotation for Ensembl.")
-            df_ref = anno_gc_vm32[['id', 'eff_length', 'symbol']].copy().set_index('id')
+            df_ref = anno_gc_vm32[['id', 'eff_length', 'symbol']].copy()
         elif org == 'mmus' and idType.lower() == 'mgi':
             print("Fuzzy calculation for MGI IDs.")
             df_ref = anno_gc_vm32[['mgi_id', 'eff_length', 'symbol']].copy()
             df_ref.columns = ['id', 'eff_length', 'symbol']
-            df_ref = df_ref.drop_duplicates(subset='id').set_index('id')
         elif org == 'mmus' and idType.lower() == 'symbol':
             print("Fuzzy calculation for gene symbols mmus.")
             df_ref = anno_gc_vm32[['symbol', 'eff_length', 'gc']].copy()
             df_ref.columns = ['id', 'eff_length', 'gc']
-            df_ref = df_ref.drop_duplicates(subset='id').set_index('id')
+            symbol_col = 'id'
         else:
             raise ValueError(f"Unsupported idType for {org}: {idType}")
+
+        df_ref = df_ref.sort_values('eff_length', ascending=False).drop_duplicates(subset='id')
+        df_ref = df_ref.set_index('id')
         common = countMat.index.intersection(df_ref.index)
+        if common.empty:
+            raise ValueError("Identifier of matrix is not match to references.")
         df_ref = df_ref.loc[common]
         countMat = countMat.loc[common]
         len_series = df_ref['eff_length']
-        symbol_map = df_ref['symbol']
+        if symbol_col == 'id':
+            symbol_map = pd.Series(df_ref.index, index=df_ref.index)
+        else:
+            symbol_map = df_ref[symbol_col]
 
     # Drop duplicates in len_series/symbol_map
     if len_series.index.duplicated().any():
@@ -204,52 +222,45 @@ def count2tpm(count_mat: pd.DataFrame,
 
     # Align to countMat
     len_series = len_series.reindex(countMat.index)
-    symbol_map = symbol_map.reindex(countMat.index)
+    symbol_map = pd.Series(symbol_map).reindex(countMat.index)
 
     # Filter NA lengths
     valid = ~len_series.isna()
+    if (~valid).any():
+        warnings.warn(f">>>--- Omit {(~valid).sum()} genes of which length is not available !")
     countMat = countMat.loc[valid]
     len_series = len_series[valid]
     symbol_map = symbol_map[valid]
 
-    # Aggregate duplicates in countMat
-    if countMat.index.duplicated().any():
-        countMat = countMat.groupby(countMat.index).sum()
-        len_series = len_series.loc[countMat.index]
-        symbol_map = symbol_map.loc[countMat.index]
+    # Filter invalid symbols (NA/blank)
+    symbol_valid = symbol_map.notna() & (symbol_map.astype(str).str.strip() != "")
+    countMat = countMat.loc[symbol_valid]
+    len_series = len_series[symbol_valid]
+    symbol_map = symbol_map[symbol_valid]
 
-    # Compute TPM with progress bars (per-sample operations)
-    print("[INFO] Computing TPM (showing progress per sample)...")
-    # prepare containers
-    rpk = pd.DataFrame(index=countMat.index, columns=countMat.columns, dtype=float)
-    divisor = (len_series / 1000)  # kb per gene
+    print("[INFO] Computing TPM (vectorized)...")
+    with tqdm(total=3, desc="TPM pipeline", unit="step") as pbar:
+        divisor = len_series / 1000
+        pbar.update(1)
 
-    # 1) compute RPK (reads per kilobase) per sample
-    for col in tqdm(countMat.columns, desc="RPK per sample", unit="sample"):
-        # elementwise division (aligned by index)
-        rpk[col] = countMat[col] / divisor
+        rpk = countMat.div(divisor, axis=0)
+        col_sums = rpk.sum(axis=0)
+        pbar.update(1)
 
-    # 2) sum RPK per sample
-    denom = pd.Series(index=rpk.columns, dtype=float)
-    for col in tqdm(rpk.columns, desc="Sum RPK", unit="sample"):
-        denom[col] = rpk[col].sum()
-
-    # 3) normalize to TPM per sample
-    tpm = pd.DataFrame(index=rpk.index, columns=rpk.columns, dtype=float)
-    for col in tqdm(rpk.columns, desc="TPM normalize", unit="sample"):
-        if denom[col] > 0:
-            tpm[col] = rpk[col] / denom[col] * 1e6
-        else:
-            # avoid division by zero
-            tpm[col] = 0.0
-
+        tpm = rpk.div(col_sums, axis=1) * 1e6
+        tpm = tpm.replace([np.inf, -np.inf], 0).fillna(0.0)
+        pbar.update(1)
 
     # Insert symbol as first column
     tpm.insert(0, 'symbol', symbol_map.loc[tpm.index].values)
 
     # Deduplicate by symbol with progress
     print("[INFO] Removing duplicate genes...")
-    tpm = remove_duplicate_genes(tpm, 'symbol')  # 不要再包 tqdm 了
+    tpm = remove_duplicate_genes(tpm, 'symbol')
+
+    cols = list(tpm.columns)
+    cols[0] = ""
+    tpm.columns = cols
 
     return tpm
 
