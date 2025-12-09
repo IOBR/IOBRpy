@@ -1,10 +1,10 @@
 import argparse
-import os
+import warnings
 import pandas as pd
 import numpy as np
 from importlib.resources import files
 from iobrpy.utils.print_colorful_message import print_colorful_message
-from iobrpy.utils.remove_version import strip_versions_in_dataframe, deduplicate_after_stripping
+from iobrpy.utils.remove_version import strip_versions_in_dataframe
 
 try:
     from tqdm.auto import tqdm
@@ -152,6 +152,8 @@ def count2tpm(count_mat: pd.DataFrame,
         eff = effLength_df.rename(columns={id_col: 'id', length_col: 'eff_length', gene_symbol_col: 'gene_symbol'})
         eff = eff.drop_duplicates(subset='id').set_index('id')
         common = countMat.index.intersection(eff.index)
+        if common.empty:
+            raise ValueError("Identifier of matrix is not match to references.")
         countMat = countMat.loc[common]
         eff = eff.loc[common]
         len_series = eff['eff_length']
@@ -160,39 +162,47 @@ def count2tpm(count_mat: pd.DataFrame,
         print("Loading lengths from annotation tables.")
         if source != 'local':
             raise NotImplementedError("source='biomart' not implemented.")
+
+        symbol_col = 'symbol'
         if org == 'hsa' and idType.lower() == 'ensembl':
             countMat.index = countMat.index.str[:15]
-            df_ref = anno_grch38[['id', 'eff_length', 'symbol']].copy().set_index('id')
+            df_ref = anno_grch38[['id', 'eff_length', 'symbol']].copy()
         elif org == 'hsa' and idType.lower() == 'entrez':
             print("Fuzzy calculation for Entrez IDs.")
             df_ref = anno_grch38[['entrez', 'eff_length', 'symbol']].copy()
             df_ref.columns = ['id', 'eff_length', 'symbol']
-            df_ref = df_ref.drop_duplicates(subset='id').set_index('id')
         elif org == 'hsa' and idType.lower() == 'symbol':
             print("Fuzzy calculation for gene symbols.")
             df_ref = anno_grch38[['symbol', 'eff_length', 'gc']].copy()
             df_ref.columns = ['id', 'eff_length', 'gc']
-            df_ref = df_ref.drop_duplicates(subset='id').set_index('id')
+            symbol_col = 'id'
         elif org == 'mmus' and idType.lower() == 'ensembl':
             print("Using mmus annotation for Ensembl.")
-            df_ref = anno_gc_vm32[['id', 'eff_length', 'symbol']].copy().set_index('id')
+            df_ref = anno_gc_vm32[['id', 'eff_length', 'symbol']].copy()
         elif org == 'mmus' and idType.lower() == 'mgi':
             print("Fuzzy calculation for MGI IDs.")
             df_ref = anno_gc_vm32[['mgi_id', 'eff_length', 'symbol']].copy()
             df_ref.columns = ['id', 'eff_length', 'symbol']
-            df_ref = df_ref.drop_duplicates(subset='id').set_index('id')
         elif org == 'mmus' and idType.lower() == 'symbol':
             print("Fuzzy calculation for gene symbols mmus.")
             df_ref = anno_gc_vm32[['symbol', 'eff_length', 'gc']].copy()
             df_ref.columns = ['id', 'eff_length', 'gc']
-            df_ref = df_ref.drop_duplicates(subset='id').set_index('id')
+            symbol_col = 'id'
         else:
             raise ValueError(f"Unsupported idType for {org}: {idType}")
+
+        df_ref = df_ref.sort_values('eff_length', ascending=False).drop_duplicates(subset='id')
+        df_ref = df_ref.set_index('id')
         common = countMat.index.intersection(df_ref.index)
+        if common.empty:
+            raise ValueError("Identifier of matrix is not match to references.")
         df_ref = df_ref.loc[common]
         countMat = countMat.loc[common]
         len_series = df_ref['eff_length']
-        symbol_map = df_ref['symbol']
+        if symbol_col == 'id':
+            symbol_map = pd.Series(df_ref.index, index=df_ref.index)
+        else:
+            symbol_map = df_ref[symbol_col]
 
     # Drop duplicates in len_series/symbol_map
     if len_series.index.duplicated().any():
@@ -204,52 +214,35 @@ def count2tpm(count_mat: pd.DataFrame,
 
     # Align to countMat
     len_series = len_series.reindex(countMat.index)
-    symbol_map = symbol_map.reindex(countMat.index)
+    symbol_map = pd.Series(symbol_map).reindex(countMat.index)
 
     # Filter NA lengths
     valid = ~len_series.isna()
+    if (~valid).any():
+        warnings.warn(f">>>--- Omit {(~valid).sum()} genes of which length is not available !")
     countMat = countMat.loc[valid]
     len_series = len_series[valid]
     symbol_map = symbol_map[valid]
 
-    # Aggregate duplicates in countMat
-    if countMat.index.duplicated().any():
-        countMat = countMat.groupby(countMat.index).sum()
-        len_series = len_series.loc[countMat.index]
-        symbol_map = symbol_map.loc[countMat.index]
+    # Filter invalid symbols (NA/blank)
+    symbol_valid = symbol_map.notna() & (symbol_map.astype(str).str.strip() != "")
+    countMat = countMat.loc[symbol_valid]
+    len_series = len_series[symbol_valid]
+    symbol_map = symbol_map[symbol_valid]
 
-    # Compute TPM with progress bars (per-sample operations)
-    print("[INFO] Computing TPM (showing progress per sample)...")
-    # prepare containers
-    rpk = pd.DataFrame(index=countMat.index, columns=countMat.columns, dtype=float)
-    divisor = (len_series / 1000)  # kb per gene
-
-    # 1) compute RPK (reads per kilobase) per sample
-    for col in tqdm(countMat.columns, desc="RPK per sample", unit="sample"):
-        # elementwise division (aligned by index)
-        rpk[col] = countMat[col] / divisor
-
-    # 2) sum RPK per sample
-    denom = pd.Series(index=rpk.columns, dtype=float)
-    for col in tqdm(rpk.columns, desc="Sum RPK", unit="sample"):
-        denom[col] = rpk[col].sum()
-
-    # 3) normalize to TPM per sample
-    tpm = pd.DataFrame(index=rpk.index, columns=rpk.columns, dtype=float)
-    for col in tqdm(rpk.columns, desc="TPM normalize", unit="sample"):
-        if denom[col] > 0:
-            tpm[col] = rpk[col] / denom[col] * 1e6
-        else:
-            # avoid division by zero
-            tpm[col] = 0.0
-
+    # Compute TPM using vectorized operations
+    divisor = len_series / 1000
+    rpk = countMat.div(divisor, axis=0)
+    col_sums = rpk.sum(axis=0)
+    tpm = rpk.div(col_sums, axis=1) * 1e6
+    tpm = tpm.replace([np.inf, -np.inf], 0).fillna(0.0)
 
     # Insert symbol as first column
     tpm.insert(0, 'symbol', symbol_map.loc[tpm.index].values)
 
     # Deduplicate by symbol with progress
     print("[INFO] Removing duplicate genes...")
-    tpm = remove_duplicate_genes(tpm, 'symbol')  # 不要再包 tqdm 了
+    tpm = remove_duplicate_genes(tpm, 'symbol')
 
     return tpm
 
