@@ -206,10 +206,8 @@ def anno_eset(eset_df: pd.DataFrame,
     eset_reset = eset_filtered.reset_index().rename(columns={eset_filtered.index.name or 'index': 'id'})
     merged = pd.merge(annotation_filtered, eset_reset, left_on="probe_id", right_on="id", how="inner", sort=True)
 
-    # Drop helper merge columns to mirror R pipeline
+    # Drop helper merge columns to mirror R pipeline (keep id column like R)
     merged.drop(columns=["probe_id"], inplace=True)
-    if "id" in merged.columns:
-        merged.drop(columns=["id"], inplace=True)
     merged.reset_index(drop=True, inplace=True)
 
     # Handle duplicates: collapse by symbol using chosen method
@@ -220,14 +218,15 @@ def anno_eset(eset_df: pd.DataFrame,
     symbol_col = 'symbol'
     if dups > 0:
         data_cols = [c for c in merged.columns if c != symbol_col]
+        numeric_block = merged[data_cols].apply(pd.to_numeric, errors='coerce')
         if method == 'mean':
-            merged['_score'] = merged[data_cols].mean(axis=1, skipna=True)
+            merged['_score'] = numeric_block.mean(axis=1, skipna=True)
         elif method == 'sd':
-            merged['_score'] = merged[data_cols].std(axis=1, skipna=True)
+            merged['_score'] = numeric_block.std(axis=1, skipna=True)
         elif method == 'sum':
-            merged['_score'] = merged[data_cols].sum(axis=1, skipna=True)
+            merged['_score'] = numeric_block.sum(axis=1, skipna=True)
         else:
-            merged['_score'] = merged[data_cols].mean(axis=1, skipna=True)
+            merged['_score'] = numeric_block.mean(axis=1, skipna=True)
 
         # keep highest scoring row per symbol (stable ordering for ties)
         merged.sort_values('_score', ascending=False, kind='mergesort', inplace=True)
