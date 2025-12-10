@@ -2,7 +2,6 @@
 import argparse
 import pickle
 import pandas as pd
-import numpy as np
 from importlib.resources import files
 from pathlib import Path
 from typing import Optional
@@ -191,19 +190,15 @@ def anno_eset(eset_df: pd.DataFrame,
     print(f"Probes matched annotation: {probes_in} / {total_probes}")
     print(f"{100 * (probes_in / total_probes if total_probes else 0):.2f}% of probes were annotated")
 
-    # Filter to annotated probes (preserve original row order of both tables)
+    # Filter to annotated probes (R keeps current ordering before merge)
     annotation_filtered = annotation_df[annotation_df["probe_id"].isin(eset_df.index)].copy()
-    annotation_filtered['_anno_pos'] = np.arange(annotation_filtered.shape[0])
-
     eset_filtered = eset_df[eset_df.index.isin(annotation_filtered["probe_id"])].copy()
-    eset_filtered['_eset_pos'] = np.arange(eset_filtered.shape[0])
 
-    # Merge annotation (probe_id becomes a column)
+    # Merge annotation (probe_id becomes a column). R's merge(sort=TRUE) sorts by key
+    # without preserving the original ordering of either table, so avoid injecting
+    # extra positional tie-breakers here.
     eset_reset = eset_filtered.reset_index().rename(columns={eset_filtered.index.name or 'index': 'probe_id'})
     merged = pd.merge(annotation_filtered, eset_reset, on="probe_id", how="inner", sort=True)
-    # Align with R's merge(sort = TRUE): stable sort by probe_id while respecting original order
-    merged.sort_values(["probe_id", "_anno_pos", "_eset_pos"], ascending=True, inplace=True, kind="mergesort")
-    merged.drop(columns=["_anno_pos", "_eset_pos"], inplace=True)
 
     # Handle duplicates: collapse by symbol using chosen method
     total_rows = merged.shape[0]
@@ -221,7 +216,7 @@ def anno_eset(eset_df: pd.DataFrame,
         else:
             merged['_score'] = merged[data_cols].mean(axis=1, skipna=True)
 
-        # keep highest scoring row per symbol, preserving probe_id ordering for ties
+        # keep highest scoring row per symbol, respecting merge order for ties
         merged.sort_values('_score', ascending=False, inplace=True, kind="mergesort")
         merged.drop(columns=['_score'], inplace=True)
         merged.drop_duplicates(subset=['symbol'], keep='first', inplace=True)
