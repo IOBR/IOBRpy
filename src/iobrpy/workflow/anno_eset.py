@@ -210,24 +210,43 @@ def anno_eset(eset_df: pd.DataFrame,
     unique_symbols = merged['symbol'].nunique()
     dups = total_rows - unique_symbols
 
+    # Mirror R behavior: drop probe_id before scoring so the remaining columns include the
+    # original "id" column (which will be coerced to numeric during scoring).
+    if "probe_id" in merged.columns:
+        merged.drop(columns=["probe_id"], inplace=True)
+
     if dups > 0:
-        data_cols = [c for c in merged.columns if c not in ('symbol', 'probe_id', 'id')]
-        # Use row-wise apply to mimic R's apply(, 1, ...) semantics exactly.
+        data_cols = [c for c in merged.columns if c != 'symbol']
+        # Use row-wise apply to mimic R's apply(, 1, ...) semantics exactly. Coerce to numeric
+        # with errors set to NaN so non-numeric columns (e.g., "id") behave like R's implicit
+        # coercion during matrix conversion.
         if method == 'mean':
-            merged['_score'] = merged[data_cols].apply(lambda row: row.mean(skipna=True), axis=1)
+            merged['_score'] = merged[data_cols].apply(
+                lambda row: pd.to_numeric(row, errors='coerce').mean(skipna=True),
+                axis=1
+            )
         elif method == 'sd':
-            merged['_score'] = merged[data_cols].apply(lambda row: row.std(skipna=True), axis=1)
+            merged['_score'] = merged[data_cols].apply(
+                lambda row: pd.to_numeric(row, errors='coerce').std(skipna=True),
+                axis=1
+            )
         elif method == 'sum':
-            merged['_score'] = merged[data_cols].apply(lambda row: row.sum(skipna=True), axis=1)
+            merged['_score'] = merged[data_cols].apply(
+                lambda row: pd.to_numeric(row, errors='coerce').sum(skipna=True),
+                axis=1
+            )
         else:
-            merged['_score'] = merged[data_cols].apply(lambda row: row.mean(skipna=True), axis=1)
+            merged['_score'] = merged[data_cols].apply(
+                lambda row: pd.to_numeric(row, errors='coerce').mean(skipna=True),
+                axis=1
+            )
 
         # keep highest scoring row per symbol, respecting merge order for ties
         merged.sort_values('_score', ascending=False, inplace=True, kind="mergesort")
         merged.drop(columns=['_score'], inplace=True)
         merged.drop_duplicates(subset=['symbol'], keep='first', inplace=True)
 
-    merged.drop(columns=[c for c in ("probe_id", "id") if c in merged.columns], inplace=True)
+    merged.drop(columns=[c for c in ("id",) if c in merged.columns], inplace=True)
     result = merged.set_index('symbol')
 
     # Filter out rows all zero or all NA or NA in first column
