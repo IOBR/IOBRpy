@@ -182,6 +182,13 @@ def anno_eset(eset_df: pd.DataFrame,
     annotation_df = annotation_df[annotation_df["symbol"] != "NA_NA"]
     annotation_df = annotation_df[annotation_df["symbol"].notna()]
 
+    # Ensure probe and symbol columns mirror R's character coercion semantics
+    annotation_df["probe_id"] = annotation_df["probe_id"].astype(str)
+    annotation_df["symbol"] = annotation_df["symbol"].astype(str)
+
+    eset_df = eset_df.copy()
+    eset_df.index = eset_df.index.astype(str)
+
     # Logging original count
     print(f"Row number of original eset: {eset_df.shape[0]}")
 
