@@ -200,6 +200,11 @@ def anno_eset(eset_df: pd.DataFrame,
     eset_reset = eset_filtered.reset_index().rename(columns={eset_filtered.index.name or 'index': 'probe_id'})
     merged = pd.merge(annotation_filtered, eset_reset, on="probe_id", how="inner", sort=True)
 
+    # Align ordering with R's merge(sort=TRUE): explicitly sort by probe_id with a
+    # stable sort so that downstream tie-breaking when collapsing duplicates uses
+    # the same probe_id-first preference.
+    merged.sort_values("probe_id", inplace=True, kind="mergesort")
+
     # Handle duplicates: collapse by symbol using chosen method
     total_rows = merged.shape[0]
     unique_symbols = merged['symbol'].nunique()
