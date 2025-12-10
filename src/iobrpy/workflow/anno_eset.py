@@ -198,9 +198,7 @@ def anno_eset(eset_df: pd.DataFrame,
 
     # Merge annotation (probe_id becomes a column)
     eset_reset = eset_filtered.reset_index().rename(columns={eset_filtered.index.name or 'index': 'probe_id'})
-    merged = pd.merge(annotation_filtered, eset_reset, on="probe_id", how="inner")
-    # align with R merge(sort=TRUE) behavior for deterministic tie-breaking
-    merged.sort_values("probe_id", inplace=True)
+    merged = pd.merge(annotation_filtered, eset_reset, on="probe_id", how="inner", sort=True)
 
     # Handle duplicates: collapse by symbol using chosen method
     total_rows = merged.shape[0]
@@ -208,7 +206,7 @@ def anno_eset(eset_df: pd.DataFrame,
     dups = total_rows - unique_symbols
 
     if dups > 0:
-        data_cols = merged.columns.difference(['symbol', 'probe_id'])
+        data_cols = [c for c in merged.columns if c not in {'symbol', 'probe_id'}]
         if method == 'mean':
             merged['_score'] = merged[data_cols].mean(axis=1, skipna=True)
         elif method == 'sd':
