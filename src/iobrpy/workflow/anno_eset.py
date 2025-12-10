@@ -194,14 +194,24 @@ def anno_eset(eset_df: pd.DataFrame,
     annotation_filtered = annotation_df[annotation_df["probe_id"].isin(eset_df.index)].copy()
     eset_filtered = eset_df[eset_df.index.isin(annotation_filtered["probe_id"])].copy()
 
-    # Reset index to an "id" column and merge with sort=TRUE to mirror R's default
-    eset_reset = eset_filtered.reset_index().rename(columns={eset_filtered.index.name or 'index': 'id'})
-    merged = annotation_filtered.merge(
-        eset_reset,
+    # Reset index to an "id" column and sort both tables by probe/id to mirror base R's
+    # merge(sort = TRUE) ordering. Cast to string to match R's character merge keys.
+    eset_reset = (
+        eset_filtered
+        .reset_index()
+        .rename(columns={eset_filtered.index.name or 'index': 'id'})
+    )
+    annotation_sorted = annotation_filtered.sort_values("probe_id", kind="mergesort")
+    eset_sorted = eset_reset.sort_values("id", kind="mergesort")
+    annotation_sorted["probe_id"] = annotation_sorted["probe_id"].astype(str)
+    eset_sorted["id"] = eset_sorted["id"].astype(str)
+
+    merged = annotation_sorted.merge(
+        eset_sorted,
         how="inner",
         left_on="probe_id",
         right_on="id",
-        sort=True,
+        sort=False,
         copy=False
     )
 
@@ -211,7 +221,8 @@ def anno_eset(eset_df: pd.DataFrame,
     dups = total_rows - unique_symbols
 
     # Mirror R behavior: drop probe_id before scoring so the remaining columns include the
-    # original "id" column (which will be coerced to numeric during scoring).
+    # original "id" column (which will be coerced to numeric during scoring). Keep the id
+    # column in the final result to match the R output shape.
     if "probe_id" in merged.columns:
         merged.drop(columns=["probe_id"], inplace=True)
 
@@ -246,7 +257,6 @@ def anno_eset(eset_df: pd.DataFrame,
         merged.drop(columns=['_score'], inplace=True)
         merged.drop_duplicates(subset=['symbol'], keep='first', inplace=True)
 
-    merged.drop(columns=[c for c in ("id",) if c in merged.columns], inplace=True)
     result = merged.set_index('symbol')
 
     # Filter out rows all zero or all NA or NA in first column
