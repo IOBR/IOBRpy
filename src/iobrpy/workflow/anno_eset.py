@@ -191,22 +191,28 @@ def anno_eset(eset_df: pd.DataFrame,
     print(f"Probes matched annotation: {probes_in} / {total_probes}")
     print(f"{100 * (probes_in / total_probes if total_probes else 0):.2f}% of probes were annotated")
 
-    # Filter to annotated probes (preserve order of annotation_df)
+    # Filter annotation and expression to common probes (follow R logic)
     annotation_filtered = annotation_df[annotation_df["probe_id"].isin(eset_df.index)].copy()
-    # reorder eset to match annotation_filtered probe_id order
-    eset_filtered = eset_df.reindex(annotation_filtered["probe_id"]).copy()
+    eset_filtered = eset_df.loc[eset_df.index.isin(annotation_df["probe_id"])].copy()
 
-    # Merge annotation (probe_id becomes a column)
-    eset_reset = eset_filtered.reset_index().rename(columns={eset_filtered.index.name or 'index': 'probe_id'})
-    merged = pd.merge(annotation_filtered, eset_reset, on="probe_id", how="inner", sort=True)
+    # Reset index for merge; keep helper id column separate from probe_id
+    eset_reset = eset_filtered.reset_index().rename(columns={eset_filtered.index.name or 'index': 'id'})
+    merged = pd.merge(annotation_filtered, eset_reset, left_on="probe_id", right_on="id", how="inner", sort=True)
+
+    # Drop helper merge columns to mirror R pipeline
+    merged.drop(columns=["probe_id"], inplace=True)
+    if "id" in merged.columns:
+        merged.drop(columns=["id"], inplace=True)
+    merged.reset_index(drop=True, inplace=True)
 
     # Handle duplicates: collapse by symbol using chosen method
     total_rows = merged.shape[0]
     unique_symbols = merged['symbol'].nunique()
     dups = total_rows - unique_symbols
 
+    symbol_col = 'symbol'
     if dups > 0:
-        data_cols = [c for c in merged.columns if c not in {'symbol', 'probe_id'}]
+        data_cols = [c for c in merged.columns if c != symbol_col]
         if method == 'mean':
             merged['_score'] = merged[data_cols].mean(axis=1, skipna=True)
         elif method == 'sd':
@@ -218,11 +224,10 @@ def anno_eset(eset_df: pd.DataFrame,
 
         # keep highest scoring row per symbol (stable ordering for ties)
         merged.sort_values('_score', ascending=False, kind='mergesort', inplace=True)
-        merged.drop_duplicates(subset=['symbol'], keep='first', inplace=True)
+        merged.drop_duplicates(subset=[symbol_col], keep='first', inplace=True)
         merged.drop(columns=['_score'], inplace=True)
 
-    merged.drop(columns=['probe_id'], inplace=True)
-    result = merged.set_index('symbol')
+    result = merged.set_index(symbol_col)
 
     # Filter out rows all zero or all NA or NA in first column
     result = result.loc[~(result == 0).all(axis=1)]
