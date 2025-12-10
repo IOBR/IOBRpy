@@ -211,11 +211,11 @@ def anno_eset(eset_df: pd.DataFrame,
         copy=False
     )
 
-    # Base R merge drops the by.y column (id) but keeps probe_id until after duplicate
-    # resolution. Preserve probe_id so it can break ties deterministically when order_index
-    # values are identical, mirroring R's probe-order tie-breaker.
-    if "id" in merged.columns:
-        merged.drop(columns=["id"], inplace=True)
+    # Base R merge returns only the by.x column (probe_id); drop both join columns to
+    # align with the R pipeline before duplicate handling and scoring.
+    for col in ("probe_id", "id"):
+        if col in merged.columns:
+            merged.drop(columns=[col], inplace=True)
 
     merged.reset_index(drop=True, inplace=True)
 
@@ -225,7 +225,7 @@ def anno_eset(eset_df: pd.DataFrame,
     dups = total_rows - unique_symbols
 
     if dups > 0:
-        data_cols = [c for c in merged.columns if c not in ('symbol', 'probe_id')]
+        data_cols = [c for c in merged.columns if c != 'symbol']
         # Use row-wise apply to mimic R's apply(, 1, ...) semantics exactly. Coerce to numeric
         # with errors set to NaN so non-numeric columns (e.g., "id") behave like R's implicit
         # coercion during matrix conversion.
@@ -250,16 +250,11 @@ def anno_eset(eset_df: pd.DataFrame,
                 axis=1
             )
 
-        # keep highest scoring row per symbol; break ties by probe_id (ascending) to
-        # mirror R's sort-by-score-then-original-probe-order behaviour.
-        merged.sort_values(['_score', 'probe_id'], ascending=[False, True], inplace=True, kind="mergesort")
+        # keep highest scoring row per symbol; use a stable sort so ties preserve
+        # the merge order (which follows base R's default ordering of the join key).
+        merged.sort_values('_score', ascending=False, inplace=True, kind="mergesort")
         merged.drop(columns=['_score'], inplace=True)
         merged.drop_duplicates(subset=['symbol'], keep='first', inplace=True)
-
-    # Drop probe_id once duplicate handling is complete so the output matches the R
-    # pipeline's column set.
-    if 'probe_id' in merged.columns:
-        merged.drop(columns=['probe_id'], inplace=True)
 
     result = merged.set_index('symbol')
 
