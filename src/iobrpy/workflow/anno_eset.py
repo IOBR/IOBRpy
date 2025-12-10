@@ -108,6 +108,9 @@ def anno_eset(eset_df: pd.DataFrame,
     annotation: either a string key (lookup in built-in pkl) or a pandas.DataFrame provided by user.
     symbol/probe: column names in the annotation dataframe indicating gene symbol and probe id.
     """
+    # Work on a copy so caller's DataFrame (especially its index dtype) is untouched
+    eset_df = eset_df.copy()
+
     # === Prepare annotation (robust handling for different pkl structures) ===
     if isinstance(annotation, pd.DataFrame):
         annotation_df = annotation.copy()
@@ -177,9 +180,18 @@ def anno_eset(eset_df: pd.DataFrame,
     annotation_df = annotation_df.rename(columns={symbol: "symbol", probe: "probe_id"})
     annotation_df = annotation_df[["probe_id", "symbol"]]
 
+    # Base R merge coerces row names to character; enforce string keys to mirror
+    # lexicographic ordering when sorting/joining.
+    annotation_df["probe_id"] = annotation_df["probe_id"].astype(str)
+    annotation_df["symbol"] = annotation_df["symbol"].astype(str)
+
     # filter out bad symbols
     annotation_df = annotation_df[annotation_df["symbol"] != "NA_NA"]
     annotation_df = annotation_df[annotation_df["symbol"].notna()]
+
+    # Align key dtypes to string before filtering and merging to mirror R's
+    # character rownames and merge ordering.
+    eset_df.index = eset_df.index.map(str)
 
     # Logging original count
     print(f"Row number of original eset: {eset_df.shape[0]}")
@@ -211,11 +223,10 @@ def anno_eset(eset_df: pd.DataFrame,
         copy=False
     )
 
-    # Base R merge returns only the by.x column (probe_id); drop both join columns to
-    # align with the R pipeline before duplicate handling and scoring.
-    for col in ("probe_id", "id"):
-        if col in merged.columns:
-            merged.drop(columns=[col], inplace=True)
+    # Base R merge keeps the y-column (id) and drops the by.x column (probe_id);
+    # mirror that structure so duplicate resolution sees the same columns/order.
+    if "probe_id" in merged.columns:
+        merged.drop(columns=["probe_id"], inplace=True)
 
     merged.reset_index(drop=True, inplace=True)
 
