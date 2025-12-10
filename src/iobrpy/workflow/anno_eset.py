@@ -194,16 +194,19 @@ def anno_eset(eset_df: pd.DataFrame,
     annotation_filtered = annotation_df[annotation_df["probe_id"].isin(eset_df.index)].copy()
     eset_filtered = eset_df[eset_df.index.isin(annotation_filtered["probe_id"])].copy()
 
-    # Merge annotation (probe_id becomes a column). R's merge(sort=TRUE) sorts by key
-    # without preserving the original ordering of either table, so avoid injecting
-    # extra positional tie-breakers here.
-    eset_reset = eset_filtered.reset_index().rename(columns={eset_filtered.index.name or 'index': 'probe_id'})
-    merged = pd.merge(annotation_filtered, eset_reset, on="probe_id", how="inner", sort=True)
-
-    # Align ordering with R's merge(sort=TRUE): explicitly sort by probe_id with a
-    # stable sort so that downstream tie-breaking when collapsing duplicates uses
-    # the same probe_id-first preference.
-    merged.sort_values("probe_id", inplace=True, kind="mergesort")
+    # Merge annotation (probe_id becomes a column). Mirror the R implementation:
+    # convert probe ids to a standalone column named "id" before merging by
+    # probe_id/id so the join pathway matches `merge(annotation, eset, by.x,
+    # by.y, all = FALSE, sort = TRUE)`.
+    eset_reset = eset_filtered.reset_index().rename(columns={eset_filtered.index.name or 'index': 'id'})
+    merged = pd.merge(
+        annotation_filtered,
+        eset_reset,
+        left_on="probe_id",
+        right_on="id",
+        how="inner",
+        sort=True,
+    )
 
     # Handle duplicates: collapse by symbol using chosen method
     total_rows = merged.shape[0]
@@ -211,22 +214,23 @@ def anno_eset(eset_df: pd.DataFrame,
     dups = total_rows - unique_symbols
 
     if dups > 0:
-        data_cols = merged.columns.difference(['symbol', 'probe_id'])
+        data_cols = merged.columns.difference(['symbol', 'probe_id', 'id'])
+        # Use row-wise apply to mimic R's apply(, 1, ...) semantics exactly.
         if method == 'mean':
-            merged['_score'] = merged[data_cols].mean(axis=1, skipna=True)
+            merged['_score'] = merged[data_cols].apply(lambda row: row.mean(skipna=True), axis=1)
         elif method == 'sd':
-            merged['_score'] = merged[data_cols].std(axis=1, skipna=True)
+            merged['_score'] = merged[data_cols].apply(lambda row: row.std(skipna=True), axis=1)
         elif method == 'sum':
-            merged['_score'] = merged[data_cols].sum(axis=1, skipna=True)
+            merged['_score'] = merged[data_cols].apply(lambda row: row.sum(skipna=True), axis=1)
         else:
-            merged['_score'] = merged[data_cols].mean(axis=1, skipna=True)
+            merged['_score'] = merged[data_cols].apply(lambda row: row.mean(skipna=True), axis=1)
 
         # keep highest scoring row per symbol, respecting merge order for ties
         merged.sort_values('_score', ascending=False, inplace=True, kind="mergesort")
         merged.drop(columns=['_score'], inplace=True)
         merged.drop_duplicates(subset=['symbol'], keep='first', inplace=True)
 
-    merged.drop(columns=["probe_id"], inplace=True)
+    merged.drop(columns=["probe_id", "id"], inplace=True)
     result = merged.set_index('symbol')
 
     # Filter out rows all zero or all NA or NA in first column
