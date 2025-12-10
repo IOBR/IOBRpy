@@ -194,19 +194,29 @@ def anno_eset(eset_df: pd.DataFrame,
     annotation_filtered = annotation_df[annotation_df["probe_id"].isin(eset_df.index)].copy()
     eset_filtered = eset_df[eset_df.index.isin(annotation_filtered["probe_id"])].copy()
 
-    # Merge annotation (probe_id becomes a column). Mirror the R implementation:
-    # convert probe ids to a standalone column named "id" before merging by
-    # probe_id/id so the join pathway matches `merge(annotation, eset, by.x,
-    # by.y, all = FALSE, sort = TRUE)`.
+    # Merge annotation (probe_id becomes a column) with explicit ordering that
+    # mirrors base R's merge:
+    #  - keys sorted lexicographically (sort = TRUE)
+    #  - within a key, rows keep their original order from annotation/eset
+    #  - duplicates produce the Cartesian product in that nested order
     eset_reset = eset_filtered.reset_index().rename(columns={eset_filtered.index.name or 'index': 'id'})
-    merged = pd.merge(
-        annotation_filtered,
-        eset_reset,
-        left_on="probe_id",
-        right_on="id",
-        how="inner",
-        sort=True,
-    )
+
+    # Keep expression column order stable for reconstruction
+    expr_cols = [c for c in eset_reset.columns if c != "id"]
+
+    merged_records = []
+    # sorted keys to match base R behaviour (sort = TRUE)
+    for key in sorted(set(annotation_filtered["probe_id"]) & set(eset_reset["id"])):
+        left_rows = annotation_filtered[annotation_filtered["probe_id"] == key]
+        right_rows = eset_reset[eset_reset["id"] == key]
+        for _, lrow in left_rows.iterrows():
+            for _, rrow in right_rows.iterrows():
+                # probe_id + symbol + expression values (id dropped to match R merge)
+                combined = {"probe_id": lrow["probe_id"], "symbol": lrow["symbol"]}
+                combined.update(rrow[expr_cols].to_dict())
+                merged_records.append(combined)
+
+    merged = pd.DataFrame(merged_records, columns=["probe_id", "symbol"] + expr_cols)
 
     # Handle duplicates: collapse by symbol using chosen method
     total_rows = merged.shape[0]
