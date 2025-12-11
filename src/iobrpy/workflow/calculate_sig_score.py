@@ -118,7 +118,8 @@ def sig_score_pca(eset, sig_dict, mini_gene_count, adjust_eset, parallel_size=1)
     items = list(sigs.items())
 
     def _one(name, genes):
-        valid = sorted(set(genes) & set(eset2.index))
+        # keep original signature ordering (and potential duplicates) to mimic R behavior
+        valid = [g for g in genes if g in eset2.index]
         if len(valid) < 2:
             # Fallback: all zeros if not enough genes
             return name, np.zeros(len(eset2.columns), dtype=float)
@@ -177,7 +178,8 @@ def sig_score_zscore(eset, sig_dict, mini_gene_count, adjust_eset, parallel_size
     items = list(sigs.items())
 
     def _one(name, genes):
-        valid = sorted(set(genes) & set(eset2.index))
+        # retain signature ordering/duplicates to mirror R's mean-based scoring
+        valid = [g for g in genes if g in eset2.index]
         if len(valid) == 0:
             return name, np.zeros(len(eset2.columns), dtype=float)
         mat = eset2.loc[valid]               # genes × samples
@@ -219,11 +221,13 @@ def sig_score_ssgsea(eset, sig_dict, mini_gene_count, adjust_eset, parallel_size
         gene_sets=sigs,
         outdir=None,
         sample_norm_method='rank',    # ssGSEA ranks genes within each sample
-        weight=0.25,                  # match GSVA's default tau for ssGSEA
+        correl_norm_type='rank',
+        weight=1.0,                   # align with GSVA::gsva(method = "ssgsea") default tau
         permutation_num=0,
         no_plot=True,
         threads=parallel_size,
         min_size=min_size,
+        max_size=10**9,
         ssgsea_norm=True
     )
 
@@ -263,11 +267,13 @@ def sig_score_integration(eset, sig_dict, mini_gene_count, adjust_eset, parallel
         gene_sets=filter_signatures(filtered_sigs, eset2, min_size),
         outdir=None,
         sample_norm_method='rank',
-        weight=0.25,
+        correl_norm_type='rank',
+        weight=1.0,
         permutation_num=0,
         no_plot=True,
         threads=parallel_size,
         min_size=min_size,
+        max_size=10**9,
         ssgsea_norm=True
     )
     nes = ss.res2d.pivot(index='Term', columns='Name', values='NES').T.reset_index()
