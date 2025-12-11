@@ -191,10 +191,9 @@ def anno_eset(eset_df: pd.DataFrame,
     print(f"Probes matched annotation: {probes_in} / {total_probes}")
     print(f"{100 * (probes_in / total_probes if total_probes else 0):.2f}% of probes were annotated")
 
-    # Filter to annotated probes (preserve order of annotation_df)
+    # Filter to annotated probes (preserve original eset order)
     annotation_filtered = annotation_df[annotation_df["probe_id"].isin(eset_df.index)].copy()
-    # reorder eset to match annotation_filtered probe_id order
-    eset_filtered = eset_df.reindex(annotation_filtered["probe_id"]).copy()
+    eset_filtered = eset_df[eset_df.index.isin(annotation_filtered["probe_id"])].copy()
 
     # Merge annotation (probe_id becomes a column). Base R merge() defaults to sort=TRUE,
     # so we enable sorting here to mirror the reference behavior and obtain identical
