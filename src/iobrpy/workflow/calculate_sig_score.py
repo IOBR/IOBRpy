@@ -73,19 +73,18 @@ def load_signatures(pkl_path):
     return pd.read_pickle(pkl_path)
 
 def preprocess_eset(eset, adjust_eset):
-    """Log2-transform and drop Inf/zero‑sd genes like R's log2eset+check_eset."""
+    """Log2-transform expression; optionally remove non-finite/zero-sd genes (adjust_eset)."""
     if default_debug:
         print(f"DEBUG: Preprocess: shape={eset.shape}, adjust={adjust_eset}")
+
     if eset.shape[1] < 5000:
         eset = np.log2(eset + 1)
-        # drop Inf rows
-        finite = np.isfinite(eset).all(axis=1)
-        eset = eset.loc[finite]
+
     if adjust_eset:
-        # drop Inf and zero‑sd again
         finite = np.isfinite(eset).all(axis=1)
         eset = eset.loc[finite]
-        eset = eset.loc[eset.std(axis=1) > 0]
+        eset = eset.loc[eset.std(axis=1, ddof=1) > 0]
+
     if default_debug:
         print(f"DEBUG: After preprocess: shape={eset.shape}")
     return eset
@@ -123,14 +122,19 @@ def sig_score_pca(eset, sig_dict, mini_gene_count, adjust_eset, parallel_size=1)
             return name, np.zeros(len(eset2.columns), dtype=float)
         tmp = eset2.loc[valid]               # genes × samples
         mat = tmp.T                          # samples × genes
-        # z-score by gene
-        mat = mat.sub(mat.mean(axis=0), axis=1)
-        mat = mat.div(mat.std(axis=0, ddof=1).replace(0, np.nan), axis=1).fillna(0.0)
 
-        pca = PCA(n_components=1, svd_solver='full', random_state=0)
-        pc1 = pca.fit_transform(mat.values)[:, 0]   # length = n_samples
+        # z-score by gene (match R's scale. = TRUE in prcomp)
+        std = mat.std(axis=0, ddof=1)
+        nonzero = std > 0
+        if nonzero.sum() < 1:
+            return name, np.zeros(len(mat), dtype=float)
+        centered = mat.loc[:, nonzero].sub(mat.loc[:, nonzero].mean(axis=0), axis=1)
+        centered = centered.div(std[nonzero], axis=1)
 
-        mean_expr = tmp.mean(axis=0).values         # length = n_samples
+        pca = PCA(n_components=1, svd_solver='full')
+        pc1 = pca.fit_transform(centered.values)[:, 0]   # length = n_samples
+
+        mean_expr = tmp.loc[nonzero.index].mean(axis=0).values         # length = n_samples
         # Spearman was heavy; Pearson on standardized data equals Spearman rank corr approx. Keep Pearson as original.
         corr = np.corrcoef(pc1, mean_expr)[0, 1]
         direction = np.sign(corr) if not np.isnan(corr) else 1.0
@@ -209,7 +213,8 @@ def sig_score_ssgsea(eset, sig_dict, mini_gene_count, adjust_eset, parallel_size
         data=eset2,
         gene_sets=sigs,
         outdir=None,
-        sample_norm_method='rank',    # rank-based kernel = Gaussian
+        sample_norm_method='rank',    # match kcdf = "Gaussian"
+        weight=0.25,                  # align with GSVA::gsva default tau
         permutation_num=0,
         no_plot=True,
         threads=parallel_size,
@@ -251,6 +256,7 @@ def sig_score_integration(eset, sig_dict, mini_gene_count, adjust_eset, parallel
         gene_sets=filtered_sigs,
         outdir=None,
         sample_norm_method='rank',
+        weight=0.25,
         permutation_num=0,
         no_plot=True,
         threads=parallel_size,
