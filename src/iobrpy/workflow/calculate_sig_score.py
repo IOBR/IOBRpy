@@ -91,6 +91,23 @@ def preprocess_eset(eset, adjust_eset):
         print(f"DEBUG: After preprocess: shape={eset.shape}")
     return eset
 
+
+def _clean_signature_dict(sig_dict):
+    """Mimic R's upfront signature sanitization (na.omit -> as.character -> unique -> drop blanks)."""
+    cleaned = {}
+    for name, genes in sig_dict.items():
+        arr = [str(g) for g in genes if pd.notna(g)]
+        # unique() in R keeps first occurrence order
+        seen = set()
+        uniq = []
+        for g in arr:
+            if g and g not in seen:
+                uniq.append(g)
+                seen.add(g)
+        if uniq:
+            cleaned[name] = uniq
+    return cleaned
+
 def filter_signatures(sig_dict, eset, min_genes):
     """Keep only signatures with at least min_genes present in eset."""
     out = {}
@@ -110,6 +127,7 @@ def sig_score_pca(eset, sig_dict, mini_gene_count, adjust_eset, parallel_size=1)
     Preserves original semantics (center+scale per gene, PCA(1), flip by corr with mean expression).
     """
     pdata = pd.DataFrame({'ID': eset.columns})
+    sig_dict = _clean_signature_dict(sig_dict)
     eset2 = preprocess_eset(eset, adjust_eset)
 
     min_size = max(mini_gene_count, 2)
@@ -170,6 +188,7 @@ def sig_score_zscore(eset, sig_dict, mini_gene_count, adjust_eset, parallel_size
     Preserves original semantics.
     """
     pdata = pd.DataFrame({'ID': eset.columns})
+    sig_dict = _clean_signature_dict(sig_dict)
     eset2 = preprocess_eset(eset, adjust_eset)
 
     min_size = max(mini_gene_count, 2)
@@ -206,6 +225,7 @@ def sig_score_zscore(eset, sig_dict, mini_gene_count, adjust_eset, parallel_size
 def sig_score_ssgsea(eset, sig_dict, mini_gene_count, adjust_eset, parallel_size):
     if gp is None:
         raise ImportError("gseapy required for ssGSEA")
+    sig_dict = _clean_signature_dict(sig_dict)
     # Preprocess like R
     eset2 = preprocess_eset(eset, adjust_eset)
     # First filter with original threshold
@@ -220,9 +240,8 @@ def sig_score_ssgsea(eset, sig_dict, mini_gene_count, adjust_eset, parallel_size
         data=eset2,
         gene_sets=sigs,
         outdir=None,
-        sample_norm_method='rank',    # ssGSEA ranks genes within each sample
-        correl_norm_type='rank',
-        weight=1.0,                   # align with GSVA::gsva(method = "ssgsea") default tau
+        sample_norm_method='rank',    # GSVA ranks genes within each sample for ssGSEA
+        weight=0.25,                  # GSVA::gsva(method="ssgsea") default tau
         permutation_num=0,
         no_plot=True,
         threads=parallel_size,
@@ -242,6 +261,7 @@ def sig_score_ssgsea(eset, sig_dict, mini_gene_count, adjust_eset, parallel_size
     return nes
 
 def sig_score_integration(eset, sig_dict, mini_gene_count, adjust_eset, parallel_size):
+    sig_dict = _clean_signature_dict(sig_dict)
     eset2 = preprocess_eset(eset, adjust_eset)
     filtered_sigs = {
         name: [g for g in genes if g in eset2.index]
@@ -267,8 +287,7 @@ def sig_score_integration(eset, sig_dict, mini_gene_count, adjust_eset, parallel
         gene_sets=filter_signatures(filtered_sigs, eset2, min_size),
         outdir=None,
         sample_norm_method='rank',
-        correl_norm_type='rank',
-        weight=1.0,
+        weight=0.25,
         permutation_num=0,
         no_plot=True,
         threads=parallel_size,
@@ -291,7 +310,7 @@ def calculate_sig_score(eset, signature_names, method, mini_gene_count, adjust_e
     resource_pkg = 'iobrpy.resources'
     resource_path = files(resource_pkg).joinpath('calculate_data.pkl')
     all_sigs = pd.read_pickle(resource_path)
-    sig_dict = _merge_signature_groups(all_sigs, signature_names)
+    sig_dict = _clean_signature_dict(_merge_signature_groups(all_sigs, signature_names))
     if not isinstance(sig_dict, dict) or len(sig_dict) == 0:
         raise KeyError(f"No valid signatures found from groups: {signature_names}")
     m = method.lower()
