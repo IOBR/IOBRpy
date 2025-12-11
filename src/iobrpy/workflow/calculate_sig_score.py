@@ -214,11 +214,13 @@ def sig_score_ssgsea(eset, sig_dict, mini_gene_count, adjust_eset, parallel_size
         gene_sets=sigs,
         outdir=None,
         sample_norm_method='rank',    # match kcdf = "Gaussian"
+        correl_norm_type='rank',      # align with GSVA correlation normalization
         weight=0.25,                  # align with GSVA::gsva default tau
         permutation_num=0,
         no_plot=True,
         threads=parallel_size,
         min_size=min_size,
+        max_size=eset2.shape[0],      # no explicit cap in GSVA
         ssgsea_norm=True
     )
 
@@ -233,10 +235,11 @@ def sig_score_ssgsea(eset, sig_dict, mini_gene_count, adjust_eset, parallel_size
     return nes
 
 def sig_score_integration(eset, sig_dict, mini_gene_count, adjust_eset, parallel_size):
+    eset2 = preprocess_eset(eset, adjust_eset)
     filtered_sigs = {
-        name: [g for g in genes if g in eset.index]
+        name: [g for g in genes if g in eset2.index]
         for name, genes in sig_dict.items()
-        if len([g for g in genes if g in eset.index]) >= mini_gene_count
+        if len([g for g in genes if g in eset2.index]) >= mini_gene_count
     }
 
     p = sig_score_pca(eset, filtered_sigs, mini_gene_count, adjust_eset)
