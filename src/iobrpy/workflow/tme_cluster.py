@@ -2,7 +2,6 @@ import argparse
 import os
 import re
 import sys
-import random
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
@@ -33,6 +32,8 @@ def parse_args():
                    help="Maximum iterations for Hartigan–Wong k-means (default: 10)")
     p.add_argument('--tol', type=float, default=1e-4,
                    help="Convergence tolerance (default: 1e-4)")
+    p.add_argument('--seed', type=int, default=123,
+                   help="Seed for reproducible initialization (default: 123, matches R NbClust)")
     p.add_argument('--print_result', action='store_true',
                    help="Print intermediate info")
     p.add_argument('--input_sep',  default=None,
@@ -47,13 +48,14 @@ def detect_sep(path):
     if ext == '.csv': return ','
     return ','
 
-def hartigan_wong(data, k, max_iter=10, tol=1e-4):
+def hartigan_wong(data, k, max_iter=10, tol=1e-4, rng=None):
     """
     Hartigan-Wong K-means, with empty-cluster handling matching R's stats::kmeans.
     """
     n, p = data.shape
     # initialize centers
-    indices = random.sample(range(n), k)
+    rng = rng or np.random
+    indices = rng.choice(n, size=k, replace=False)
     centers = data[indices].astype(float).copy()
     # initial assignment
     labels = np.argmin(((data[:, None] - centers[None, :])**2).sum(axis=2), axis=1)
@@ -136,23 +138,28 @@ def main():
     data = df[cols].apply(pd.to_numeric, errors='coerce')
     if args.scale:
         data = (data - data.mean()) / data.std(ddof=1)
-
-    # Apply the same feature_manipulation filter used by the R pipeline
-    valid_features = feature_manipulation(data, feature=list(data.columns), print_result=args.print_result)
-    data = data[valid_features]
+        # Apply the same feature_manipulation filter used by the R pipeline (only when scaled)
+        valid_features = feature_manipulation(data, feature=list(data.columns), print_result=args.print_result)
+        data = data[valid_features]
     if data.empty:
         raise ValueError("No valid features remain after filtering. Check input data and parameters.")
 
     X = data.values
     n, p = X.shape
 
-    random.seed(1)
-    np.random.seed(1)
+    rng = np.random.RandomState(args.seed)
     kl_scores = {}
+    rng_seeds = {}
     for k in tqdm(range(args.min_nc, args.max_nc + 1), desc="KL scoring"):
-        lbl_prev, _ = hartigan_wong(X, k-1, max_iter=args.max_iter, tol=args.tol)
-        lbl_k, _    = hartigan_wong(X, k,   max_iter=args.max_iter, tol=args.tol)
-        lbl_next, _ = hartigan_wong(X, k+1, max_iter=args.max_iter, tol=args.tol)
+        # Advance RNG deterministically so each k mirrors R's use of the same seed across k values
+        seeds = rng.randint(0, 2**31 - 1, size=3)
+        rng_k_prev = np.random.RandomState(seeds[0])
+        rng_k = np.random.RandomState(seeds[1])
+        rng_k_next = np.random.RandomState(seeds[2])
+        rng_seeds[k] = seeds[1]
+        lbl_prev, _ = hartigan_wong(X, k-1, max_iter=args.max_iter, tol=args.tol, rng=rng_k_prev)
+        lbl_k, _    = hartigan_wong(X, k,   max_iter=args.max_iter, tol=args.tol, rng=rng_k)
+        lbl_next, _ = hartigan_wong(X, k+1, max_iter=args.max_iter, tol=args.tol, rng=rng_k_next)
         W_prev = compute_withinss(X, lbl_prev)
         W_k    = compute_withinss(X, lbl_k)
         W_next = compute_withinss(X, lbl_next)
@@ -165,7 +172,8 @@ def main():
     if args.print_result:
         print(f"Best k by KL: {best_k}")
 
-    labels, _ = hartigan_wong(X, best_k, max_iter=args.max_iter, tol=args.tol)
+    final_rng = np.random.RandomState(rng_seeds[best_k])
+    labels, _ = hartigan_wong(X, best_k, max_iter=args.max_iter, tol=args.tol, rng=final_rng)
     clusters = [f"TME{l+1}" for l in labels]
 
     out = pd.DataFrame({'ID': ids, 'cluster': clusters})
