@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 from iobrpy.utils.print_colorful_message import print_colorful_message
+from iobrpy.workflow.count2tpm import feature_manipulation
 
 def parse_args():
     p = argparse.ArgumentParser(description="TME clustering with Hartigan-Wong kmeans and KL index matching R NbClust")
@@ -117,9 +118,13 @@ def main():
     sep_out = args.output_sep or detect_sep(args.output)
     df = pd.read_csv(args.input, sep=sep_in)
     if args.id and args.id in df.columns:
-        ids = df[args.id].astype(str); df = df.drop(columns=[args.id])
+        ids = df[args.id].astype(str)
+        df = df.drop(columns=[args.id])
     else:
-        ids = df.iloc[:, 0].astype(str); df = df.drop(df.columns[0], axis=1)
+        ids = df.iloc[:, 0].astype(str)
+        df = df.drop(df.columns[0], axis=1)
+
+    # Feature selection mirrors the R wrapper (pattern/feature based)
     if args.features:
         m = re.match(r'^(\d+):(\d+)$', args.features)
         cols = df.columns[int(m.group(1)) - 1:int(m.group(2))]
@@ -127,20 +132,26 @@ def main():
         cols = [c for c in df.columns if re.search(args.pattern, c)]
     else:
         cols = df.columns
-    data = df[cols].apply(pd.to_numeric, errors='coerce').dropna(axis=1)
-    data = data.loc[:, data.std(axis=0, ddof=1) > 0]
+
+    data = df[cols].apply(pd.to_numeric, errors='coerce')
     if args.scale:
         data = (data - data.mean()) / data.std(ddof=1)
-    X = data.values; n, p = X.shape
 
+    # Apply the same feature_manipulation filter used by the R pipeline
+    valid_features = feature_manipulation(data, feature=list(data.columns), print_result=args.print_result)
+    data = data[valid_features]
+    if data.empty:
+        raise ValueError("No valid features remain after filtering. Check input data and parameters.")
+
+    X = data.values
+    n, p = X.shape
+
+    random.seed(1)
+    np.random.seed(1)
     kl_scores = {}
     for k in tqdm(range(args.min_nc, args.max_nc + 1), desc="KL scoring"):
-        # prev, k, next with fixed seeds
-        random.seed(1); np.random.seed(1)
         lbl_prev, _ = hartigan_wong(X, k-1, max_iter=args.max_iter, tol=args.tol)
-        random.seed(1); np.random.seed(1)
         lbl_k, _    = hartigan_wong(X, k,   max_iter=args.max_iter, tol=args.tol)
-        random.seed(1); np.random.seed(1)
         lbl_next, _ = hartigan_wong(X, k+1, max_iter=args.max_iter, tol=args.tol)
         W_prev = compute_withinss(X, lbl_prev)
         W_k    = compute_withinss(X, lbl_k)
@@ -154,12 +165,7 @@ def main():
     if args.print_result:
         print(f"Best k by KL: {best_k}")
 
-    random.seed(1); np.random.seed(1)
-    labels, centers = hartigan_wong(X, best_k, max_iter=args.max_iter, tol=args.tol)
-
-    sums = centers.sum(axis=1); order = np.argsort(sums)
-    mapping = {old: new for new, old in enumerate(order)}
-    labels = np.array([mapping[l] for l in labels])
+    labels, _ = hartigan_wong(X, best_k, max_iter=args.max_iter, tol=args.tol)
     clusters = [f"TME{l+1}" for l in labels]
 
     out = pd.DataFrame({'ID': ids, 'cluster': clusters})
