@@ -28,6 +28,8 @@ def parse_args():
                    help="Min number of clusters (k for kmeans)")
     p.add_argument('--max_nc',   type=int, default=6,
                    help="Max number of clusters (ignored for kmeans)")
+    p.add_argument('--nstart',   type=int, default=10,
+                   help="Number of random starts (NbClust uses 10 by default)")
     p.add_argument('--max_iter', type=int, default=10,
                    help="Maximum iterations for Hartigan–Wong k-means (default: 10)")
     p.add_argument('--tol', type=float, default=1e-4,
@@ -114,6 +116,20 @@ def compute_withinss(data, labels):
         W += ((pts - center)**2).sum()
     return W
 
+def best_hartigan_run(data, k, nstart, max_iter, tol, rng):
+    """Mimic NbClust's multiple random starts and keep the best withinss run."""
+    best_labels = None
+    best_w = np.inf
+    best_centers = None
+    for _ in range(max(nstart, 1)):
+        labels, centers = hartigan_wong(data, k, max_iter=max_iter, tol=tol, rng=rng)
+        w = compute_withinss(data, labels)
+        if w < best_w:
+            best_w = w
+            best_labels = labels
+            best_centers = centers
+    return best_labels, best_centers, best_w
+
 def main():
     args = parse_args()
     sep_in = args.input_sep or detect_sep(args.input)
@@ -149,31 +165,32 @@ def main():
 
     rng = np.random.RandomState(args.seed)
     kl_scores = {}
-    rng_seeds = {}
-    for k in tqdm(range(args.min_nc, args.max_nc + 1), desc="KL scoring"):
-        # Advance RNG deterministically so each k mirrors R's use of the same seed across k values
-        seeds = rng.randint(0, 2**31 - 1, size=3)
-        rng_k_prev = np.random.RandomState(seeds[0])
-        rng_k = np.random.RandomState(seeds[1])
-        rng_k_next = np.random.RandomState(seeds[2])
-        rng_seeds[k] = seeds[1]
-        lbl_prev, _ = hartigan_wong(X, k-1, max_iter=args.max_iter, tol=args.tol, rng=rng_k_prev)
-        lbl_k, _    = hartigan_wong(X, k,   max_iter=args.max_iter, tol=args.tol, rng=rng_k)
-        lbl_next, _ = hartigan_wong(X, k+1, max_iter=args.max_iter, tol=args.tol, rng=rng_k_next)
-        W_prev = compute_withinss(X, lbl_prev)
-        W_k    = compute_withinss(X, lbl_k)
-        W_next = compute_withinss(X, lbl_next)
+    labels_by_k = {}
+    withinss_by_k = {}
+
+    # First compute the best partition for every k with shared RNG state so draws mirror R's sequence
+    for k in tqdm(range(args.min_nc, args.max_nc + 1), desc="kmeans runs"):
+        labels_k, _, w_k = best_hartigan_run(X, k, args.nstart, args.max_iter, args.tol, rng)
+        labels_by_k[k] = labels_k
+        withinss_by_k[k] = w_k
+
+    # Then compute KL index using neighboring k values
+    for k in range(args.min_nc + 1, args.max_nc):
+        W_prev = withinss_by_k[k-1]
+        W_k    = withinss_by_k[k]
+        W_next = withinss_by_k[k+1]
         num = abs((k-1)**(2/p) * W_prev - k**(2/p) * W_k)
         denom = abs(k**(2/p) * W_k - (k+1)**(2/p) * W_next)
         kl_scores[k] = num / (denom if denom > 0 else 1e-8)
         if args.print_result:
             print(f"k={k} KL={kl_scores[k]:.4f}")
-    best_k = max(kl_scores, key=kl_scores.get)
+
+    # Fallback to min_nc if KL cannot be computed
+    best_k = max(kl_scores, key=kl_scores.get) if kl_scores else args.min_nc
     if args.print_result:
         print(f"Best k by KL: {best_k}")
 
-    final_rng = np.random.RandomState(rng_seeds[best_k])
-    labels, _ = hartigan_wong(X, best_k, max_iter=args.max_iter, tol=args.tol, rng=final_rng)
+    labels = labels_by_k[best_k]
     clusters = [f"TME{l+1}" for l in labels]
 
     out = pd.DataFrame({'ID': ids, 'cluster': clusters})
