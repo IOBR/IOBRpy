@@ -130,11 +130,7 @@ def sig_score_pca(eset, sig_dict, mini_gene_count, adjust_eset, parallel_size=1)
         pca = PCA(n_components=1, svd_solver='full', random_state=0)
         pc1 = pca.fit_transform(mat.values)[:, 0]   # length = n_samples
 
-        mean_expr = tmp.mean(axis=0).values         # length = n_samples
-        # Spearman was heavy; Pearson on standardized data equals Spearman rank corr approx. Keep Pearson as original.
-        corr = np.corrcoef(pc1, mean_expr)[0, 1]
-        direction = np.sign(corr) if not np.isnan(corr) else 1.0
-        return name, (pc1 * direction)
+        return name, pc1
 
     if parallel_size and parallel_size > 1:
         results = Parallel(n_jobs=int(parallel_size), prefer="processes")(
@@ -172,6 +168,9 @@ def sig_score_zscore(eset, sig_dict, mini_gene_count, adjust_eset, parallel_size
         if len(valid) == 0:
             return name, np.zeros(len(eset2.columns), dtype=float)
         mat = eset2.loc[valid]               # genes × samples
+        # z-score each gene across samples, then average per sample
+        mat = mat.sub(mat.mean(axis=1), axis=0)
+        mat = mat.div(mat.std(axis=1, ddof=1).replace(0, np.nan), axis=0).fillna(0.0)
         return name, mat.mean(axis=0).values
 
     if parallel_size and parallel_size > 1:
@@ -209,12 +208,14 @@ def sig_score_ssgsea(eset, sig_dict, mini_gene_count, adjust_eset, parallel_size
         data=eset2,
         gene_sets=sigs,
         outdir=None,
-        sample_norm_method='rank',    # rank-based kernel = Gaussian
+        sample_norm_method='rank',
+        correl_norm_type='rank',
         permutation_num=0,
         no_plot=True,
         threads=parallel_size,
         min_size=min_size,
-        ssgsea_norm=True
+        max_size=eset2.shape[0],
+        weight=1,
     )
 
     # Pivot to samples × terms, keep Term as columns
@@ -251,11 +252,13 @@ def sig_score_integration(eset, sig_dict, mini_gene_count, adjust_eset, parallel
         gene_sets=filtered_sigs,
         outdir=None,
         sample_norm_method='rank',
+        correl_norm_type='rank',
         permutation_num=0,
         no_plot=True,
         threads=parallel_size,
         min_size=mini_gene_count,
-        ssgsea_norm=True
+        max_size=eset2.shape[0],
+        weight=1,
     )
     nes = ss.res2d.pivot(index='Term', columns='Name', values='NES').T.reset_index()
     nes.rename(columns={'Name': 'ID'}, inplace=True)
