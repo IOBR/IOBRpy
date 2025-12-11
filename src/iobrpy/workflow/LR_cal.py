@@ -100,7 +100,13 @@ def compute_LR_pairs(RNA_tpm: pd.DataFrame,
     cols = pairs.copy()
     for grp in group_lrpairs:
         main = grp['main']
-        remove = grp.get('involved_pairs', [])
+        raw_remove = grp.get('involved_pairs', [])
+        if isinstance(raw_remove, str) and raw_remove:
+            remove = [raw_remove]
+        elif isinstance(raw_remove, list):
+            remove = raw_remove
+        else:
+            remove = []
         combo = grp.get('combo_name', main)
         # rename main entries
         for idx, c in enumerate(cols):
@@ -108,7 +114,7 @@ def compute_LR_pairs(RNA_tpm: pd.DataFrame,
                 cols[idx] = combo
         # drop remove entries by first match
         for ip in remove:
-            if ip in cols:
+            while ip in cols:
                 j = cols.index(ip)
                 cols.pop(j)
                 mat = np.delete(mat, j, axis=1)
