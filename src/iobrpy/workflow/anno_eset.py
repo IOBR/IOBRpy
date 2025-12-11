@@ -196,9 +196,11 @@ def anno_eset(eset_df: pd.DataFrame,
     # reorder eset to match annotation_filtered probe_id order
     eset_filtered = eset_df.reindex(annotation_filtered["probe_id"]).copy()
 
-    # Merge annotation (probe_id becomes a column)
+    # Merge annotation (probe_id becomes a column). Base R merge() defaults to sort=TRUE,
+    # so we enable sorting here to mirror the reference behavior and obtain identical
+    # tie-breaking when deduplicating.
     eset_reset = eset_filtered.reset_index().rename(columns={eset_filtered.index.name or 'index': 'probe_id'})
-    merged = pd.merge(annotation_filtered, eset_reset, on="probe_id", how="inner")
+    merged = pd.merge(annotation_filtered, eset_reset, on="probe_id", how="inner", sort=True)
     # drop probe_id column (we use symbol as index)
     merged.drop(columns=["probe_id"], inplace=True)
 
@@ -218,8 +220,8 @@ def anno_eset(eset_df: pd.DataFrame,
         else:
             merged['_score'] = merged[data_cols].mean(axis=1, skipna=True)
 
-        # keep highest scoring row per symbol
-        merged.sort_values('_score', ascending=False, inplace=True)
+        # keep highest scoring row per symbol (stable sort for deterministic tie-breaking)
+        merged.sort_values('_score', ascending=False, inplace=True, kind="mergesort")
         merged.drop(columns=['_score'], inplace=True)
         merged.drop_duplicates(subset=['symbol'], keep='first', inplace=True)
 
