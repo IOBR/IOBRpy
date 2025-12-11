@@ -182,7 +182,9 @@ def main():
         num = abs((k-1)**(2/p) * W_prev - k**(2/p) * W_k)
         denom = abs(k**(2/p) * W_k - (k+1)**(2/p) * W_next)
         kl_scores[k] = num / (denom if denom > 0 else 1e-8)
-        if args.print_result:
+
+    if args.print_result and kl_scores:
+        for k in sorted(kl_scores):
             print(f"k={k} KL={kl_scores[k]:.4f}")
 
     # Fallback to min_nc if KL cannot be computed
@@ -199,7 +201,9 @@ def main():
     # Print absolute output file path and its directory for clarity
     abs_out = os.path.abspath(args.output)
     if args.print_result:
-        print(out['cluster'].value_counts())
+        counts = out['cluster'].value_counts().reset_index()
+        counts.columns = ['cluster', 'count']
+        print(counts.to_string(index=False))
     print(f"tme_cluster results saved to：{abs_out}")
     print("   ")
     print_colorful_message("#########################################################", "blue")
