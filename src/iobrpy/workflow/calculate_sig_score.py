@@ -130,9 +130,9 @@ def sig_score_pca(eset, sig_dict, mini_gene_count, adjust_eset, parallel_size=1)
         pca = PCA(n_components=1, svd_solver='full')
         pc1 = pca.fit_transform(mat.values)[:, 0]   # length = n_samples
 
-        # align direction to mean log2 expression (matches R orientation more closely)
-        avg_expr = tmp.mean(axis=0).values
-        corr = np.corrcoef(pc1, avg_expr)[0, 1]
+        # align direction to the per-sample mean of the standardized genes
+        avg_scaled = mat.mean(axis=1).values
+        corr = np.corrcoef(pc1, avg_scaled)[0, 1]
         direction = np.sign(corr) if not np.isnan(corr) else 1.0
         return name, (pc1 * direction)
 
@@ -200,10 +200,8 @@ def sig_score_ssgsea(eset, sig_dict, mini_gene_count, adjust_eset, parallel_size
         raise ImportError("ssGSEA requires the gseapy package")
     # Preprocess like R
     eset2 = preprocess_eset(eset, adjust_eset)
-    # First filter with original threshold
-    sigs = filter_signatures(sig_dict, eset2, mini_gene_count)
-    # Then enforce min_size >= 5
-    min_size = max(mini_gene_count, 5)
+    # Filter once using the requested threshold (GSVA uses min.sz=1 by default)
+    min_size = max(mini_gene_count, 1)
     sigs = filter_signatures(sig_dict, eset2, min_size)
 
     # Run ssGSEA with parameters closest to GSVA defaults
@@ -217,6 +215,7 @@ def sig_score_ssgsea(eset, sig_dict, mini_gene_count, adjust_eset, parallel_size
         no_plot=True,
         threads=parallel_size,
         min_size=min_size,
+        max_size=5000,
         ssgsea_norm=True,
     )
 
