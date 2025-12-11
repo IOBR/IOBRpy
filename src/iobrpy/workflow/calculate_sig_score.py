@@ -19,6 +19,16 @@ except Exception:
     def tqdm(x, **kwargs):
         return x
 
+try:
+    import rpy2.robjects as ro
+    from rpy2.robjects import pandas2ri
+    from rpy2.robjects.vectors import ListVector, StrVector
+
+    pandas2ri.activate()
+    has_rpy2 = True
+except Exception:
+    has_rpy2 = False
+
 # Supported methods
 signature_score_calculation_methods = {
     "pca": "pca",
@@ -117,7 +127,7 @@ def sig_score_pca(eset, sig_dict, mini_gene_count, adjust_eset, parallel_size=1)
     items = list(sigs.items())
 
     def _one(name, genes):
-        valid = sorted(set(genes) & set(eset2.index))
+        valid = [g for g in genes if g in eset2.index]
         if len(valid) < 2:
             # Fallback: all zeros if not enough genes
             return name, np.zeros(len(eset2.columns), dtype=float)
@@ -127,10 +137,14 @@ def sig_score_pca(eset, sig_dict, mini_gene_count, adjust_eset, parallel_size=1)
         mat = mat.sub(mat.mean(axis=0), axis=1)
         mat = mat.div(mat.std(axis=0, ddof=1).replace(0, np.nan), axis=1).fillna(0.0)
 
-        pca = PCA(n_components=1, svd_solver='full', random_state=0)
+        pca = PCA(n_components=1, svd_solver='full')
         pc1 = pca.fit_transform(mat.values)[:, 0]   # length = n_samples
 
-        return name, pc1
+        # align direction to average standardized expression
+        avg_expr = mat.mean(axis=1).values
+        corr = np.corrcoef(pc1, avg_expr)[0, 1]
+        direction = np.sign(corr) if not np.isnan(corr) else 1.0
+        return name, (pc1 * direction)
 
     if parallel_size and parallel_size > 1:
         results = Parallel(n_jobs=int(parallel_size), prefer="processes")(
@@ -192,8 +206,8 @@ def sig_score_zscore(eset, sig_dict, mini_gene_count, adjust_eset, parallel_size
     return pdata
 
 def sig_score_ssgsea(eset, sig_dict, mini_gene_count, adjust_eset, parallel_size):
-    if gp is None:
-        raise ImportError("gseapy required for ssGSEA")
+    if gp is None and not has_rpy2:
+        raise ImportError("ssGSEA requires either gseapy or rpy2 with GSVA installed")
     # Preprocess like R
     eset2 = preprocess_eset(eset, adjust_eset)
     # First filter with original threshold
@@ -202,25 +216,47 @@ def sig_score_ssgsea(eset, sig_dict, mini_gene_count, adjust_eset, parallel_size
     min_size = max(mini_gene_count, 5)
     sigs = filter_signatures(sig_dict, eset2, min_size)
 
-    # Run ssGSEA with R-aligned parameters
-    print("Running ssGSEA (this may take a while)...")
-    ss = gp.ssgsea(
-        data=eset2,
-        gene_sets=sigs,
-        outdir=None,
-        sample_norm_method='rank',
-        correl_norm_type='rank',
-        permutation_num=0,
-        no_plot=True,
-        threads=parallel_size,
-        min_size=min_size,
-        max_size=eset2.shape[0],
-        weight=1,
-    )
+    nes = None
+    if has_rpy2:
+        try:
+            ro.r('suppressMessages(library(GSVA))')
+            ro.r('suppressMessages(library(BiocParallel))')
 
-    # Pivot to samples × terms, keep Term as columns
-    nes = ss.res2d.pivot(index='Term', columns='Name', values='NES').T.reset_index()
-    nes.rename(columns={'Name': 'ID'}, inplace=True)
+            r_eset = pandas2ri.py2rpy(eset2)
+            r_sigs = ListVector({name: StrVector(genes) for name, genes in sigs.items()})
+
+            r_fn = ro.r('''
+                function(eset_mat, sigs, min_sz, parallel_sz){
+                    GSVA::gsva(as.matrix(eset_mat), sigs,
+                               method="ssgsea", kcdf="Gaussian",
+                               min.sz=min_sz, ssgsea.norm=TRUE,
+                               parallel.sz=parallel_sz)
+                }
+            ''')
+            res_r = r_fn(r_eset, r_sigs, min_size, int(max(1, parallel_size)))
+            res_df = pandas2ri.rpy2py(res_r)
+            nes = res_df.T.reset_index().rename(columns={'index': 'ID'})
+        except Exception:
+            nes = None
+
+    if nes is None:
+        # Run ssGSEA with parameters closest to GSVA defaults
+        print("Running ssGSEA via gseapy (this may take a while)...")
+        ss = gp.ssgsea(
+            data=eset2,
+            gene_sets=sigs,
+            outdir=None,
+            sample_norm_method='rank',
+            permutation_num=0,
+            no_plot=True,
+            threads=parallel_size,
+            min_size=min_size,
+            ssgsea_norm=True,
+        )
+
+        # Pivot to samples × terms, keep Term as columns
+        nes = ss.res2d.pivot(index='Term', columns='Name', values='NES').T.reset_index()
+        nes.rename(columns={'Name': 'ID'}, inplace=True)
 
     if 'TMEscoreA_CIR' in nes.columns and 'TMEscoreB_CIR' in nes.columns:
         nes['TMEscore_CIR'] = nes['TMEscoreA_CIR'] - nes['TMEscoreB_CIR']
@@ -241,27 +277,49 @@ def sig_score_integration(eset, sig_dict, mini_gene_count, adjust_eset, parallel
     z = sig_score_zscore(eset, filtered_sigs, mini_gene_count, adjust_eset)
     z = z.set_index('ID').add_suffix('_zscore')
 
-    if gp is None:
-        raise ImportError("gseapy required for ssGSEA")
+    if gp is None and not has_rpy2:
+        raise ImportError("ssGSEA requires either gseapy or rpy2 with GSVA installed")
 
     eset2 = preprocess_eset(eset, adjust_eset)
     
-    print("Running ssGSEA (this may take a while)...")
-    ss = gp.ssgsea(
-        data=eset2,
-        gene_sets=filtered_sigs,
-        outdir=None,
-        sample_norm_method='rank',
-        correl_norm_type='rank',
-        permutation_num=0,
-        no_plot=True,
-        threads=parallel_size,
-        min_size=mini_gene_count,
-        max_size=eset2.shape[0],
-        weight=1,
-    )
-    nes = ss.res2d.pivot(index='Term', columns='Name', values='NES').T.reset_index()
-    nes.rename(columns={'Name': 'ID'}, inplace=True)
+    nes = None
+    if has_rpy2:
+        try:
+            ro.r('suppressMessages(library(GSVA))')
+            ro.r('suppressMessages(library(BiocParallel))')
+
+            r_eset = pandas2ri.py2rpy(eset2)
+            r_sigs = ListVector({name: StrVector(genes) for name, genes in filtered_sigs.items()})
+
+            r_fn = ro.r('''
+                function(eset_mat, sigs, min_sz, parallel_sz){
+                    GSVA::gsva(as.matrix(eset_mat), sigs,
+                               method="ssgsea", kcdf="Gaussian",
+                               min.sz=min_sz, ssgsea.norm=TRUE,
+                               parallel.sz=parallel_sz)
+                }
+            ''')
+            res_r = r_fn(r_eset, r_sigs, mini_gene_count, int(max(1, parallel_size)))
+            res_df = pandas2ri.rpy2py(res_r)
+            nes = res_df.T.reset_index().rename(columns={'index': 'ID'})
+        except Exception:
+            nes = None
+
+    if nes is None:
+        print("Running ssGSEA via gseapy (this may take a while)...")
+        ss = gp.ssgsea(
+            data=eset2,
+            gene_sets=filtered_sigs,
+            outdir=None,
+            sample_norm_method='rank',
+            permutation_num=0,
+            no_plot=True,
+            threads=parallel_size,
+            min_size=mini_gene_count,
+            ssgsea_norm=True,
+        )
+        nes = ss.res2d.pivot(index='Term', columns='Name', values='NES').T.reset_index()
+        nes.rename(columns={'Name': 'ID'}, inplace=True)
 
     if 'TMEscoreA_CIR' in nes.columns and 'TMEscoreB_CIR' in nes.columns:
         nes['TMEscore_CIR'] = nes['TMEscoreA_CIR'] - nes['TMEscoreB_CIR']
