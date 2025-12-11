@@ -168,17 +168,34 @@ def main():
     labels_by_k = {}
     withinss_by_k = {}
 
+    main_k_values = list(range(args.min_nc, args.max_nc + 1))
+
     # First compute the best partition for every k with shared RNG state so draws mirror R's sequence
-    for k in tqdm(range(args.min_nc, args.max_nc + 1), desc="kmeans runs"):
+    for k in tqdm(main_k_values, desc="kmeans runs"):
         labels_k, _, w_k = best_hartigan_run(X, k, args.nstart, args.max_iter, args.tol, rng)
         labels_by_k[k] = labels_k
         withinss_by_k[k] = w_k
 
-    # Then compute KL index using neighboring k values
-    for k in range(args.min_nc + 1, args.max_nc):
-        W_prev = withinss_by_k[k-1]
+    # Ensure we have neighboring W values so KL can be computed for min_nc and max_nc as well
+    needed_neighbors = set()
+    for k in main_k_values:
+        if k - 1 >= 1:
+            needed_neighbors.add(k - 1)
+        needed_neighbors.add(k + 1)
+    neighbor_ks = sorted(needed_neighbors - withinss_by_k.keys())
+    for k in neighbor_ks:
+        rng_neighbor = np.random.RandomState(args.seed + 9973 * k)
+        _, _, w_k = best_hartigan_run(X, k, args.nstart, args.max_iter, args.tol, rng_neighbor)
+        withinss_by_k[k] = w_k
+
+    # Then compute KL index using neighboring k values (including min_nc and max_nc when possible)
+    for k in main_k_values:
+        prev_k, next_k = k - 1, k + 1
+        if prev_k < 1 or next_k not in withinss_by_k:
+            continue
+        W_prev = withinss_by_k[prev_k]
         W_k    = withinss_by_k[k]
-        W_next = withinss_by_k[k+1]
+        W_next = withinss_by_k[next_k]
         num = abs((k-1)**(2/p) * W_prev - k**(2/p) * W_k)
         denom = abs(k**(2/p) * W_k - (k+1)**(2/p) * W_next)
         kl_scores[k] = num / (denom if denom > 0 else 1e-8)
