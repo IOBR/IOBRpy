@@ -20,7 +20,7 @@ def parse_args():
                    help="Regex to select feature columns by name")
     p.add_argument('--id',       default=None,
                    help="Column name for sample IDs (default: first column)")
-    p.add_argument('--scale',    action='store_true',
+    p.add_argument('--scale',    action='store_true', default=True,
                    help="Enable z-score scaling (default: True)")
     p.add_argument('--no-scale', action='store_false', dest='scale',
                    help="Disable scaling")
