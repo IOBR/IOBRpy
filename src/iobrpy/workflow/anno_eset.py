@@ -218,8 +218,8 @@ def anno_eset(eset_df: pd.DataFrame,
         else:
             merged['_score'] = merged[data_cols].mean(axis=1, skipna=True)
 
-        # keep highest scoring row per symbol; rely on stable sort so ties retain merge order
-        merged.sort_values('_score', ascending=False, inplace=True, kind="mergesort")
+        # keep highest scoring row per symbol; when scores tie, fall back to probe_id
+        merged.sort_values(['_score', 'probe_id'], ascending=[False, True], inplace=True, kind="mergesort")
         merged.drop(columns=['_score'], inplace=True)
         merged.drop_duplicates(subset=['symbol'], keep='first', inplace=True)
         merged.drop(columns=['probe_id'], inplace=True)
