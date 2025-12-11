@@ -212,19 +212,18 @@ def sig_score_ssgsea(eset, sig_dict, mini_gene_count, adjust_eset, parallel_size
     min_size = max(mini_gene_count, 5)
     sigs = filter_signatures(sig_dict, eset2, min_size)
 
-    # Run ssGSEA with R-aligned parameters
+    # Run ssGSEA with parameters that mirror GSVA::gsva(method = "ssgsea") defaults
     print("Running ssGSEA (this may take a while)...")
     ss = gp.ssgsea(
         data=eset2,
         gene_sets=sigs,
         outdir=None,
-        sample_norm_method='rank',    # match kcdf = "Gaussian"
-        weight=1,                     # align with tau = 1 used in GSVA's gsvaParam path
+        sample_norm_method='rank',    # ssGSEA ranks genes within each sample
+        weight=0.25,                  # match GSVA's default tau for ssGSEA
         permutation_num=0,
         no_plot=True,
         threads=parallel_size,
         min_size=min_size,
-        max_size=eset2.shape[0],      # no explicit cap in GSVA
         ssgsea_norm=True
     )
 
@@ -256,18 +255,19 @@ def sig_score_integration(eset, sig_dict, mini_gene_count, adjust_eset, parallel
         raise ImportError("gseapy required for ssGSEA")
 
     eset2 = preprocess_eset(eset, adjust_eset)
+    min_size = max(mini_gene_count, 5)
     
     print("Running ssGSEA (this may take a while)...")
     ss = gp.ssgsea(
         data=eset2,
-        gene_sets=filtered_sigs,
+        gene_sets=filter_signatures(filtered_sigs, eset2, min_size),
         outdir=None,
         sample_norm_method='rank',
-        weight=1,
+        weight=0.25,
         permutation_num=0,
         no_plot=True,
         threads=parallel_size,
-        min_size=mini_gene_count,
+        min_size=min_size,
         ssgsea_norm=True
     )
     nes = ss.res2d.pivot(index='Term', columns='Name', values='NES').T.reset_index()
