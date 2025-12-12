@@ -162,23 +162,21 @@ def filter_signatures(sig_dict, eset, min_genes):
 
 
 def _ssgsea_numpy(eset: pd.DataFrame, sigs: dict, min_size: int, parallel_size: int):
-    """
-    Pure NumPy ssGSEA implementation (samples as columns) that mirrors GSVA's
-    rank‐based scoring. It follows the fast_ssgsea routine used inside gseapy
-    but remains standalone so we don't rely on any optional dependencies.
-    """
+    """Pure NumPy ssGSEA using GSVA-style cumulative enrichment integration."""
 
     samples = list(eset.columns)
     sig_names = list(sigs.keys())
 
     def _score_sample(sample):
+        # order genes by decreasing expression
         expr = eset[sample]
         order = expr.sort_values(ascending=False)
         genes_order = order.index.to_numpy()
         total = len(genes_order)
 
-        # rank weighting (highest expression -> highest rank), exponent=0.25
-        ranking = np.power(np.arange(total, 0, -1, dtype=float), 0.25)
+        # descending ranks (1..N) weighted by exponent 0.25 as in GSVA
+        ranks = np.arange(total, 0, -1, dtype=float)
+        weights = np.power(ranks, 0.25)
 
         sample_scores = {}
         for name, genes in sigs.items():
@@ -189,12 +187,15 @@ def _ssgsea_numpy(eset: pd.DataFrame, sigs: dict, min_size: int, parallel_size: 
                 continue
 
             miss = total - Nh
-            idxs = np.flatnonzero(hit_mask)  # low->high positions along sorted genes
+            weights_hit = weights * hit_mask
+            hit_cdf = np.cumsum(weights_hit)
+            hit_cdf /= hit_cdf[-1]
 
-            # fast ssGSEA score as in gseapy.algorithm.fast_ssgsea
-            step_cdf_in = np.sum(ranking[idxs] * (total - idxs)) / np.sum(ranking[idxs])
-            step_cdf_out = (total * (total + 1) / 2 - np.sum(total - idxs)) / miss
-            es = (step_cdf_in - step_cdf_out) / total  # scale by gene universe
+            miss_mask = (~hit_mask).astype(float)
+            miss_cdf = np.cumsum(miss_mask) / miss
+
+            running = hit_cdf - miss_cdf
+            es = running.sum() / total  # integrate running difference, scaled by gene universe
 
             sample_scores[name] = es
         return sample, sample_scores
