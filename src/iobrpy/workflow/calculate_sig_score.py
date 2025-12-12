@@ -12,6 +12,39 @@ try:
 except ImportError:
     dc = None
 
+
+def _decoupler_ssgsea_available():
+    """Return True when decoupler.ssgsea is importable."""
+    return dc is not None and hasattr(dc, 'ssgsea')
+
+
+def _run_decoupler_ssgsea(eset2, sigs, min_size, parallel_size):
+    """Try running ssGSEA via decoupler; return None on failure."""
+    if not _decoupler_ssgsea_available():
+        return None
+
+    try:
+        print("Running ssGSEA via decoupler (pure Python)...")
+        df = eset2.T
+        es_mat = dc.ssgsea(
+            mat=df,
+            net=[(g, name, 1.0) for name, genes in sigs.items() for g in genes],
+            source="source",
+            target="target",
+            weight="weight",
+            min_n=min_size,
+            max_n=eset2.shape[0],
+            exp=0.25,
+            norm=True,
+            n_proc=parallel_size
+        )
+        es = es_mat.reset_index()
+        es.rename(columns={es.columns[0]: 'ID'}, inplace=True)
+        return es
+    except Exception as e:
+        print(f"decoupler ssGSEA failed ({e}); falling back to numpy implementation...")
+        return None
+
 try:
     from tqdm.auto import tqdm
 except Exception:
@@ -273,28 +306,15 @@ def sig_score_ssgsea(eset, sig_dict, mini_gene_count, adjust_eset, parallel_size
     min_size = max(mini_gene_count, 5)
     sigs = filter_signatures(sig_dict, eset2, min_size)
 
-    # Try decoupler's pure python implementation first
-    if dc is not None:
-        print("Running ssGSEA via decoupler (pure Python)...")
-        # decoupler expects samples as rows
-        df = eset2.T
-        es_mat = dc.ssgsea(
-            mat=df,
-            net=[(g, name, 1.0) for name, genes in sigs.items() for g in genes],
-            source="source",
-            target="target",
-            weight="weight",
-            min_n=min_size,
-            max_n=eset2.shape[0],
-            exp=0.25,
-            norm=True,
-            n_proc=parallel_size
-        )
-        es = es_mat.reset_index()
-        es.rename(columns={es.columns[0]: 'ID'}, inplace=True)
-    else:
+    # Try decoupler's pure python implementation first; fall back gracefully
+    es = _run_decoupler_ssgsea(eset2, sigs, min_size, parallel_size)
+
+    if es is None:
         # Lightweight numpy fallback
-        print("Running ssGSEA via numpy fallback (no decoupler detected)...")
+        if dc is None:
+            print("Running ssGSEA via numpy fallback (no decoupler detected)...")
+        else:
+            print("Running ssGSEA via numpy fallback...")
         es = _ssgsea_numpy(eset2, sigs, min_size, parallel_size)
 
     if 'TMEscoreA_CIR' in es.columns and 'TMEscoreB_CIR' in es.columns:
@@ -318,25 +338,12 @@ def sig_score_integration(eset, sig_dict, mini_gene_count, adjust_eset, parallel
 
     eset2 = preprocess_eset(eset, adjust_eset)
 
-    if dc is not None:
-        print("Running ssGSEA via decoupler (pure Python)...")
-        df = eset2.T
-        es_mat = dc.ssgsea(
-            mat=df,
-            net=[(g, name, 1.0) for name, genes in filtered_sigs.items() for g in genes],
-            source="source",
-            target="target",
-            weight="weight",
-            min_n=mini_gene_count,
-            max_n=eset2.shape[0],
-            exp=0.25,
-            norm=True,
-            n_proc=parallel_size
-        )
-        es = es_mat.reset_index()
-        es.rename(columns={es.columns[0]: 'ID'}, inplace=True)
-    else:
-        print("Running ssGSEA via numpy fallback (no decoupler detected)...")
+    es = _run_decoupler_ssgsea(eset2, filtered_sigs, mini_gene_count, parallel_size)
+    if es is None:
+        if dc is None:
+            print("Running ssGSEA via numpy fallback (no decoupler detected)...")
+        else:
+            print("Running ssGSEA via numpy fallback...")
         es = _ssgsea_numpy(eset2, filtered_sigs, mini_gene_count, parallel_size)
 
     if 'TMEscoreA_CIR' in es.columns and 'TMEscoreB_CIR' in es.columns:
