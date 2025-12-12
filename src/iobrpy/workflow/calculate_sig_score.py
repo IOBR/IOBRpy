@@ -6,11 +6,6 @@ from sklearn.decomposition import PCA
 from importlib.resources import files
 from joblib import Parallel, delayed
 
-try:
-    import gseapy as gp
-except ImportError:
-    gp = None
-
 # Optional pure-python ssGSEA via decoupler (no R/gseapy dependency)
 try:
     import decoupler as dc
@@ -297,28 +292,9 @@ def sig_score_ssgsea(eset, sig_dict, mini_gene_count, adjust_eset, parallel_size
         )
         es = es_mat.reset_index()
         es.rename(columns={es.columns[0]: 'ID'}, inplace=True)
-    elif gp is not None:
-        print("Running ssGSEA via gseapy (this may take a while)...")
-        ss = gp.ssgsea(
-            data=eset2,
-            gene_sets=sigs,
-            outdir=None,
-            sample_norm_method='rank',    # rank-based kernel = Gaussian
-            weight=0.25,                  # match GSVA default tau
-            permutation_num=0,
-            no_plot=True,
-            threads=parallel_size,
-            min_size=min_size,
-            max_size=eset2.shape[0],
-            ssgsea_norm=True
-        )
-
-        # Pivot to samples × terms, keep Term as columns; use raw ES to mirror GSVA output
-        es = ss.res2d.pivot(index='Term', columns='Name', values='ES').T.reset_index()
-        es.rename(columns={'Name': 'ID'}, inplace=True)
     else:
         # Lightweight numpy fallback
-        print("Running ssGSEA via numpy fallback (no decoupler/gseapy detected)...")
+        print("Running ssGSEA via numpy fallback (no decoupler detected)...")
         es = _ssgsea_numpy(eset2, sigs, min_size, parallel_size)
 
     if 'TMEscoreA_CIR' in es.columns and 'TMEscoreB_CIR' in es.columns:
@@ -359,25 +335,8 @@ def sig_score_integration(eset, sig_dict, mini_gene_count, adjust_eset, parallel
         )
         es = es_mat.reset_index()
         es.rename(columns={es.columns[0]: 'ID'}, inplace=True)
-    elif gp is not None:
-        print("Running ssGSEA via gseapy (this may take a while)...")
-        ss = gp.ssgsea(
-            data=eset2,
-            gene_sets=filtered_sigs,
-            outdir=None,
-            sample_norm_method='rank',
-            weight=0.25,
-            permutation_num=0,
-            no_plot=True,
-            threads=parallel_size,
-            min_size=mini_gene_count,
-            max_size=eset2.shape[0],
-            ssgsea_norm=True
-        )
-        es = ss.res2d.pivot(index='Term', columns='Name', values='ES').T.reset_index()
-        es.rename(columns={'Name': 'ID'}, inplace=True)
     else:
-        print("Running ssGSEA via numpy fallback (no decoupler/gseapy detected)...")
+        print("Running ssGSEA via numpy fallback (no decoupler detected)...")
         es = _ssgsea_numpy(eset2, filtered_sigs, mini_gene_count, parallel_size)
 
     if 'TMEscoreA_CIR' in es.columns and 'TMEscoreB_CIR' in es.columns:
