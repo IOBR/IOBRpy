@@ -124,15 +124,31 @@ def filter_signatures(sig_dict, eset, min_genes):
 
 
 def _run_single_sample_gsea_backend(eset: pd.DataFrame, sigs: dict, min_size: int, parallel_size: int):
-    """Try to execute ssGSEA using the ``single_sample_gsea`` package if available.
+    """Try to execute ssGSEA using the ``single-sample-gsea`` package if available.
+
+    The package exposes different entrypoints across releases (e.g., top-level
+    ``ssgsea``/``run_ssgsea`` or ``single_sample_gsea.ssgsea.ssgsea``). We scan
+    common modules/attributes before falling back to the pure-Python scorer.
 
     Returns a scored DataFrame or ``None`` when the backend is missing or fails.
     """
-    try:
-        import single_sample_gsea as ssg  # type: ignore
-    except Exception as e:  # pragma: no cover - optional dependency
-        if default_debug:
-            print(f"DEBUG: single_sample_gsea import failed: {e}")
+
+    module_candidates = [
+        'single_sample_gsea',
+        'single_sample_gsea.ssgsea',
+        'single_sample_gsea.ssgsea_py',
+        'single_sample_gsea.core',
+    ]
+    mod = None
+    for name in module_candidates:  # pragma: no cover - optional dependency
+        try:
+            mod = __import__(name, fromlist=['*'])
+            break
+        except Exception as e:
+            if default_debug:
+                print(f"DEBUG: import {name} failed: {e}")
+            continue
+    if mod is None:
         return None
 
     eset = eset.copy()
@@ -144,11 +160,21 @@ def _run_single_sample_gsea_backend(eset: pd.DataFrame, sigs: dict, min_size: in
         return None
 
     fn = None
-    for attr in ('ssgsea', 'run_ssgsea', 'single_sample_gsea', 'compute_ssgsea'):
-        cand = getattr(ssg, attr, None)
+    attr_candidates = (
+        'ssgsea', 'ssGSEA', 'run_ssgsea', 'single_sample_gsea', 'compute_ssgsea',
+        'ssgsea_py', 'ssgsea_cpu', 'ssgsea_gpu'
+    )
+    for attr in attr_candidates:
+        cand = getattr(mod, attr, None)
         if callable(cand):
             fn = cand
             break
+    if fn is None and hasattr(mod, '__dict__'):
+        # Some versions wrap the function inside the module attributes
+        for obj in mod.__dict__.values():
+            if callable(obj) and getattr(obj, '__name__', '').lower() in {a.lower() for a in attr_candidates}:
+                fn = obj
+                break
     if fn is None:
         if default_debug:
             print("DEBUG: single_sample_gsea module had no callable ssGSEA entrypoint")
@@ -163,22 +189,25 @@ def _run_single_sample_gsea_backend(eset: pd.DataFrame, sigs: dict, min_size: in
 
         kwargs = {}
         for name in params:
-            if name in {'data', 'expression_data', 'expression', 'expression_df', 'exp_df', 'expr'}:
+            lname = name.lower()
+            if lname in {'data', 'expression_data', 'expression', 'expression_df', 'exp_df', 'expr'}:
                 kwargs[name] = eset
-            elif name in {'gene_sets', 'gs', 'gene_set', 'gene_sets_dict'}:
+            elif lname in {'gene_sets', 'gs', 'gene_set', 'gene_sets_dict', 'genesets'}:
                 kwargs[name] = gene_sets
-            elif name in {'min_size', 'min_sz', 'min_size_expressed'}:
+            elif lname in {'min_size', 'min_sz', 'min_size_expressed'}:
                 kwargs[name] = min_size
-            elif parallel_size and parallel_size > 1 and name in {'n_jobs', 'threads', 'n_threads', 'n_workers'}:
+            elif parallel_size and parallel_size > 1 and lname in {'n_jobs', 'threads', 'n_threads', 'n_workers', 'workers'}:
                 kwargs[name] = int(parallel_size)
+            elif lname in {'sample_norm', 'normalize', 'norm'}:
+                kwargs[name] = True
         if not kwargs:
             kwargs = {'expression_data': eset, 'gene_sets': gene_sets}
         return kwargs
 
     kwargs = _build_kwargs()
-    try:
+    try:  # pragma: no cover - optional dependency
         res = fn(**kwargs)
-    except Exception as e:  # pragma: no cover - optional dependency
+    except Exception as e:
         if default_debug:
             print(f"DEBUG: single_sample_gsea call failed: {e}")
         return None
@@ -194,6 +223,7 @@ def _run_single_sample_gsea_backend(eset: pd.DataFrame, sigs: dict, min_size: in
             print(f"DEBUG: single_sample_gsea returned unsupported type: {type(res)}")
         return None
 
+    # Align output to samples × signatures
     if set(df.index) == set(eset.columns):
         mat = df.loc[eset.columns]
     elif set(df.columns) == set(eset.columns):
