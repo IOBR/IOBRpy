@@ -13,8 +13,6 @@ except Exception:
     def tqdm(x, **kwargs):
         return x
 
-from scipy.stats import rankdata
-
 # Supported methods
 signature_score_calculation_methods = {
     "pca": "pca",
@@ -124,57 +122,79 @@ def filter_signatures(sig_dict, eset, min_genes):
     return out
 
 
-def _ssgsea_numpy(eset: pd.DataFrame, sigs: dict, min_size: int, parallel_size: int):
-    """Pure NumPy/SciPy ssGSEA closely mirroring GSVA weighting and normalization."""
+def _ssgsea_python(eset: pd.DataFrame, sigs: dict, min_size: int, parallel_size: int):
+    """Pure Python ssGSEA (no gseapy/rpy2/decoupler/numpy dependence in the scorer)."""
 
     samples = list(eset.columns)
     sig_names = list(sigs.keys())
-    gene_index = eset.index.to_numpy()
+    gene_index = list(eset.index)
+    sig_sets = {k: set(v) for k, v in sigs.items()}
+
+    def _rankdata_desc(values):
+        """Average ranks in descending order (higher expression gets rank 1)."""
+        pairs = sorted(enumerate(values), key=lambda x: (-x[1], x[0]))
+        ranks = [0.0] * len(values)
+        i = 0
+        while i < len(pairs):
+            j = i + 1
+            while j < len(pairs) and pairs[j][1] == pairs[i][1]:
+                j += 1
+            avg_rank = (i + j - 1) / 2.0 + 1.0
+            for k in range(i, j):
+                ranks[pairs[k][0]] = avg_rank
+            i = j
+        order = [idx for idx, _ in pairs]
+        return ranks, order
 
     def _score_sample(sample):
-        expr = eset[sample].to_numpy()
-        # rank genes (higher expression -> smaller rank number)
-        ranks = rankdata(-expr, method="average")
-        order = np.argsort(-expr)
+        expr = eset[sample].tolist()
+        ranks, order = _rankdata_desc(expr)
 
-        ordered_genes = gene_index[order]
-        ordered_expr = expr[order]
-        ordered_ranks = ranks[order]
+        ordered_genes = [gene_index[i] for i in order]
+        ordered_expr = [expr[i] for i in order]
+        ordered_ranks = [ranks[i] for i in order]
         total = len(ordered_genes)
 
-        # expression-weighted hits; fall back to rank weights if degenerate
-        weights_expr = np.power(np.abs(ordered_expr), 0.75)
-        weights_expr[~np.isfinite(weights_expr)] = 0.0
-        use_rank_weights = weights_expr.sum() == 0
-        base_weights = weights_expr if not use_rank_weights else np.power(ordered_ranks, 0.25)
+        weights_expr = [pow(abs(v), 0.75) if np.isfinite(v) else 0.0 for v in ordered_expr]
+        use_rank_weights = sum(weights_expr) == 0
+        base_weights = weights_expr if not use_rank_weights else [pow(r, 0.25) for r in ordered_ranks]
 
         sample_scores = {}
-        for name, genes in sigs.items():
-            hit_mask = np.isin(ordered_genes, genes)
-            Nh = int(hit_mask.sum())
+        for name, genes in sig_sets.items():
+            hit_mask = [g in genes for g in ordered_genes]
+            Nh = sum(1 for h in hit_mask if h)
             if Nh < min_size or Nh == 0 or Nh == total:
                 sample_scores[name] = 0.0
                 continue
 
             miss = total - Nh
-            hit_weights = base_weights * hit_mask
-            norm_hits = hit_weights.sum()
+            hit_weights = [bw if hit else 0.0 for bw, hit in zip(base_weights, hit_mask)]
+            norm_hits = sum(hit_weights)
             if norm_hits == 0:
                 sample_scores[name] = 0.0
                 continue
 
-            hit_cdf = np.cumsum(hit_weights) / norm_hits
-            miss_mask = (~hit_mask).astype(float)
-            miss_cdf = np.cumsum(miss_mask) / miss
+            hit_cdf = []
+            miss_cdf = []
+            h_acc = 0.0
+            m_acc = 0.0
+            for hw, hit in zip(hit_weights, hit_mask):
+                if hit:
+                    h_acc += hw / norm_hits
+                else:
+                    m_acc += 1.0 / miss
+                hit_cdf.append(h_acc)
+                miss_cdf.append(m_acc)
 
-            running = hit_cdf - miss_cdf
-            # integrate running difference (area under curve)
-            es = np.trapz(running, dx=1.0 / total)
+            running = [h - m for h, m in zip(hit_cdf, miss_cdf)]
+            area = 0.0
+            for i in range(1, total):
+                area += (running[i - 1] + running[i]) / 2.0
+            es = area / float(total)
             sample_scores[name] = es
 
-        # sample-wise normalization like GSVA ssGSEA (divide by mean absolute ES)
-        vals = np.array(list(sample_scores.values()), dtype=float)
-        norm_const = np.mean(np.abs(vals)) if len(vals) else 0.0
+        vals = list(sample_scores.values())
+        norm_const = float(np.mean(np.abs(vals))) if vals else 0.0
         if norm_const > 0:
             sample_scores = {k: v / norm_const for k, v in sample_scores.items()}
 
@@ -293,8 +313,8 @@ def sig_score_ssgsea(eset, sig_dict, mini_gene_count, adjust_eset, parallel_size
     min_size = max(mini_gene_count, 5)
     sigs = filter_signatures(sig_dict, eset2, min_size)
 
-    print("Running ssGSEA via pure numpy/SciPy implementation (no gseapy/rpy2/decoupler)...")
-    es = _ssgsea_numpy(eset2, sigs, min_size, parallel_size)
+    print("Running ssGSEA via pure Python implementation (no gseapy/rpy2/decoupler/numpy backend)...")
+    es = _ssgsea_python(eset2, sigs, min_size, parallel_size)
 
     if 'TMEscoreA_CIR' in es.columns and 'TMEscoreB_CIR' in es.columns:
         es['TMEscore_CIR'] = es['TMEscoreA_CIR'] - es['TMEscoreB_CIR']
@@ -317,8 +337,8 @@ def sig_score_integration(eset, sig_dict, mini_gene_count, adjust_eset, parallel
 
     eset2 = preprocess_eset(eset, adjust_eset)
 
-    print("Running ssGSEA via pure numpy/SciPy implementation (no gseapy/rpy2/decoupler)...")
-    es = _ssgsea_numpy(eset2, filtered_sigs, mini_gene_count, parallel_size)
+    print("Running ssGSEA via pure Python implementation (no gseapy/rpy2/decoupler/numpy backend)...")
+    es = _ssgsea_python(eset2, filtered_sigs, mini_gene_count, parallel_size)
 
     if 'TMEscoreA_CIR' in es.columns and 'TMEscoreB_CIR' in es.columns:
         es['TMEscore_CIR'] = es['TMEscoreA_CIR'] - es['TMEscoreB_CIR']
