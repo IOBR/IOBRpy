@@ -11,6 +11,12 @@ try:
 except ImportError:
     gp = None
 
+# Optional pure-python ssGSEA via decoupler (no R/gseapy dependency)
+try:
+    import decoupler as dc
+except ImportError:
+    dc = None
+
 try:
     from tqdm.auto import tqdm
 except Exception:
@@ -126,6 +132,54 @@ def filter_signatures(sig_dict, eset, min_genes):
         print(f"DEBUG: {len(out)} signatures retained (min_genes={min_genes})")
     return out
 
+
+def _ssgsea_numpy(eset: pd.DataFrame, sigs: dict, min_size: int, parallel_size: int):
+    """Lightweight ssGSEA implementation using numpy only (samples as columns)."""
+    samples = list(eset.columns)
+    sig_names = list(sigs.keys())
+
+    def _score_sample(sample):
+        expr = eset[sample]
+        order = expr.sort_values(ascending=False)
+        genes_order = order.index.to_numpy()
+        values_order = order.to_numpy()
+        total = len(genes_order)
+
+        sample_scores = {}
+        for name, genes in sigs.items():
+            hit_mask = np.isin(genes_order, genes)
+            Nh = int(hit_mask.sum())
+            if Nh < min_size or Nh == 0 or Nh == total:
+                sample_scores[name] = 0.0
+                continue
+            miss = total - Nh
+            # weighting exponent matches GSVA/ssGSEA default (0.25)
+            hit_weights = np.power(np.abs(values_order), 0.25) * hit_mask
+            sum_hit = hit_weights.sum()
+            if sum_hit == 0:
+                sample_scores[name] = 0.0
+                continue
+            Phit = np.cumsum(hit_weights / sum_hit)
+            Pmiss = np.cumsum(~hit_mask / miss)
+            walk = Phit - Pmiss
+            sample_scores[name] = walk.sum()
+        return sample, sample_scores
+
+    if parallel_size and parallel_size > 1:
+        scored = Parallel(n_jobs=int(parallel_size), prefer="threads")(
+            delayed(_score_sample)(s) for s in tqdm(samples, desc="ssGSEA samples", unit="sample")
+        )
+    else:
+        scored = [_score_sample(s) for s in tqdm(samples, desc="ssGSEA samples", unit="sample")]
+
+    mat = pd.DataFrame(index=samples, columns=sig_names, dtype=float)
+    for sample, d in scored:
+        for k, v in d.items():
+            mat.at[sample, k] = v
+    mat.reset_index(inplace=True)
+    mat.rename(columns={'index': 'ID'}, inplace=True)
+    return mat
+
 def sig_score_pca(eset, sig_dict, mini_gene_count, adjust_eset, parallel_size=1):
     """
     Parallel PCA implementation: one PCA (PC1) per signature.
@@ -216,8 +270,6 @@ def sig_score_zscore(eset, sig_dict, mini_gene_count, adjust_eset, parallel_size
     return pdata
 
 def sig_score_ssgsea(eset, sig_dict, mini_gene_count, adjust_eset, parallel_size):
-    if gp is None:
-        raise ImportError("gseapy required for ssGSEA")
     # Preprocess like R
     eset2 = preprocess_eset(eset, adjust_eset)
     # First filter with original threshold
@@ -226,25 +278,48 @@ def sig_score_ssgsea(eset, sig_dict, mini_gene_count, adjust_eset, parallel_size
     min_size = max(mini_gene_count, 5)
     sigs = filter_signatures(sig_dict, eset2, min_size)
 
-    # Run ssGSEA with R-aligned parameters
-    print("Running ssGSEA (this may take a while)...")
-    ss = gp.ssgsea(
-        data=eset2,
-        gene_sets=sigs,
-        outdir=None,
-        sample_norm_method='rank',    # rank-based kernel = Gaussian
-        weight=0.25,                  # match GSVA default tau
-        permutation_num=0,
-        no_plot=True,
-        threads=parallel_size,
-        min_size=min_size,
-        max_size=eset2.shape[0],
-        ssgsea_norm=True
-    )
+    # Try decoupler's pure python implementation first
+    if dc is not None:
+        print("Running ssGSEA via decoupler (pure Python)...")
+        # decoupler expects samples as rows
+        df = eset2.T
+        es_mat = dc.ssgsea(
+            mat=df,
+            net=[(g, name, 1.0) for name, genes in sigs.items() for g in genes],
+            source="source",
+            target="target",
+            weight="weight",
+            min_n=min_size,
+            max_n=eset2.shape[0],
+            exp=0.25,
+            norm=True,
+            n_proc=parallel_size
+        )
+        es = es_mat.reset_index()
+        es.rename(columns={es.columns[0]: 'ID'}, inplace=True)
+    elif gp is not None:
+        print("Running ssGSEA via gseapy (this may take a while)...")
+        ss = gp.ssgsea(
+            data=eset2,
+            gene_sets=sigs,
+            outdir=None,
+            sample_norm_method='rank',    # rank-based kernel = Gaussian
+            weight=0.25,                  # match GSVA default tau
+            permutation_num=0,
+            no_plot=True,
+            threads=parallel_size,
+            min_size=min_size,
+            max_size=eset2.shape[0],
+            ssgsea_norm=True
+        )
 
-    # Pivot to samples × terms, keep Term as columns; use raw ES to mirror GSVA output
-    es = ss.res2d.pivot(index='Term', columns='Name', values='ES').T.reset_index()
-    es.rename(columns={'Name': 'ID'}, inplace=True)
+        # Pivot to samples × terms, keep Term as columns; use raw ES to mirror GSVA output
+        es = ss.res2d.pivot(index='Term', columns='Name', values='ES').T.reset_index()
+        es.rename(columns={'Name': 'ID'}, inplace=True)
+    else:
+        # Lightweight numpy fallback
+        print("Running ssGSEA via numpy fallback (no decoupler/gseapy detected)...")
+        es = _ssgsea_numpy(eset2, sigs, min_size, parallel_size)
 
     if 'TMEscoreA_CIR' in es.columns and 'TMEscoreB_CIR' in es.columns:
         es['TMEscore_CIR'] = es['TMEscoreA_CIR'] - es['TMEscoreB_CIR']
@@ -265,27 +340,45 @@ def sig_score_integration(eset, sig_dict, mini_gene_count, adjust_eset, parallel
     z = sig_score_zscore(eset, filtered_sigs, mini_gene_count, adjust_eset)
     z = z.set_index('ID').add_suffix('_zscore')
 
-    if gp is None:
-        raise ImportError("gseapy required for ssGSEA")
-
     eset2 = preprocess_eset(eset, adjust_eset)
-    
-    print("Running ssGSEA (this may take a while)...")
-    ss = gp.ssgsea(
-        data=eset2,
-        gene_sets=filtered_sigs,
-        outdir=None,
-        sample_norm_method='rank',
-        weight=0.25,
-        permutation_num=0,
-        no_plot=True,
-        threads=parallel_size,
-        min_size=mini_gene_count,
-        max_size=eset2.shape[0],
-        ssgsea_norm=True
-    )
-    es = ss.res2d.pivot(index='Term', columns='Name', values='ES').T.reset_index()
-    es.rename(columns={'Name': 'ID'}, inplace=True)
+
+    if dc is not None:
+        print("Running ssGSEA via decoupler (pure Python)...")
+        df = eset2.T
+        es_mat = dc.ssgsea(
+            mat=df,
+            net=[(g, name, 1.0) for name, genes in filtered_sigs.items() for g in genes],
+            source="source",
+            target="target",
+            weight="weight",
+            min_n=mini_gene_count,
+            max_n=eset2.shape[0],
+            exp=0.25,
+            norm=True,
+            n_proc=parallel_size
+        )
+        es = es_mat.reset_index()
+        es.rename(columns={es.columns[0]: 'ID'}, inplace=True)
+    elif gp is not None:
+        print("Running ssGSEA via gseapy (this may take a while)...")
+        ss = gp.ssgsea(
+            data=eset2,
+            gene_sets=filtered_sigs,
+            outdir=None,
+            sample_norm_method='rank',
+            weight=0.25,
+            permutation_num=0,
+            no_plot=True,
+            threads=parallel_size,
+            min_size=mini_gene_count,
+            max_size=eset2.shape[0],
+            ssgsea_norm=True
+        )
+        es = ss.res2d.pivot(index='Term', columns='Name', values='ES').T.reset_index()
+        es.rename(columns={'Name': 'ID'}, inplace=True)
+    else:
+        print("Running ssGSEA via numpy fallback (no decoupler/gseapy detected)...")
+        es = _ssgsea_numpy(eset2, filtered_sigs, mini_gene_count, parallel_size)
 
     if 'TMEscoreA_CIR' in es.columns and 'TMEscoreB_CIR' in es.columns:
         es['TMEscore_CIR'] = es['TMEscoreA_CIR'] - es['TMEscoreB_CIR']
