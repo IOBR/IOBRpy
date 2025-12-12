@@ -2,7 +2,6 @@
 import argparse
 import pickle
 import pandas as pd
-import numpy as np
 from importlib.resources import files
 from pathlib import Path
 from typing import Optional
@@ -191,37 +190,29 @@ def anno_eset(eset_df: pd.DataFrame,
     print(f"Probes matched annotation: {probes_in} / {total_probes}")
     print(f"{100 * (probes_in / total_probes if total_probes else 0):.2f}% of probes were annotated")
 
-    # Filter to annotated probes (preserve order of annotation_df)
+    # Filter to annotated probes (keep the incoming order from both tables)
     annotation_filtered = annotation_df[annotation_df["probe_id"].isin(eset_df.index)].copy()
-    # reorder eset to match annotation_filtered probe_id order
-    eset_filtered = eset_df.reindex(annotation_filtered["probe_id"]).copy()
+    eset_filtered = eset_df.loc[eset_df.index.isin(annotation_filtered["probe_id"])].copy()
 
-    # Merge annotation (probe_id becomes a column). Base R merge(sort = TRUE) sorts by key
-    # but keeps the within-key ordering of the x/y inputs. We replicate that ordering
-    # explicitly using stable sorts on the pre-merge positions.
-    annotation_filtered = annotation_filtered.reset_index(drop=True)
-    annotation_filtered['_ann_order'] = np.arange(annotation_filtered.shape[0])
+    # Replicate base R merge(annotation, eset, by.x="probe_id", by.y="id", sort=TRUE)
+    # - R's merge sorts by the join key; within identical keys it preserves the
+    #   input order. We rely on pandas' stable merge-sort ordering to mirror this.
     eset_reset = (
         eset_filtered
         .reset_index()
-        .rename(columns={eset_filtered.index.name or 'index': 'probe_id'})
-        .assign(_eset_order=lambda df: np.arange(df.shape[0]))
+        .rename(columns={eset_filtered.index.name or 'index': 'id'})
     )
     merged = pd.merge(
         annotation_filtered,
         eset_reset,
-        on="probe_id",
+        left_on="probe_id",
+        right_on="id",
         how="inner",
-        sort=False
+        sort=True
     )
-    merged.sort_values([
-        "probe_id",
-        "_ann_order",
-        "_eset_order"
-    ], inplace=True, kind='mergesort')
-    merged.drop(columns=["_ann_order", "_eset_order"], inplace=True)
-    # drop probe_id column (we use symbol as index)
-    merged.drop(columns=["probe_id"], inplace=True)
+
+    # Drop technical key columns to mirror R (keeps symbol + expression values)
+    merged.drop(columns=["probe_id", "id"], inplace=True)
 
     # Handle duplicates: collapse by symbol using chosen method
     total_rows = merged.shape[0]
