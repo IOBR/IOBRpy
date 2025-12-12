@@ -177,17 +177,10 @@ def anno_eset(eset_df: pd.DataFrame,
     annotation_df = annotation_df.rename(columns={symbol: "symbol", probe: "probe_id"})
     annotation_df = annotation_df[["probe_id", "symbol"]]
 
-    # Align probe identifier dtypes between annotation and expression to mirror R's merge coercion.
-    # If the annotation probe column is numeric, coerce both sides to numeric; otherwise use string.
-    probe_series = annotation_df["probe_id"]
-    if pd.api.types.is_numeric_dtype(probe_series):
-        annotation_df["probe_id"] = pd.to_numeric(probe_series, errors="coerce")
-        eset_df = eset_df.copy()
-        eset_df.index = pd.to_numeric(eset_df.index, errors="coerce")
-    else:
-        annotation_df["probe_id"] = probe_series.astype(str)
-        eset_df = eset_df.copy()
-        eset_df.index = eset_df.index.astype(str)
+    # R coerces rownames/columns to character before merging; do the same here
+    annotation_df["probe_id"] = annotation_df["probe_id"].astype(str)
+    eset_df = eset_df.copy()
+    eset_df.index = eset_df.index.astype(str)
 
     # filter out bad symbols
     annotation_df = annotation_df[annotation_df["symbol"] != "NA_NA"]
@@ -204,20 +197,14 @@ def anno_eset(eset_df: pd.DataFrame,
 
     # Filter to annotated probes (keep the incoming order from both tables)
     annotation_filtered = annotation_df[annotation_df["probe_id"].isin(eset_df.index)].copy()
-    annotation_filtered["_anno_pos"] = range(len(annotation_filtered))
     eset_filtered = eset_df.loc[eset_df.index.isin(annotation_filtered["probe_id"])].copy()
 
     # Replicate base R merge(annotation, eset, by.x="probe_id", by.y="id", sort=TRUE)
-    # - R's merge sorts by the join key; within identical keys it preserves the
-    #   input order (x rows first, then y) thanks to a stable sort. To mirror this
-    #   deterministically, we carry the original positions from both tables and
-    #   sort by probe_id, annotation position, then expression position.
     eset_reset = (
         eset_filtered
         .reset_index()
         .rename(columns={eset_filtered.index.name or 'index': 'id'})
     )
-    eset_reset["_eset_pos"] = range(len(eset_reset))
 
     merged = pd.merge(
         annotation_filtered,
@@ -225,13 +212,11 @@ def anno_eset(eset_df: pd.DataFrame,
         left_on="probe_id",
         right_on="id",
         how="inner",
-        sort=False
+        sort=True
     )
 
-    merged.sort_values(["probe_id", "_anno_pos", "_eset_pos"], kind="mergesort", inplace=True)
-
-    # Drop technical key/position columns to mirror R (keeps symbol + expression values)
-    merged.drop(columns=["probe_id", "id", "_anno_pos", "_eset_pos"], inplace=True)
+    # Drop the probe/id merge columns to mirror R output before duplicate handling
+    merged.drop(columns=["probe_id", "id"], inplace=True)
 
     # Handle duplicates: collapse by symbol using chosen method
     total_rows = merged.shape[0]
