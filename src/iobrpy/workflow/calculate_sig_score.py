@@ -162,7 +162,12 @@ def filter_signatures(sig_dict, eset, min_genes):
 
 
 def _ssgsea_numpy(eset: pd.DataFrame, sigs: dict, min_size: int, parallel_size: int):
-    """Lightweight ssGSEA implementation using numpy only (samples as columns)."""
+    """
+    Pure NumPy ssGSEA implementation (samples as columns) that mirrors GSVA's
+    rank‐based scoring. It follows the fast_ssgsea routine used inside gseapy
+    but remains standalone so we don't rely on any optional dependencies.
+    """
+
     samples = list(eset.columns)
     sig_names = list(sigs.keys())
 
@@ -170,8 +175,10 @@ def _ssgsea_numpy(eset: pd.DataFrame, sigs: dict, min_size: int, parallel_size: 
         expr = eset[sample]
         order = expr.sort_values(ascending=False)
         genes_order = order.index.to_numpy()
-        values_order = order.to_numpy()
         total = len(genes_order)
+
+        # rank weighting (highest expression -> highest rank), exponent=0.25
+        ranking = np.power(np.arange(total, 0, -1, dtype=float), 0.25)
 
         sample_scores = {}
         for name, genes in sigs.items():
@@ -180,17 +187,16 @@ def _ssgsea_numpy(eset: pd.DataFrame, sigs: dict, min_size: int, parallel_size: 
             if Nh < min_size or Nh == 0 or Nh == total:
                 sample_scores[name] = 0.0
                 continue
+
             miss = total - Nh
-            # weighting exponent matches GSVA/ssGSEA default (0.25)
-            hit_weights = np.power(np.abs(values_order), 0.25) * hit_mask
-            sum_hit = hit_weights.sum()
-            if sum_hit == 0:
-                sample_scores[name] = 0.0
-                continue
-            Phit = np.cumsum(hit_weights / sum_hit)
-            Pmiss = np.cumsum(~hit_mask / miss)
-            walk = Phit - Pmiss
-            sample_scores[name] = walk.sum()
+            idxs = np.flatnonzero(hit_mask)  # low->high positions along sorted genes
+
+            # fast ssGSEA score as in gseapy.algorithm.fast_ssgsea
+            step_cdf_in = np.sum(ranking[idxs] * (total - idxs)) / np.sum(ranking[idxs])
+            step_cdf_out = (total * (total + 1) / 2 - np.sum(total - idxs)) / miss
+            es = (step_cdf_in - step_cdf_out) / total  # scale by gene universe
+
+            sample_scores[name] = es
         return sample, sample_scores
 
     if parallel_size and parallel_size > 1:
