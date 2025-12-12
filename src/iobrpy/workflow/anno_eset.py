@@ -196,15 +196,30 @@ def anno_eset(eset_df: pd.DataFrame,
     # reorder eset to match annotation_filtered probe_id order
     eset_filtered = eset_df.reindex(annotation_filtered["probe_id"]).copy()
 
-    # Merge annotation (probe_id becomes a column)
-    eset_reset = eset_filtered.reset_index().rename(columns={eset_filtered.index.name or 'index': 'probe_id'})
+    # Merge annotation (probe_id becomes a column). Base R merge(sort = TRUE) sorts by key
+    # but keeps the within-key ordering of the x/y inputs. We replicate that ordering
+    # explicitly using stable sorts on the pre-merge positions.
+    annotation_filtered = annotation_filtered.reset_index(drop=True)
+    annotation_filtered['_ann_order'] = np.arange(annotation_filtered.shape[0])
+    eset_reset = (
+        eset_filtered
+        .reset_index()
+        .rename(columns={eset_filtered.index.name or 'index': 'probe_id'})
+        .assign(_eset_order=lambda df: np.arange(df.shape[0]))
+    )
     merged = pd.merge(
         annotation_filtered,
         eset_reset,
         on="probe_id",
         how="inner",
-        sort=True  # mimic R merge(sort = TRUE): deterministic order for tie-breaking
+        sort=False
     )
+    merged.sort_values([
+        "probe_id",
+        "_ann_order",
+        "_eset_order"
+    ], inplace=True, kind='mergesort')
+    merged.drop(columns=["_ann_order", "_eset_order"], inplace=True)
     # drop probe_id column (we use symbol as index)
     merged.drop(columns=["probe_id"], inplace=True)
 
