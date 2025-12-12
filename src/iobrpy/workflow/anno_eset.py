@@ -177,6 +177,9 @@ def anno_eset(eset_df: pd.DataFrame,
     annotation_df = annotation_df.rename(columns={symbol: "symbol", probe: "probe_id"})
     annotation_df = annotation_df[["probe_id", "symbol"]]
 
+    # Match R behavior: treat probe identifiers as character strings during merge/sort
+    annotation_df["probe_id"] = annotation_df["probe_id"].astype(str)
+
     # filter out bad symbols
     annotation_df = annotation_df[annotation_df["symbol"] != "NA_NA"]
     annotation_df = annotation_df[annotation_df["symbol"].notna()]
@@ -191,6 +194,10 @@ def anno_eset(eset_df: pd.DataFrame,
     print(f"{100 * (probes_in / total_probes if total_probes else 0):.2f}% of probes were annotated")
 
     # Filter to annotated probes (keep the incoming order from both tables)
+    # Convert incoming index to strings to mirror R's character rownames during merge ordering
+    eset_df = eset_df.copy()
+    eset_df.index = eset_df.index.astype(str)
+
     annotation_filtered = annotation_df[annotation_df["probe_id"].isin(eset_df.index)].copy()
     eset_filtered = eset_df.loc[eset_df.index.isin(annotation_filtered["probe_id"])].copy()
 
@@ -210,6 +217,9 @@ def anno_eset(eset_df: pd.DataFrame,
         how="inner",
         sort=True
     )
+
+    # Explicitly sort by probe_id to mirror R's merge(sort=TRUE) stable ordering
+    merged.sort_values("probe_id", kind="mergesort", inplace=True)
 
     # Drop technical key columns to mirror R (keeps symbol + expression values)
     merged.drop(columns=["probe_id", "id"], inplace=True)
