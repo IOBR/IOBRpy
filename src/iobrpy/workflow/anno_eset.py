@@ -204,30 +204,34 @@ def anno_eset(eset_df: pd.DataFrame,
 
     # Filter to annotated probes (keep the incoming order from both tables)
     annotation_filtered = annotation_df[annotation_df["probe_id"].isin(eset_df.index)].copy()
+    annotation_filtered["_anno_pos"] = range(len(annotation_filtered))
     eset_filtered = eset_df.loc[eset_df.index.isin(annotation_filtered["probe_id"])].copy()
 
     # Replicate base R merge(annotation, eset, by.x="probe_id", by.y="id", sort=TRUE)
     # - R's merge sorts by the join key; within identical keys it preserves the
-    #   input order. We rely on pandas' stable merge-sort ordering to mirror this.
+    #   input order (x rows first, then y) thanks to a stable sort. To mirror this
+    #   deterministically, we carry the original positions from both tables and
+    #   sort by probe_id, annotation position, then expression position.
     eset_reset = (
         eset_filtered
         .reset_index()
         .rename(columns={eset_filtered.index.name or 'index': 'id'})
     )
+    eset_reset["_eset_pos"] = range(len(eset_reset))
+
     merged = pd.merge(
         annotation_filtered,
         eset_reset,
         left_on="probe_id",
         right_on="id",
         how="inner",
-        sort=True
+        sort=False
     )
 
-    # Explicitly sort by probe_id to mirror R's merge(sort=TRUE) stable ordering
-    merged.sort_values("probe_id", kind="mergesort", inplace=True)
+    merged.sort_values(["probe_id", "_anno_pos", "_eset_pos"], kind="mergesort", inplace=True)
 
-    # Drop technical key columns to mirror R (keeps symbol + expression values)
-    merged.drop(columns=["probe_id", "id"], inplace=True)
+    # Drop technical key/position columns to mirror R (keeps symbol + expression values)
+    merged.drop(columns=["probe_id", "id", "_anno_pos", "_eset_pos"], inplace=True)
 
     # Handle duplicates: collapse by symbol using chosen method
     total_rows = merged.shape[0]
