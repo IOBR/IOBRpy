@@ -3,7 +3,6 @@ import argparse
 import pandas as pd
 import numpy as np
 from sklearn.decomposition import PCA
-from scipy.stats import zscore, spearmanr
 from importlib.resources import files
 from joblib import Parallel, delayed
 
@@ -72,23 +71,47 @@ def load_signatures(pkl_path):
     """Load signature collections from a pickle file."""
     return pd.read_pickle(pkl_path)
 
+def _log2eset_like(eset: pd.DataFrame) -> pd.DataFrame:
+    """Emulate R's log2eset heuristic (only log when distribution suggests it)."""
+    q = np.quantile(eset.values, [0.0, 0.25, 0.5, 0.75, 0.99, 1.0])
+    log_judge = (
+        (q[4] > 100)
+        or (q[5] - q[0] > 50 and q[1] > 0)
+        or (q[1] > 0 and q[1] < 1 and q[3] > 1 and q[3] < 2)
+    )
+    if log_judge:
+        eset = eset.copy()
+        eset[eset < 0] = 0
+        eset = np.log2(eset + 1)
+    return eset
+
+
+def _feature_manipulation_like(eset: pd.DataFrame) -> pd.DataFrame:
+    """Filter genes with NA/Inf/non‑numeric/zero‑sd like R's feature_manipulation."""
+    eset = eset.copy()
+    numeric_cols = [c for c in eset.columns if np.issubdtype(eset[c].dtype, np.number)]
+    eset = eset[numeric_cols]
+
+    finite = np.isfinite(eset).all(axis=1)
+    eset = eset.loc[finite]
+
+    sd = eset.std(axis=1, ddof=1)
+    eset = eset.loc[sd > 0]
+    return eset
+
+
 def preprocess_eset(eset, adjust_eset):
-    """Log2-transform and drop Inf/zero‑sd genes like R's log2eset+check_eset."""
+    """Log2-transform conditionally and optionally drop problematic genes."""
     if default_debug:
         print(f"DEBUG: Preprocess: shape={eset.shape}, adjust={adjust_eset}")
-    if eset.shape[1] < 5000:
-        eset = np.log2(eset + 1)
-        # drop Inf rows
-        finite = np.isfinite(eset).all(axis=1)
-        eset = eset.loc[finite]
+    eset_proc = eset.copy()
+    if eset_proc.shape[1] < 5000:
+        eset_proc = _log2eset_like(eset_proc)
     if adjust_eset:
-        # drop Inf and zero‑sd again
-        finite = np.isfinite(eset).all(axis=1)
-        eset = eset.loc[finite]
-        eset = eset.loc[eset.std(axis=1) > 0]
+        eset_proc = _feature_manipulation_like(eset_proc)
     if default_debug:
-        print(f"DEBUG: After preprocess: shape={eset.shape}")
-    return eset
+        print(f"DEBUG: After preprocess: shape={eset_proc.shape}")
+    return eset_proc
 
 def filter_signatures(sig_dict, eset, min_genes):
     """Keep only signatures with at least min_genes present in eset."""
