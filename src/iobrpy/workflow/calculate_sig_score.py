@@ -6,51 +6,14 @@ from sklearn.decomposition import PCA
 from importlib.resources import files
 from joblib import Parallel, delayed
 
-# Optional pure-python ssGSEA via decoupler (no R/gseapy dependency)
-try:
-    import decoupler as dc
-except ImportError:
-    dc = None
-
-
-def _decoupler_ssgsea_available():
-    """Return True when decoupler.ssgsea is importable."""
-    return dc is not None and hasattr(dc, 'ssgsea')
-
-
-def _run_decoupler_ssgsea(eset2, sigs, min_size, parallel_size):
-    """Try running ssGSEA via decoupler; return None on failure."""
-    if not _decoupler_ssgsea_available():
-        return None
-
-    try:
-        print("Running ssGSEA via decoupler (pure Python)...")
-        df = eset2.T
-        es_mat = dc.ssgsea(
-            mat=df,
-            net=[(g, name, 1.0) for name, genes in sigs.items() for g in genes],
-            source="source",
-            target="target",
-            weight="weight",
-            min_n=min_size,
-            max_n=eset2.shape[0],
-            exp=0.25,
-            norm=True,
-            n_proc=parallel_size
-        )
-        es = es_mat.reset_index()
-        es.rename(columns={es.columns[0]: 'ID'}, inplace=True)
-        return es
-    except Exception as e:
-        print(f"decoupler ssGSEA failed ({e}); falling back to numpy implementation...")
-        return None
-
 try:
     from tqdm.auto import tqdm
 except Exception:
     # fallback: if tqdm is not installed, tqdm(...) just returns the iterable unchanged
     def tqdm(x, **kwargs):
         return x
+
+from scipy.stats import rankdata
 
 # Supported methods
 signature_score_calculation_methods = {
@@ -162,42 +125,59 @@ def filter_signatures(sig_dict, eset, min_genes):
 
 
 def _ssgsea_numpy(eset: pd.DataFrame, sigs: dict, min_size: int, parallel_size: int):
-    """Pure NumPy ssGSEA using GSVA-style cumulative enrichment integration."""
+    """Pure NumPy/SciPy ssGSEA closely mirroring GSVA weighting and normalization."""
 
     samples = list(eset.columns)
     sig_names = list(sigs.keys())
+    gene_index = eset.index.to_numpy()
 
     def _score_sample(sample):
-        # order genes by decreasing expression
-        expr = eset[sample]
-        order = expr.sort_values(ascending=False)
-        genes_order = order.index.to_numpy()
-        total = len(genes_order)
+        expr = eset[sample].to_numpy()
+        # rank genes (higher expression -> smaller rank number)
+        ranks = rankdata(-expr, method="average")
+        order = np.argsort(-expr)
 
-        # descending ranks (1..N) weighted by exponent 0.25 as in GSVA
-        ranks = np.arange(total, 0, -1, dtype=float)
-        weights = np.power(ranks, 0.25)
+        ordered_genes = gene_index[order]
+        ordered_expr = expr[order]
+        ordered_ranks = ranks[order]
+        total = len(ordered_genes)
+
+        # expression-weighted hits; fall back to rank weights if degenerate
+        weights_expr = np.power(np.abs(ordered_expr), 0.75)
+        weights_expr[~np.isfinite(weights_expr)] = 0.0
+        use_rank_weights = weights_expr.sum() == 0
+        base_weights = weights_expr if not use_rank_weights else np.power(ordered_ranks, 0.25)
 
         sample_scores = {}
         for name, genes in sigs.items():
-            hit_mask = np.isin(genes_order, genes)
+            hit_mask = np.isin(ordered_genes, genes)
             Nh = int(hit_mask.sum())
             if Nh < min_size or Nh == 0 or Nh == total:
                 sample_scores[name] = 0.0
                 continue
 
             miss = total - Nh
-            weights_hit = weights * hit_mask
-            hit_cdf = np.cumsum(weights_hit)
-            hit_cdf /= hit_cdf[-1]
+            hit_weights = base_weights * hit_mask
+            norm_hits = hit_weights.sum()
+            if norm_hits == 0:
+                sample_scores[name] = 0.0
+                continue
 
+            hit_cdf = np.cumsum(hit_weights) / norm_hits
             miss_mask = (~hit_mask).astype(float)
             miss_cdf = np.cumsum(miss_mask) / miss
 
             running = hit_cdf - miss_cdf
-            es = running.sum() / total  # integrate running difference, scaled by gene universe
-
+            # integrate running difference (area under curve)
+            es = np.trapz(running, dx=1.0 / total)
             sample_scores[name] = es
+
+        # sample-wise normalization like GSVA ssGSEA (divide by mean absolute ES)
+        vals = np.array(list(sample_scores.values()), dtype=float)
+        norm_const = np.mean(np.abs(vals)) if len(vals) else 0.0
+        if norm_const > 0:
+            sample_scores = {k: v / norm_const for k, v in sample_scores.items()}
+
         return sample, sample_scores
 
     if parallel_size and parallel_size > 1:
@@ -313,16 +293,8 @@ def sig_score_ssgsea(eset, sig_dict, mini_gene_count, adjust_eset, parallel_size
     min_size = max(mini_gene_count, 5)
     sigs = filter_signatures(sig_dict, eset2, min_size)
 
-    # Try decoupler's pure python implementation first; fall back gracefully
-    es = _run_decoupler_ssgsea(eset2, sigs, min_size, parallel_size)
-
-    if es is None:
-        # Lightweight numpy fallback
-        if dc is None:
-            print("Running ssGSEA via numpy fallback (no decoupler detected)...")
-        else:
-            print("Running ssGSEA via numpy fallback...")
-        es = _ssgsea_numpy(eset2, sigs, min_size, parallel_size)
+    print("Running ssGSEA via pure numpy/SciPy implementation (no gseapy/rpy2/decoupler)...")
+    es = _ssgsea_numpy(eset2, sigs, min_size, parallel_size)
 
     if 'TMEscoreA_CIR' in es.columns and 'TMEscoreB_CIR' in es.columns:
         es['TMEscore_CIR'] = es['TMEscoreA_CIR'] - es['TMEscoreB_CIR']
@@ -345,13 +317,8 @@ def sig_score_integration(eset, sig_dict, mini_gene_count, adjust_eset, parallel
 
     eset2 = preprocess_eset(eset, adjust_eset)
 
-    es = _run_decoupler_ssgsea(eset2, filtered_sigs, mini_gene_count, parallel_size)
-    if es is None:
-        if dc is None:
-            print("Running ssGSEA via numpy fallback (no decoupler detected)...")
-        else:
-            print("Running ssGSEA via numpy fallback...")
-        es = _ssgsea_numpy(eset2, filtered_sigs, mini_gene_count, parallel_size)
+    print("Running ssGSEA via pure numpy/SciPy implementation (no gseapy/rpy2/decoupler)...")
+    es = _ssgsea_numpy(eset2, filtered_sigs, mini_gene_count, parallel_size)
 
     if 'TMEscoreA_CIR' in es.columns and 'TMEscoreB_CIR' in es.columns:
         es['TMEscore_CIR'] = es['TMEscoreA_CIR'] - es['TMEscoreB_CIR']
