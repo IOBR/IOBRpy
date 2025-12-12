@@ -233,22 +233,24 @@ def sig_score_ssgsea(eset, sig_dict, mini_gene_count, adjust_eset, parallel_size
         gene_sets=sigs,
         outdir=None,
         sample_norm_method='rank',    # rank-based kernel = Gaussian
+        weight=0.25,                  # match GSVA default tau
         permutation_num=0,
         no_plot=True,
         threads=parallel_size,
         min_size=min_size,
+        max_size=eset2.shape[0],
         ssgsea_norm=True
     )
 
-    # Pivot to samples × terms, keep Term as columns
-    nes = ss.res2d.pivot(index='Term', columns='Name', values='NES').T.reset_index()
-    nes.rename(columns={'Name': 'ID'}, inplace=True)
+    # Pivot to samples × terms, keep Term as columns; use raw ES to mirror GSVA output
+    es = ss.res2d.pivot(index='Term', columns='Name', values='ES').T.reset_index()
+    es.rename(columns={'Name': 'ID'}, inplace=True)
 
-    if 'TMEscoreA_CIR' in nes.columns and 'TMEscoreB_CIR' in nes.columns:
-        nes['TMEscore_CIR'] = nes['TMEscoreA_CIR'] - nes['TMEscoreB_CIR']
-    if 'TMEscoreA_plus' in nes.columns and 'TMEscoreB_plus' in nes.columns:
-        nes['TMEscore_plus'] = nes['TMEscoreA_plus'] - nes['TMEscoreB_plus']
-    return nes
+    if 'TMEscoreA_CIR' in es.columns and 'TMEscoreB_CIR' in es.columns:
+        es['TMEscore_CIR'] = es['TMEscoreA_CIR'] - es['TMEscoreB_CIR']
+    if 'TMEscoreA_plus' in es.columns and 'TMEscoreB_plus' in es.columns:
+        es['TMEscore_plus'] = es['TMEscoreA_plus'] - es['TMEscoreB_plus']
+    return es
 
 def sig_score_integration(eset, sig_dict, mini_gene_count, adjust_eset, parallel_size):
     filtered_sigs = {
@@ -274,20 +276,22 @@ def sig_score_integration(eset, sig_dict, mini_gene_count, adjust_eset, parallel
         gene_sets=filtered_sigs,
         outdir=None,
         sample_norm_method='rank',
+        weight=0.25,
         permutation_num=0,
         no_plot=True,
         threads=parallel_size,
         min_size=mini_gene_count,
+        max_size=eset2.shape[0],
         ssgsea_norm=True
     )
-    nes = ss.res2d.pivot(index='Term', columns='Name', values='NES').T.reset_index()
-    nes.rename(columns={'Name': 'ID'}, inplace=True)
+    es = ss.res2d.pivot(index='Term', columns='Name', values='ES').T.reset_index()
+    es.rename(columns={'Name': 'ID'}, inplace=True)
 
-    if 'TMEscoreA_CIR' in nes.columns and 'TMEscoreB_CIR' in nes.columns:
-        nes['TMEscore_CIR'] = nes['TMEscoreA_CIR'] - nes['TMEscoreB_CIR']
-    if 'TMEscoreA_plus' in nes.columns and 'TMEscoreB_plus' in nes.columns:
-        nes['TMEscore_plus'] = nes['TMEscoreA_plus'] - nes['TMEscoreB_plus']
-    s = nes.set_index('ID').add_suffix('_ssGSEA')
+    if 'TMEscoreA_CIR' in es.columns and 'TMEscoreB_CIR' in es.columns:
+        es['TMEscore_CIR'] = es['TMEscoreA_CIR'] - es['TMEscoreB_CIR']
+    if 'TMEscoreA_plus' in es.columns and 'TMEscoreB_plus' in es.columns:
+        es['TMEscore_plus'] = es['TMEscoreA_plus'] - es['TMEscoreB_plus']
+    s = es.set_index('ID').add_suffix('_ssGSEA')
 
     return pd.concat([p, z, s], axis=1).reset_index()
 
