@@ -2,6 +2,7 @@
 import argparse
 import pandas as pd
 import numpy as np
+import inspect
 from sklearn.decomposition import PCA
 from importlib.resources import files
 from joblib import Parallel, delayed
@@ -122,8 +123,113 @@ def filter_signatures(sig_dict, eset, min_genes):
     return out
 
 
-def _ssgsea_python(eset: pd.DataFrame, sigs: dict, min_size: int, parallel_size: int):
+def _run_single_sample_gsea_backend(eset: pd.DataFrame, sigs: dict, min_size: int, parallel_size: int):
+    """Try to execute ssGSEA using the ``single_sample_gsea`` package if available.
+
+    Returns a scored DataFrame or ``None`` when the backend is missing or fails.
+    """
+    try:
+        import single_sample_gsea as ssg  # type: ignore
+    except Exception as e:  # pragma: no cover - optional dependency
+        if default_debug:
+            print(f"DEBUG: single_sample_gsea import failed: {e}")
+        return None
+
+    eset = eset.copy()
+    eset.index = eset.index.astype(str)
+    eset.columns = eset.columns.astype(str)
+    gene_sets = {k: list({g for g in v if g in eset.index}) for k, v in sigs.items() if len(v) >= min_size}
+    gene_sets = {k: v for k, v in gene_sets.items() if len(v) >= min_size}
+    if not gene_sets:
+        return None
+
+    fn = None
+    for attr in ('ssgsea', 'run_ssgsea', 'single_sample_gsea', 'compute_ssgsea'):
+        cand = getattr(ssg, attr, None)
+        if callable(cand):
+            fn = cand
+            break
+    if fn is None:
+        if default_debug:
+            print("DEBUG: single_sample_gsea module had no callable ssGSEA entrypoint")
+        return None
+
+    def _build_kwargs():
+        try:
+            sig = inspect.signature(fn)
+            params = sig.parameters
+        except Exception:
+            params = {}
+
+        kwargs = {}
+        for name in params:
+            if name in {'data', 'expression_data', 'expression', 'expression_df', 'exp_df', 'expr'}:
+                kwargs[name] = eset
+            elif name in {'gene_sets', 'gs', 'gene_set', 'gene_sets_dict'}:
+                kwargs[name] = gene_sets
+            elif name in {'min_size', 'min_sz', 'min_size_expressed'}:
+                kwargs[name] = min_size
+            elif parallel_size and parallel_size > 1 and name in {'n_jobs', 'threads', 'n_threads', 'n_workers'}:
+                kwargs[name] = int(parallel_size)
+        if not kwargs:
+            kwargs = {'expression_data': eset, 'gene_sets': gene_sets}
+        return kwargs
+
+    kwargs = _build_kwargs()
+    try:
+        res = fn(**kwargs)
+    except Exception as e:  # pragma: no cover - optional dependency
+        if default_debug:
+            print(f"DEBUG: single_sample_gsea call failed: {e}")
+        return None
+
+    if isinstance(res, pd.DataFrame):
+        df = res.copy()
+    elif isinstance(res, dict):
+        df = pd.DataFrame(res)
+    elif isinstance(res, np.ndarray):
+        df = pd.DataFrame(res)
+    else:
+        if default_debug:
+            print(f"DEBUG: single_sample_gsea returned unsupported type: {type(res)}")
+        return None
+
+    if set(df.index) == set(eset.columns):
+        mat = df.loc[eset.columns]
+    elif set(df.columns) == set(eset.columns):
+        mat = df[eset.columns].T
+    elif set(df.index) == set(gene_sets.keys()):
+        mat = df.loc[gene_sets.keys()].T
+    elif set(df.columns) == set(gene_sets.keys()):
+        mat = df[gene_sets.keys()]
+        if set(mat.index) != set(eset.columns):
+            mat = mat.T
+    else:
+        if default_debug:
+            print("DEBUG: Unable to align single_sample_gsea output; falling back")
+        return None
+
+    mat = mat.copy()
+    for missing in set(gene_sets.keys()) - set(mat.columns):
+        mat[missing] = 0.0
+    mat = mat.loc[:, list(gene_sets.keys())]
+    mat.reset_index(inplace=True)
+    mat.rename(columns={'index': 'ID'}, inplace=True)
+    return mat
+
+
+def _ssgsea_pure_python(eset: pd.DataFrame, sigs: dict, min_size: int, parallel_size: int):
     """Pure Python ssGSEA (no gseapy/rpy2/decoupler/numpy dependence in the scorer)."""
+
+    eset = eset.copy()
+    eset.index = eset.index.astype(str)
+    eset.columns = eset.columns.astype(str)
+
+    finite_rows = np.isfinite(eset).all(axis=1)
+    eset = eset.loc[finite_rows]
+
+    sigs = {k: [g for g in v if g in eset.index] for k, v in sigs.items()}
+    sigs = {k: v for k, v in sigs.items() if len(v) >= min_size}
 
     samples = list(eset.columns)
     sig_names = list(sigs.keys())
@@ -214,6 +320,17 @@ def _ssgsea_python(eset: pd.DataFrame, sigs: dict, min_size: int, parallel_size:
     mat.reset_index(inplace=True)
     mat.rename(columns={'index': 'ID'}, inplace=True)
     return mat
+
+
+def _ssgsea(eset: pd.DataFrame, sigs: dict, min_size: int, parallel_size: int):
+    """Run ssGSEA preferring the single-sample-gsea backend, else fallback to pure Python."""
+    mat = _run_single_sample_gsea_backend(eset, sigs, min_size, parallel_size)
+    if mat is not None:
+        print("Running ssGSEA via single-sample-gsea backend...")
+        return mat
+
+    print("Running ssGSEA via pure Python fallback (single-sample-gsea unavailable)...")
+    return _ssgsea_pure_python(eset, sigs, min_size, parallel_size)
 
 def sig_score_pca(eset, sig_dict, mini_gene_count, adjust_eset, parallel_size=1):
     """
@@ -313,8 +430,7 @@ def sig_score_ssgsea(eset, sig_dict, mini_gene_count, adjust_eset, parallel_size
     min_size = max(mini_gene_count, 5)
     sigs = filter_signatures(sig_dict, eset2, min_size)
 
-    print("Running ssGSEA via pure Python implementation (no gseapy/rpy2/decoupler/numpy backend)...")
-    es = _ssgsea_python(eset2, sigs, min_size, parallel_size)
+    es = _ssgsea(eset2, sigs, min_size, parallel_size)
 
     if 'TMEscoreA_CIR' in es.columns and 'TMEscoreB_CIR' in es.columns:
         es['TMEscore_CIR'] = es['TMEscoreA_CIR'] - es['TMEscoreB_CIR']
@@ -337,8 +453,7 @@ def sig_score_integration(eset, sig_dict, mini_gene_count, adjust_eset, parallel
 
     eset2 = preprocess_eset(eset, adjust_eset)
 
-    print("Running ssGSEA via pure Python implementation (no gseapy/rpy2/decoupler/numpy backend)...")
-    es = _ssgsea_python(eset2, filtered_sigs, mini_gene_count, parallel_size)
+    es = _ssgsea(eset2, filtered_sigs, mini_gene_count, parallel_size)
 
     if 'TMEscoreA_CIR' in es.columns and 'TMEscoreB_CIR' in es.columns:
         es['TMEscore_CIR'] = es['TMEscoreA_CIR'] - es['TMEscoreB_CIR']
