@@ -209,7 +209,9 @@ def anno_eset(eset_df: pd.DataFrame,
     dups = total_rows - unique_symbols
 
     if dups > 0:
-        data_cols = merged.columns.difference(['symbol'])
+        # Only aggregate across expression/value columns; exclude annotation helpers
+        # like symbol and probe_id to avoid mixing strings into numeric reducers.
+        data_cols = merged.columns.difference(['symbol', 'probe_id'])
         if method == 'mean':
             merged['_score'] = merged[data_cols].mean(axis=1, skipna=True)
         elif method == 'sd':
