@@ -204,31 +204,29 @@ def anno_eset(eset_df: pd.DataFrame,
     merged = pd.merge(annotation_filtered, eset_reset, on="probe_id", how="inner", sort=True)
 
     # Handle duplicates: collapse by symbol using chosen method
+    merged = merged.drop(columns=["probe_id"])
     total_rows = merged.shape[0]
     unique_symbols = merged['symbol'].nunique()
     dups = total_rows - unique_symbols
 
     if dups > 0:
-        # Only aggregate across expression/value columns; exclude annotation helpers
-        # like symbol and probe_id to avoid mixing strings into numeric reducers.
-        data_cols = merged.columns.difference(['symbol', 'probe_id'])
+        # Preserve column order (R's setdiff keeps the original ordering) when choosing
+        # the expression/value columns used for scoring.
+        data_cols = [c for c in merged.columns if c != 'symbol']
         if method == 'mean':
-            merged['_score'] = merged[data_cols].mean(axis=1, skipna=True)
+            merged['_score'] = merged[data_cols].apply(lambda row: row.mean(skipna=True), axis=1)
         elif method == 'sd':
-            merged['_score'] = merged[data_cols].std(axis=1, skipna=True)
+            merged['_score'] = merged[data_cols].apply(lambda row: row.std(skipna=True), axis=1)
         elif method == 'sum':
-            merged['_score'] = merged[data_cols].sum(axis=1, skipna=True)
+            merged['_score'] = merged[data_cols].apply(lambda row: row.sum(skipna=True), axis=1)
         else:
-            merged['_score'] = merged[data_cols].mean(axis=1, skipna=True)
+            merged['_score'] = merged[data_cols].apply(lambda row: row.mean(skipna=True), axis=1)
 
-        # keep highest scoring row per symbol
-        # Sort by score desc, then probe_id asc to mirror R's order() behaviour
-        # (order is stable and the merged data were ordered by probe_id).
-        merged.sort_values(['_score', 'probe_id'], ascending=[False, True], inplace=True, kind='mergesort')
+        # keep highest scoring row per symbol; stable sort keeps original (probe_id) order on ties
+        merged.sort_values('_score', ascending=False, inplace=True, kind='mergesort')
         merged.drop(columns=['_score'], inplace=True)
         merged.drop_duplicates(subset=['symbol'], keep='first', inplace=True)
 
-    merged.drop(columns=["probe_id"], inplace=True)
     result = merged.set_index('symbol')
 
     # Filter out rows all zero or all NA or NA in first column
