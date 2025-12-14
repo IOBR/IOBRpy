@@ -323,6 +323,7 @@ class GibbsSampler:
 
         assert isinstance(self.reference, references.RefPhi)
         phi_df = self.reference.phi
+        phi = phi_df
         X = self.X.to_numpy()
         gibbs_control = self.gibbs_control
         alpha = gibbs_control['alpha']
@@ -435,8 +436,10 @@ class GibbsSampler:
 
     @staticmethod
     def _starmap_in_pool(func, star_input, pool_size):
+        task_count = len(star_input)
+        chunksize = GibbsSampler._compute_chunksize(task_count, pool_size)
         with multiprocessing.Pool(processes=pool_size) as pool:
-            return pool.starmap(func, star_input)
+            return pool.starmap(func, star_input, chunksize=chunksize)
 
     @staticmethod
     def _resolve_pool_size(requested):
