@@ -433,7 +433,6 @@ class GibbsSampler:
 
     @staticmethod
     def _starmap_in_pool(func, star_input, pool_size):
-        print(f"Using {pool_size} cores for Gibbs sampling.")
         with multiprocessing.get_context("spawn").Pool(processes=pool_size) as pool:
             return pool.starmap(func, star_input, chunksize=1)
 
@@ -443,6 +442,5 @@ class GibbsSampler:
             raise ValueError("n.cores must be a positive integer")
         available = multiprocessing.cpu_count()
         if requested > available:
-            print(f"Requested {requested} cores but only {available} are available. Using {available} cores instead.")
             return available
         return requested

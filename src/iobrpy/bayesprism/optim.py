@@ -63,7 +63,6 @@ def optimize_psi(phi, Z_gt, prior_num, opt_control):
     Z_gt = Z_gt.to_numpy()
     Z_t = np.sum(Z_gt, axis = 0)
 
-    print("running with " + str(opt_control['n.cores']) + " cores!")
     star_input = [(phi[i,:], phi_log[i,:], Z_gt[:,i], Z_t[i], prior_num) for i in range(phi.shape[0])]
     with multiprocessing.Pool(processes = opt_control['n.cores']) as pool:
         results = pool.starmap(optimize_psi_multi, star_input)
