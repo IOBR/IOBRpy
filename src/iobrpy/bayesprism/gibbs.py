@@ -355,7 +355,7 @@ class GibbsSampler:
             gibbs_list = GibbsSampler._starmap_in_pool(
                 GibbsSampler.sample_Z_theta_n, star_input, pool_size
             )
-            return joint_post.JointPost.new(self.X.index, self.X.columns, phi.index, gibbs_list)
+            return joint_post.JointPost.new(self.X.index, self.X.columns, phi_df.index, gibbs_list)
         else:
             star_input = list(
                 zip(
