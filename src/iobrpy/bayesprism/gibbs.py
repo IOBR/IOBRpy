@@ -51,6 +51,15 @@ def multinomial_rvs(count, p, rng=None, method="binomial"):
     if method != "binomial":
         raise ValueError("Unsupported multinomial sampling method")
 
+    # Preserve R-like trajectories when using RandomState while keeping the fast
+    # path available for Generator-backed RNGs.
+    if isinstance(rng, np.random.RandomState):
+        flat_samples = np.array(
+            [rng.multinomial(int(n), prob) for n, prob in zip(count.reshape(-1), p.reshape(-1, p.shape[-1]))],
+            dtype=int,
+        )
+        return flat_samples.reshape(p.shape)
+
     out = np.zeros(p.shape, dtype=int)
     ps = p.cumsum(axis=-1)
     # Conditional probabilities
