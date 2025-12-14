@@ -206,6 +206,7 @@ def anno_eset(eset_df: pd.DataFrame,
 
     if dups > 0:
         data_cols = [c for c in merged.columns if c not in ('symbol', 'probe_id')]
+        merged['_row_order'] = np.arange(len(merged))
         if method == 'mean':
             merged['_score'] = merged[data_cols].mean(axis=1, skipna=True)
         elif method == 'sd':
@@ -216,8 +217,8 @@ def anno_eset(eset_df: pd.DataFrame,
             merged['_score'] = merged[data_cols].mean(axis=1, skipna=True)
 
         # keep highest scoring row per symbol
-        merged.sort_values('_score', ascending=False, inplace=True)
-        merged.drop(columns=['_score'], inplace=True)
+        merged.sort_values(['_score', '_row_order'], ascending=[False, True], inplace=True, kind='mergesort')
+        merged.drop(columns=['_score', '_row_order'], inplace=True)
         merged.drop_duplicates(subset=['symbol'], keep='first', inplace=True)
 
     result = merged.drop(columns=['probe_id']).set_index('symbol')
