@@ -195,9 +195,11 @@ def anno_eset(eset_df: pd.DataFrame,
     annotation_filtered = annotation_df[annotation_df["probe_id"].isin(eset_df.index)].copy()
     eset_filtered = eset_df.loc[eset_df.index.isin(annotation_filtered["probe_id"])].copy()
 
-    # Merge annotation (probe_id becomes a column); pandas merge(sort=True) mirrors base R merge() ordering
+    # Merge annotation (probe_id becomes a column)
     eset_reset = eset_filtered.reset_index().rename(columns={eset_filtered.index.name or 'index': 'probe_id'})
-    merged = pd.merge(annotation_filtered, eset_reset, on="probe_id", how="inner", sort=True)
+    merged = pd.merge(annotation_filtered, eset_reset, on="probe_id", how="inner", sort=False)
+    merged.sort_values('probe_id', inplace=True, kind='mergesort')
+    merged.reset_index(drop=True, inplace=True)
 
     # Handle duplicates: collapse by symbol using chosen method
     total_rows = merged.shape[0]
