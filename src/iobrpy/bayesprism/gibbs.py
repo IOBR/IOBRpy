@@ -73,11 +73,11 @@ class GibbsSampler:
 
 
     def get_gibbs_idx(gibbs_control):
-        chain_length = gibbs_control['chain.length']
-        burn_in = gibbs_control['burn.in']
-        thinning = gibbs_control['thinning']
-        all_idx = np.arange(0, chain_length)
-        burned_idx = all_idx[int(burn_in):]
+        chain_length = int(gibbs_control['chain.length'])
+        burn_in = int(gibbs_control['burn.in'])
+        thinning = int(gibbs_control['thinning'])
+        all_idx = np.arange(1, chain_length + 1)
+        burned_idx = all_idx[burn_in:]
         thinned_idx = burned_idx[np.arange(0, len(burned_idx), thinning)]
         return thinned_idx
 
@@ -124,19 +124,14 @@ class GibbsSampler:
         return np.random.Generator(np.random.MT19937(seed))
 
     def _spawn_seeds(seed, n_children, backend="generator"):
-        """Create child seeds per worker consistent with the chosen backend."""
+        """Replicate the requested seed for each task to mirror the R workflow."""
 
         if seed is None:
             return [None] * n_children
 
         backend = backend.lower()
-        if backend == "generator":
-            seed_seq = seed if isinstance(seed, np.random.SeedSequence) else np.random.SeedSequence(seed)
-            return seed_seq.spawn(n_children)
-
-        if backend == "randomstate":
-            base_rng = GibbsSampler._make_rng(seed, backend=backend)
-            return [base_rng.randint(0, np.iinfo(np.uint32).max, dtype=np.uint32) for _ in range(n_children)]
+        if backend in {"generator", "randomstate"}:
+            return [seed] * n_children
 
         raise ValueError("Unsupported RNG backend; use 'generator' or 'randomstate'")
 
@@ -167,9 +162,11 @@ class GibbsSampler:
 
         multinom_coef = 0
 
-        iterations = chain_length if chain_length is not None else (np.max(gibbs_idx) + 1)
+        gibbs_idx_arr = np.asarray(gibbs_idx, dtype=int)
+        gibbs_idx_set = set(gibbs_idx_arr.tolist())
+        iterations = int(np.max(gibbs_idx_arr)) if gibbs_idx_set else int(chain_length)
 
-        for i in range(iterations):
+        for i in range(1, iterations + 1):
             prob_mat = phi * theta_n_i[:, np.newaxis]
             prob_mat /= prob_mat.sum(axis=0, keepdims=True)
 
@@ -183,7 +180,7 @@ class GibbsSampler:
             Z_nk_i = np.sum(Z_n_i, axis=0)
             theta_n_i = GibbsSampler.rdirichlet(alpha=Z_nk_i + alpha, rng=rng, backend=rng_backend)
 
-            if i in gibbs_idx:
+            if i in gibbs_idx_set:
                 Z_n_sum += Z_n_i
                 theta_n_sum += theta_n_i
                 theta_n2_sum += theta_n_i**2
@@ -219,9 +216,11 @@ class GibbsSampler:
         theta_n_sum = np.zeros(K)
         theta_n2_sum = np.zeros(K)
 
-        iterations = chain_length if chain_length is not None else (np.max(gibbs_idx) + 1)
+        gibbs_idx_arr = np.asarray(gibbs_idx, dtype=int)
+        gibbs_idx_set = set(gibbs_idx_arr.tolist())
+        iterations = int(np.max(gibbs_idx_arr)) if gibbs_idx_set else int(chain_length)
 
-        for i in range(iterations):
+        for i in range(1, iterations + 1):
             prob_mat = phi * theta_n_i[:, np.newaxis]
             prob_mat /= prob_mat.sum(axis=0, keepdims=True)
             Z_n_i = multinomial_rvs(
@@ -233,7 +232,7 @@ class GibbsSampler:
 
             theta_n_i = GibbsSampler.rdirichlet(alpha=np.sum(Z_n_i, axis=0) + alpha, rng=rng, backend=rng_backend)
 
-            if i in gibbs_idx:
+            if i in gibbs_idx_set:
                 theta_n_sum += theta_n_i
                 theta_n2_sum += theta_n_i**2
 
