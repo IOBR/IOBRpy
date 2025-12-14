@@ -4,7 +4,6 @@ import time
 from datetime import datetime, timedelta
 import multiprocessing
 from itertools import repeat
-import tqdm
 import pandas as pd
 
 from . import references
@@ -334,11 +333,13 @@ class GibbsSampler:
         seed = gibbs_control['seed']
         print("Start run...")
 
+        pool_size = GibbsSampler._resolve_pool_size(gibbs_control['n.cores'])
+        X_input = [X[i, :] for i in np.arange(X.shape[0])]
+
         if not final:
             seeds = GibbsSampler._spawn_seeds(seed, X.shape[0], backend=rng_backend)
-            with multiprocessing.Pool(processes = gibbs_control['n.cores']) as pool:
-                X_input = [X[i, :] for i in np.arange(X.shape[0])]
-                star_input = zip(
+            star_input = list(
+                zip(
                     X_input,
                     repeat(phi),
                     repeat(alpha),
@@ -349,13 +350,15 @@ class GibbsSampler:
                     repeat(compute_elbo),
                     repeat(fast_mult),
                 )
-                gibbs_list = pool.starmap(GibbsSampler.sample_Z_theta_n, tqdm.tqdm(star_input, total=len(X_input)))
+            )
+            gibbs_list = GibbsSampler._starmap_in_pool(
+                GibbsSampler.sample_Z_theta_n, star_input, pool_size
+            )
             return joint_post.JointPost.new(self.X.index, self.X.columns, phi.index, gibbs_list)
         else:
             seeds = GibbsSampler._spawn_seeds(seed, X.shape[0], backend=rng_backend)
-            with multiprocessing.Pool(processes = gibbs_control['n.cores']) as pool:
-                X_input = [X[i, :] for i in np.arange(X.shape[0])]
-                star_input = zip(
+            star_input = list(
+                zip(
                     X_input,
                     repeat(phi),
                     repeat(alpha),
@@ -365,7 +368,10 @@ class GibbsSampler:
                     repeat(rng_backend),
                     repeat(fast_mult),
                 )
-                gibbs_list = pool.starmap(GibbsSampler.sample_theta_n , tqdm.tqdm(star_input, total=len(X_input)))
+            )
+            gibbs_list = GibbsSampler._starmap_in_pool(
+                GibbsSampler.sample_theta_n, star_input, pool_size
+            )
             return theta_post.ThetaPost.new(self.X.index, self.X.columns, gibbs_list)
 
 
@@ -402,8 +408,10 @@ class GibbsSampler:
                 fast_mult,
             ))
 
-        with multiprocessing.Pool(processes = gibbs_control['n.cores']) as pool:
-            gibbs_list = pool.starmap(GibbsSampler.sample_theta_n , star_input)
+        pool_size = GibbsSampler._resolve_pool_size(gibbs_control['n.cores'])
+        gibbs_list = GibbsSampler._starmap_in_pool(
+            GibbsSampler.sample_theta_n, star_input, pool_size
+        )
 
         print("BayesPrism finished.")
         
@@ -422,3 +430,19 @@ class GibbsSampler:
             return GibbsSampler.run_gibbs_refPhi(self, final = final, compute_elbo = compute_elbo)
         if isinstance(self.reference, references.RefTumor):
             return GibbsSampler.run_gibbs_refTumor(self)
+
+    @staticmethod
+    def _starmap_in_pool(func, star_input, pool_size):
+        print(f"Using {pool_size} cores for Gibbs sampling.")
+        with multiprocessing.get_context("spawn").Pool(processes=pool_size) as pool:
+            return pool.starmap(func, star_input, chunksize=1)
+
+    @staticmethod
+    def _resolve_pool_size(requested):
+        if requested <= 0:
+            raise ValueError("n.cores must be a positive integer")
+        available = multiprocessing.cpu_count()
+        if requested > available:
+            print(f"Requested {requested} cores but only {available} are available. Using {available} cores instead.")
+            return available
+        return requested
