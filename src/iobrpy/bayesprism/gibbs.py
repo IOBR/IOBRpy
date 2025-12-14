@@ -124,14 +124,19 @@ class GibbsSampler:
         return np.random.Generator(np.random.MT19937(seed))
 
     def _spawn_seeds(seed, n_children, backend="generator"):
-        """Replicate the requested seed for each task to mirror the R workflow."""
+        """Spawn child seeds by advancing a base RNG once per task."""
 
         if seed is None:
             return [None] * n_children
 
         backend = backend.lower()
-        if backend in {"generator", "randomstate"}:
-            return [seed] * n_children
+        base_rng = GibbsSampler._make_rng(seed, backend=backend)
+
+        if backend == "generator":
+            return base_rng.integers(0, np.iinfo(np.uint32).max, size=n_children, dtype=np.uint32).tolist()
+
+        if backend == "randomstate":
+            return base_rng.randint(0, np.iinfo(np.uint32).max, size=n_children, dtype=np.uint32).tolist()
 
         raise ValueError("Unsupported RNG backend; use 'generator' or 'randomstate'")
 
