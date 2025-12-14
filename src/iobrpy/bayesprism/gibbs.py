@@ -154,7 +154,7 @@ class GibbsSampler:
 
         rng = GibbsSampler._make_rng(seed, backend=rng_backend)
 
-        phi = phi.to_numpy()
+        phi = np.asarray(phi)
         G = phi.shape[1]
         K = phi.shape[0]
 
@@ -209,7 +209,7 @@ class GibbsSampler:
 
         rng = GibbsSampler._make_rng(seed, backend=rng_backend)
 
-        phi = phi.to_numpy()
+        phi = np.asarray(phi)
         G = phi.shape[1]
         K = phi.shape[0]
 
@@ -322,7 +322,7 @@ class GibbsSampler:
     def run_gibbs_refPhi(self, final, compute_elbo):
 
         assert isinstance(self.reference, references.RefPhi)
-        phi = self.reference.phi
+        phi_df = self.reference.phi
         X = self.X.to_numpy()
         gibbs_control = self.gibbs_control
         alpha = gibbs_control['alpha']
@@ -335,13 +335,14 @@ class GibbsSampler:
 
         pool_size = GibbsSampler._resolve_pool_size(gibbs_control['n.cores'])
         X_input = [X[i, :] for i in np.arange(X.shape[0])]
+        phi_arr = phi_df.to_numpy()
+        seeds = GibbsSampler._spawn_seeds(seed, X.shape[0], backend=rng_backend)
 
         if not final:
-            seeds = GibbsSampler._spawn_seeds(seed, X.shape[0], backend=rng_backend)
             star_input = list(
                 zip(
                     X_input,
-                    repeat(phi),
+                    repeat(phi_arr),
                     repeat(alpha),
                     repeat(gibbs_idx),
                     repeat(chain_length),
@@ -356,11 +357,10 @@ class GibbsSampler:
             )
             return joint_post.JointPost.new(self.X.index, self.X.columns, phi.index, gibbs_list)
         else:
-            seeds = GibbsSampler._spawn_seeds(seed, X.shape[0], backend=rng_backend)
             star_input = list(
                 zip(
                     X_input,
-                    repeat(phi),
+                    repeat(phi_arr),
                     repeat(alpha),
                     repeat(gibbs_idx),
                     repeat(chain_length),
@@ -391,15 +391,17 @@ class GibbsSampler:
         seed = gibbs_control['seed']
         print("Start run...")
 
+        psi_env_arr = psi_env.to_numpy()
+        seeds = GibbsSampler._spawn_seeds(seed, X.shape[0], backend=rng_backend)
         star_input = []
         for i in range(X.shape[0]):
-            psi_mal_n = pd.DataFrame(psi_mal.iloc[i, :]).T
-            phi_n = pd.concat([psi_mal_n, psi_env])
+            psi_mal_n = psi_mal.iloc[i, :].to_numpy()
+            phi_n = np.vstack([psi_mal_n, psi_env_arr])
             nonzero_idx = np.max(phi_n, axis = 0) > 0
-            child_seed = GibbsSampler._spawn_seeds(seed, 1, backend=rng_backend)[0]
+            child_seed = seeds[i]
             star_input.append((
                 X[i, nonzero_idx],
-                phi_n.loc[:, nonzero_idx],
+                phi_n[:, nonzero_idx],
                 alpha,
                 gibbs_idx,
                 chain_length,
@@ -433,8 +435,9 @@ class GibbsSampler:
 
     @staticmethod
     def _starmap_in_pool(func, star_input, pool_size):
+        chunk_size = GibbsSampler._compute_chunksize(len(star_input), pool_size)
         with multiprocessing.get_context("spawn").Pool(processes=pool_size) as pool:
-            return pool.starmap(func, star_input, chunksize=1)
+            return pool.starmap(func, star_input, chunksize=chunk_size)
 
     @staticmethod
     def _resolve_pool_size(requested):
@@ -444,3 +447,11 @@ class GibbsSampler:
         if requested > available:
             return available
         return requested
+
+    @staticmethod
+    def _compute_chunksize(task_count, pool_size):
+        if task_count <= 0:
+            return 1
+        if pool_size <= 1:
+            return task_count
+        return max(1, task_count // (pool_size * 4))
