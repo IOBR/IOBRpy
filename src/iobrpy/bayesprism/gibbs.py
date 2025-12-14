@@ -469,9 +469,6 @@ class GibbsSampler:
     def _resolve_pool_size(requested):
         if requested <= 0:
             raise ValueError("n.cores must be a positive integer")
-        available = multiprocessing.cpu_count()
-        if requested > available:
-            return available
         return requested
 
     @staticmethod
