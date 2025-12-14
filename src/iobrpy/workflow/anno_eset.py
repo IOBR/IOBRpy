@@ -199,8 +199,8 @@ def anno_eset(eset_df: pd.DataFrame,
     # Merge annotation (probe_id becomes a column)
     eset_reset = eset_filtered.reset_index().rename(columns={eset_filtered.index.name or 'index': 'probe_id'})
     merged = pd.merge(annotation_filtered, eset_reset, on="probe_id", how="inner")
-    # drop probe_id column (we use symbol as index)
-    merged.drop(columns=["probe_id"], inplace=True)
+    # mimic base R merge() default ordering (sort=TRUE) for deterministic tie-breaking
+    merged.sort_values("probe_id", inplace=True)
 
     # Handle duplicates: collapse by symbol using chosen method
     total_rows = merged.shape[0]
@@ -208,7 +208,7 @@ def anno_eset(eset_df: pd.DataFrame,
     dups = total_rows - unique_symbols
 
     if dups > 0:
-        data_cols = merged.columns.difference(['symbol'])
+        data_cols = merged.columns.difference(['symbol', 'probe_id'])
         if method == 'mean':
             merged['_score'] = merged[data_cols].mean(axis=1, skipna=True)
         elif method == 'sd':
@@ -219,11 +219,12 @@ def anno_eset(eset_df: pd.DataFrame,
             merged['_score'] = merged[data_cols].mean(axis=1, skipna=True)
 
         # keep highest scoring row per symbol
-        merged.sort_values('_score', ascending=False, inplace=True)
+        # stable sort keeps earlier probe_id ordering for ties (matches R behaviour)
+        merged.sort_values('_score', ascending=False, kind='mergesort', inplace=True)
         merged.drop(columns=['_score'], inplace=True)
         merged.drop_duplicates(subset=['symbol'], keep='first', inplace=True)
 
-    result = merged.set_index('symbol')
+    result = merged.drop(columns=['probe_id']).set_index('symbol')
 
     # Filter out rows all zero or all NA or NA in first column
     result = result.loc[~(result == 0).all(axis=1)]
