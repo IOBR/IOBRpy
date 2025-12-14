@@ -178,8 +178,12 @@ class GibbsSampler:
                     method="binomial",
                 )
             else:
+                with np.errstate(divide="ignore", invalid="ignore"):
+                    prob_mat_norm = prob_mat / prob_mat.sum(axis=0, keepdims=True)
+                prob_mat_norm[np.isnan(prob_mat_norm)] = 0.0
+
                 Z_n_i = np.empty((G, K), dtype=int)
-                prob_mat_T = prob_mat.T
+                prob_mat_T = prob_mat_norm.T
                 for g_idx, (count_g, prob_g) in enumerate(zip(X_n, prob_mat_T)):
                     Z_n_i[g_idx, :] = rng.multinomial(int(count_g), prob_g)
 
@@ -238,7 +242,11 @@ class GibbsSampler:
                     method="binomial",
                 )
             else:
-                prob_mat_T = prob_mat.T
+                with np.errstate(divide="ignore", invalid="ignore"):
+                    prob_mat_norm = prob_mat / prob_mat.sum(axis=0, keepdims=True)
+                prob_mat_norm[np.isnan(prob_mat_norm)] = 0.0
+
+                prob_mat_T = prob_mat_norm.T
                 for g_idx, (count_g, prob_g) in enumerate(zip(X_n, prob_mat_T)):
                     Z_n_i[g_idx, :] = rng.multinomial(int(count_g), prob_g)
 
