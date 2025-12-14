@@ -168,12 +168,12 @@ class GibbsSampler:
 
         for i in range(1, iterations + 1):
             prob_mat = phi * theta_n_i[:, np.newaxis]
-            prob_mat /= prob_mat.sum(axis=0, keepdims=True)
 
             if fast_multinomial and not isinstance(rng, np.random.RandomState):
+                prob_mat_norm = prob_mat / prob_mat.sum(axis=0, keepdims=True)
                 Z_n_i = multinomial_rvs(
                     count=X_n,
-                    p=prob_mat.T,
+                    p=prob_mat_norm.T,
                     rng=rng,
                     method="binomial",
                 )
@@ -228,12 +228,12 @@ class GibbsSampler:
 
         for i in range(1, iterations + 1):
             prob_mat = phi * theta_n_i[:, np.newaxis]
-            prob_mat /= prob_mat.sum(axis=0, keepdims=True)
 
             if fast_multinomial and not isinstance(rng, np.random.RandomState):
+                prob_mat_norm = prob_mat / prob_mat.sum(axis=0, keepdims=True)
                 Z_n_i = multinomial_rvs(
                     count=X_n,
-                    p=prob_mat.T,
+                    p=prob_mat_norm.T,
                     rng=rng,
                     method="binomial",
                 )
