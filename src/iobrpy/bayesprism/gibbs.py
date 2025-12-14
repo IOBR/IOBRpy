@@ -435,9 +435,8 @@ class GibbsSampler:
 
     @staticmethod
     def _starmap_in_pool(func, star_input, pool_size):
-        chunk_size = GibbsSampler._compute_chunksize(len(star_input), pool_size)
-        with multiprocessing.get_context("spawn").Pool(processes=pool_size) as pool:
-            return pool.starmap(func, star_input, chunksize=chunk_size)
+        with multiprocessing.Pool(processes=pool_size) as pool:
+            return pool.starmap(func, star_input)
 
     @staticmethod
     def _resolve_pool_size(requested):
@@ -454,4 +453,4 @@ class GibbsSampler:
             return 1
         if pool_size <= 1:
             return task_count
-        return max(1, task_count // (pool_size * 4))
+        return max(1, task_count // (pool_size * 2))
