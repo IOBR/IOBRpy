@@ -73,11 +73,11 @@ class GibbsSampler:
 
 
     def get_gibbs_idx(gibbs_control):
-        chain_length = int(gibbs_control['chain.length'])
-        burn_in = int(gibbs_control['burn.in'])
-        thinning = int(gibbs_control['thinning'])
-        all_idx = np.arange(1, chain_length + 1)
-        burned_idx = all_idx[burn_in:]
+        chain_length = gibbs_control['chain.length']
+        burn_in = gibbs_control['burn.in']
+        thinning = gibbs_control['thinning']
+        all_idx = np.arange(0, chain_length)
+        burned_idx = all_idx[int(burn_in):]
         thinned_idx = burned_idx[np.arange(0, len(burned_idx), thinning)]
         return thinned_idx
 
@@ -124,19 +124,19 @@ class GibbsSampler:
         return np.random.Generator(np.random.MT19937(seed))
 
     def _spawn_seeds(seed, n_children, backend="generator"):
-        """Spawn child seeds by advancing a base RNG once per task."""
+        """Create child seeds per worker consistent with the chosen backend."""
 
         if seed is None:
             return [None] * n_children
 
         backend = backend.lower()
-        base_rng = GibbsSampler._make_rng(seed, backend=backend)
-
         if backend == "generator":
-            return base_rng.integers(0, np.iinfo(np.uint32).max, size=n_children, dtype=np.uint32).tolist()
+            seed_seq = seed if isinstance(seed, np.random.SeedSequence) else np.random.SeedSequence(seed)
+            return seed_seq.spawn(n_children)
 
         if backend == "randomstate":
-            return base_rng.randint(0, np.iinfo(np.uint32).max, size=n_children, dtype=np.uint32).tolist()
+            base_rng = GibbsSampler._make_rng(seed, backend=backend)
+            return [base_rng.randint(0, np.iinfo(np.uint32).max, dtype=np.uint32) for _ in range(n_children)]
 
         raise ValueError("Unsupported RNG backend; use 'generator' or 'randomstate'")
 
@@ -154,7 +154,7 @@ class GibbsSampler:
 
         rng = GibbsSampler._make_rng(seed, backend=rng_backend)
 
-        phi = np.asarray(phi)
+        phi = phi.to_numpy()
         G = phi.shape[1]
         K = phi.shape[0]
 
@@ -167,35 +167,23 @@ class GibbsSampler:
 
         multinom_coef = 0
 
-        gibbs_idx_arr = np.asarray(gibbs_idx, dtype=int)
-        gibbs_idx_set = set(gibbs_idx_arr.tolist())
-        iterations = int(np.max(gibbs_idx_arr)) if gibbs_idx_set else int(chain_length)
+        iterations = chain_length if chain_length is not None else (np.max(gibbs_idx) + 1)
 
-        for i in range(1, iterations + 1):
+        for i in range(iterations):
             prob_mat = phi * theta_n_i[:, np.newaxis]
+            prob_mat /= prob_mat.sum(axis=0, keepdims=True)
 
-            if fast_multinomial and not isinstance(rng, np.random.RandomState):
-                prob_mat_norm = prob_mat / prob_mat.sum(axis=0, keepdims=True)
-                Z_n_i = multinomial_rvs(
-                    count=X_n,
-                    p=prob_mat_norm.T,
-                    rng=rng,
-                    method="binomial",
-                )
-            else:
-                with np.errstate(divide="ignore", invalid="ignore"):
-                    prob_mat_norm = prob_mat / prob_mat.sum(axis=0, keepdims=True)
-                prob_mat_norm[np.isnan(prob_mat_norm)] = 0.0
-
-                Z_n_i = np.empty((G, K), dtype=int)
-                prob_mat_T = prob_mat_norm.T
-                for g_idx, (count_g, prob_g) in enumerate(zip(X_n, prob_mat_T)):
-                    Z_n_i[g_idx, :] = rng.multinomial(int(count_g), prob_g)
+            Z_n_i = multinomial_rvs(
+                count=X_n,
+                p=prob_mat.T,
+                rng=rng,
+                method="binomial" if fast_multinomial else "sequential",
+            )
 
             Z_nk_i = np.sum(Z_n_i, axis=0)
             theta_n_i = GibbsSampler.rdirichlet(alpha=Z_nk_i + alpha, rng=rng, backend=rng_backend)
 
-            if i in gibbs_idx_set:
+            if i in gibbs_idx:
                 Z_n_sum += Z_n_i
                 theta_n_sum += theta_n_i
                 theta_n2_sum += theta_n_i**2
@@ -221,7 +209,7 @@ class GibbsSampler:
 
         rng = GibbsSampler._make_rng(seed, backend=rng_backend)
 
-        phi = np.asarray(phi)
+        phi = phi.to_numpy()
         G = phi.shape[1]
         K = phi.shape[0]
 
@@ -231,33 +219,21 @@ class GibbsSampler:
         theta_n_sum = np.zeros(K)
         theta_n2_sum = np.zeros(K)
 
-        gibbs_idx_arr = np.asarray(gibbs_idx, dtype=int)
-        gibbs_idx_set = set(gibbs_idx_arr.tolist())
-        iterations = int(np.max(gibbs_idx_arr)) if gibbs_idx_set else int(chain_length)
+        iterations = chain_length if chain_length is not None else (np.max(gibbs_idx) + 1)
 
-        for i in range(1, iterations + 1):
+        for i in range(iterations):
             prob_mat = phi * theta_n_i[:, np.newaxis]
-
-            if fast_multinomial and not isinstance(rng, np.random.RandomState):
-                prob_mat_norm = prob_mat / prob_mat.sum(axis=0, keepdims=True)
-                Z_n_i = multinomial_rvs(
-                    count=X_n,
-                    p=prob_mat_norm.T,
-                    rng=rng,
-                    method="binomial",
-                )
-            else:
-                with np.errstate(divide="ignore", invalid="ignore"):
-                    prob_mat_norm = prob_mat / prob_mat.sum(axis=0, keepdims=True)
-                prob_mat_norm[np.isnan(prob_mat_norm)] = 0.0
-
-                prob_mat_T = prob_mat_norm.T
-                for g_idx, (count_g, prob_g) in enumerate(zip(X_n, prob_mat_T)):
-                    Z_n_i[g_idx, :] = rng.multinomial(int(count_g), prob_g)
+            prob_mat /= prob_mat.sum(axis=0, keepdims=True)
+            Z_n_i = multinomial_rvs(
+                count=X_n,
+                p=prob_mat.T,
+                rng=rng,
+                method="binomial" if fast_multinomial else "sequential",
+            )
 
             theta_n_i = GibbsSampler.rdirichlet(alpha=np.sum(Z_n_i, axis=0) + alpha, rng=rng, backend=rng_backend)
 
-            if i in gibbs_idx_set:
+            if i in gibbs_idx:
                 theta_n_sum += theta_n_i
                 theta_n2_sum += theta_n_i**2
 
@@ -346,8 +322,7 @@ class GibbsSampler:
     def run_gibbs_refPhi(self, final, compute_elbo):
 
         assert isinstance(self.reference, references.RefPhi)
-        phi_df = self.reference.phi
-        phi = phi_df
+        phi = self.reference.phi
         X = self.X.to_numpy()
         gibbs_control = self.gibbs_control
         alpha = gibbs_control['alpha']
@@ -358,16 +333,13 @@ class GibbsSampler:
         seed = gibbs_control['seed']
         print("Start run...")
 
-        pool_size = GibbsSampler._resolve_pool_size(gibbs_control['n.cores'])
-        X_input = [X[i, :] for i in np.arange(X.shape[0])]
-        phi_arr = phi_df.to_numpy()
-        seeds = GibbsSampler._spawn_seeds(seed, X.shape[0], backend=rng_backend)
-
         if not final:
-            star_input = list(
-                zip(
+            seeds = GibbsSampler._spawn_seeds(seed, X.shape[0], backend=rng_backend)
+            with multiprocessing.Pool(processes = gibbs_control['n.cores']) as pool:
+                X_input = [X[i, :] for i in np.arange(X.shape[0])]
+                star_input = zip(
                     X_input,
-                    repeat(phi_arr),
+                    repeat(phi),
                     repeat(alpha),
                     repeat(gibbs_idx),
                     repeat(chain_length),
@@ -376,16 +348,15 @@ class GibbsSampler:
                     repeat(compute_elbo),
                     repeat(fast_mult),
                 )
-            )
-            gibbs_list = GibbsSampler._starmap_in_pool(
-                GibbsSampler.sample_Z_theta_n, star_input, pool_size
-            )
-            return joint_post.JointPost.new(self.X.index, self.X.columns, phi_df.index, gibbs_list)
+                gibbs_list = pool.starmap(GibbsSampler.sample_Z_theta_n, star_input)
+            return joint_post.JointPost.new(self.X.index, self.X.columns, phi.index, gibbs_list)
         else:
-            star_input = list(
-                zip(
+            seeds = GibbsSampler._spawn_seeds(seed, X.shape[0], backend=rng_backend)
+            with multiprocessing.Pool(processes = gibbs_control['n.cores']) as pool:
+                X_input = [X[i, :] for i in np.arange(X.shape[0])]
+                star_input = zip(
                     X_input,
-                    repeat(phi_arr),
+                    repeat(phi),
                     repeat(alpha),
                     repeat(gibbs_idx),
                     repeat(chain_length),
@@ -393,10 +364,7 @@ class GibbsSampler:
                     repeat(rng_backend),
                     repeat(fast_mult),
                 )
-            )
-            gibbs_list = GibbsSampler._starmap_in_pool(
-                GibbsSampler.sample_theta_n, star_input, pool_size
-            )
+                gibbs_list = pool.starmap(GibbsSampler.sample_theta_n , star_input)
             return theta_post.ThetaPost.new(self.X.index, self.X.columns, gibbs_list)
 
 
@@ -416,17 +384,15 @@ class GibbsSampler:
         seed = gibbs_control['seed']
         print("Start run...")
 
-        psi_env_arr = psi_env.to_numpy()
-        seeds = GibbsSampler._spawn_seeds(seed, X.shape[0], backend=rng_backend)
         star_input = []
         for i in range(X.shape[0]):
-            psi_mal_n = psi_mal.iloc[i, :].to_numpy()
-            phi_n = np.vstack([psi_mal_n, psi_env_arr])
+            psi_mal_n = pd.DataFrame(psi_mal.iloc[i, :]).T
+            phi_n = pd.concat([psi_mal_n, psi_env])
             nonzero_idx = np.max(phi_n, axis = 0) > 0
-            child_seed = seeds[i]
+            child_seed = GibbsSampler._spawn_seeds(seed, 1, backend=rng_backend)[0]
             star_input.append((
                 X[i, nonzero_idx],
-                phi_n[:, nonzero_idx],
+                phi_n.loc[:, nonzero_idx],
                 alpha,
                 gibbs_idx,
                 chain_length,
@@ -435,10 +401,8 @@ class GibbsSampler:
                 fast_mult,
             ))
 
-        pool_size = GibbsSampler._resolve_pool_size(gibbs_control['n.cores'])
-        gibbs_list = GibbsSampler._starmap_in_pool(
-            GibbsSampler.sample_theta_n, star_input, pool_size
-        )
+        with multiprocessing.Pool(processes = gibbs_control['n.cores']) as pool:
+            gibbs_list = pool.starmap(GibbsSampler.sample_theta_n , star_input)
 
         print("BayesPrism finished.")
         
@@ -457,24 +421,3 @@ class GibbsSampler:
             return GibbsSampler.run_gibbs_refPhi(self, final = final, compute_elbo = compute_elbo)
         if isinstance(self.reference, references.RefTumor):
             return GibbsSampler.run_gibbs_refTumor(self)
-
-    @staticmethod
-    def _starmap_in_pool(func, star_input, pool_size):
-        task_count = len(star_input)
-        chunksize = GibbsSampler._compute_chunksize(task_count, pool_size)
-        with multiprocessing.Pool(processes=pool_size) as pool:
-            return pool.starmap(func, star_input, chunksize=chunksize)
-
-    @staticmethod
-    def _resolve_pool_size(requested):
-        if requested <= 0:
-            raise ValueError("n.cores must be a positive integer")
-        return requested
-
-    @staticmethod
-    def _compute_chunksize(task_count, pool_size):
-        if task_count <= 0:
-            return 1
-        if pool_size <= 1:
-            return task_count
-        return max(1, task_count // (pool_size * 2))
