@@ -126,9 +126,6 @@ class GibbsSampler:
     def _spawn_seeds(seed, n_children, backend="generator"):
         """Create child seeds per worker consistent with the chosen backend."""
 
-        if seed is None:
-            return [None] * n_children
-
         backend = backend.lower()
         if backend == "generator":
             seed_seq = seed if isinstance(seed, np.random.SeedSequence) else np.random.SeedSequence(seed)
