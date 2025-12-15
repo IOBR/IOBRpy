@@ -56,7 +56,7 @@ class Prism:
                 'seed': 123,
                 'alpha': 1,
                 'fast.multinomial': False,
-                'rng.backend': 'generator'}
+                'rng.backend': 'randomstate'}
 
         namc = list(control.keys())
        

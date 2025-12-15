@@ -174,14 +174,15 @@ class GibbsSampler:
 
         for i in range(1, iterations + 1):
             prob_mat = phi * theta_n_i[:, np.newaxis]
-            prob_mat /= prob_mat.sum(axis=0, keepdims=True)
 
-            Z_n_i = multinomial_rvs(
-                count=X_n,
-                p=prob_mat.T,
-                rng=rng,
-                method="binomial" if fast_multinomial else "sequential",
-            )
+            if fast_multinomial:
+                prob_mat /= prob_mat.sum(axis=0, keepdims=True)
+                Z_n_i = multinomial_rvs(count=X_n, p=prob_mat.T, rng=rng, method="binomial")
+            else:
+                for g in range(G):
+                    prob_g = prob_mat[:, g]
+                    prob_g = prob_g / prob_g.sum()
+                    Z_n_i[g, :] = rng.multinomial(int(X_n[g]), prob_g)
 
             Z_nk_i = np.sum(Z_n_i, axis=0)
             theta_n_i = GibbsSampler.rdirichlet(alpha=Z_nk_i + alpha, rng=rng, backend=rng_backend)
@@ -227,13 +228,14 @@ class GibbsSampler:
 
         for i in range(1, iterations + 1):
             prob_mat = phi * theta_n_i[:, np.newaxis]
-            prob_mat /= prob_mat.sum(axis=0, keepdims=True)
-            Z_n_i = multinomial_rvs(
-                count=X_n,
-                p=prob_mat.T,
-                rng=rng,
-                method="binomial" if fast_multinomial else "sequential",
-            )
+            if fast_multinomial:
+                prob_mat /= prob_mat.sum(axis=0, keepdims=True)
+                Z_n_i = multinomial_rvs(count=X_n, p=prob_mat.T, rng=rng, method="binomial")
+            else:
+                for g in range(G):
+                    prob_g = prob_mat[:, g]
+                    prob_g = prob_g / prob_g.sum()
+                    Z_n_i[g, :] = rng.multinomial(int(X_n[g]), prob_g)
 
             theta_n_i = GibbsSampler.rdirichlet(alpha=np.sum(Z_n_i, axis=0) + alpha, rng=rng, backend=rng_backend)
 
