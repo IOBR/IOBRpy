@@ -69,7 +69,7 @@ def _load_external_annotation(path: Path, key: str = None):
                 read_kwargs['low_memory'] = False
 
             chunks = []
-            for chunk in tqdm(pd.read_csv(**read_kwargs), desc="Loading annotation", unit="rows"):
+            for chunk in tqdm(pd.read_csv(**read_kwargs), desc="Loading annotation", unit="chunk"):
                 chunks.append(chunk)
             df = pd.concat(chunks, axis=0)
         except Exception as e:
@@ -272,7 +272,7 @@ def main():
         read_kwargs['low_memory'] = False
 
     chunks = []
-    for chunk in tqdm(pd.read_csv(**read_kwargs), desc="Loading input", unit="rows"):
+    for chunk in tqdm(pd.read_csv(**read_kwargs), desc="Loading input", unit="chunk"):
         chunks.append(chunk)
     df = pd.concat(chunks, axis=0)
 

@@ -189,3 +189,5 @@ def main(argv=None) -> None:
     n_cores = int(args.threads)
 
     run_bayesprism(bulk_path, out_dir, n_cores)
+
+    print("BayesPrism finished.")

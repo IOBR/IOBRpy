@@ -122,7 +122,7 @@ def assign_category(input_genes, species):
         # gene_list: column 0 = category, column 1 = Ensembl ID
         gene_df = gene_list.iloc[:, [0, 1]].copy()
     else:
-        print("Gene symbols detected. Recommend to use EMSEMBLE IDs for more unique mapping.")
+        print("Gene symbols detected.")
         input_genes_short = list(input_genes)
         # gene_list: column 0 = category, column 2 = gene symbol
         gene_df = gene_list.iloc[:, [0, 2]].copy()
@@ -201,7 +201,7 @@ def select_gene_type(input : pd.DataFrame, gene_type):
         gene_match = [gene_list_7.index(x) for x in input_genes if x in gene_list_7]
         gene_df = gene_list.iloc[gene_match, [7, 8]]
     else:
-        print("Gene symbols detected. Recommend to use EMSEMBLE IDs for more unique mapping.")
+        print("Gene symbols detected.")
         gene_list_4 = gene_list.iloc[:,4].tolist()
         gene_match = [gene_list_4.index(x) for x in input_genes if x in gene_list_4]
         gene_df = gene_list.iloc[gene_match, [4, 8]]

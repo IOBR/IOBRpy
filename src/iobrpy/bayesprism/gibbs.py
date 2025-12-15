@@ -4,7 +4,6 @@ import time
 from datetime import datetime, timedelta
 import multiprocessing
 from itertools import repeat
-import tqdm
 import pandas as pd
 
 from . import references
@@ -334,9 +333,11 @@ class GibbsSampler:
         seed = gibbs_control['seed']
         print("Start run...")
 
+        ctx = multiprocessing.get_context("fork")
+        chunk_size = max(1, int(np.ceil(X.shape[0] / (gibbs_control['n.cores'] * 4))))
         if not final:
             seeds = GibbsSampler._spawn_seeds(seed, X.shape[0], backend=rng_backend)
-            with multiprocessing.Pool(processes = gibbs_control['n.cores']) as pool:
+            with ctx.Pool(processes=gibbs_control['n.cores']) as pool:
                 X_input = [X[i, :] for i in np.arange(X.shape[0])]
                 star_input = zip(
                     X_input,
@@ -349,11 +350,11 @@ class GibbsSampler:
                     repeat(compute_elbo),
                     repeat(fast_mult),
                 )
-                gibbs_list = pool.starmap(GibbsSampler.sample_Z_theta_n, tqdm.tqdm(star_input, total=len(X_input)))
+                gibbs_list = pool.starmap(GibbsSampler.sample_Z_theta_n, star_input, chunksize=chunk_size)
             return joint_post.JointPost.new(self.X.index, self.X.columns, phi.index, gibbs_list)
         else:
             seeds = GibbsSampler._spawn_seeds(seed, X.shape[0], backend=rng_backend)
-            with multiprocessing.Pool(processes = gibbs_control['n.cores']) as pool:
+            with ctx.Pool(processes=gibbs_control['n.cores']) as pool:
                 X_input = [X[i, :] for i in np.arange(X.shape[0])]
                 star_input = zip(
                     X_input,
@@ -365,7 +366,7 @@ class GibbsSampler:
                     repeat(rng_backend),
                     repeat(fast_mult),
                 )
-                gibbs_list = pool.starmap(GibbsSampler.sample_theta_n , tqdm.tqdm(star_input, total=len(X_input)))
+                gibbs_list = pool.starmap(GibbsSampler.sample_theta_n , star_input, chunksize=chunk_size)
             return theta_post.ThetaPost.new(self.X.index, self.X.columns, gibbs_list)
 
 
@@ -402,10 +403,10 @@ class GibbsSampler:
                 fast_mult,
             ))
 
-        with multiprocessing.Pool(processes = gibbs_control['n.cores']) as pool:
-            gibbs_list = pool.starmap(GibbsSampler.sample_theta_n , star_input)
-
-        print("BayesPrism finished.")
+        ctx = multiprocessing.get_context("fork")
+        chunk_size = max(1, int(np.ceil(len(star_input) / (gibbs_control['n.cores'] * 4))))
+        with ctx.Pool(processes=gibbs_control['n.cores']) as pool:
+            gibbs_list = pool.starmap(GibbsSampler.sample_theta_n , star_input, chunksize=chunk_size)
         
         return theta_post.ThetaPost.new(self.X.index, [key] + list(psi_env.index), gibbs_list)
 
