@@ -76,7 +76,7 @@ class GibbsSampler:
         chain_length = gibbs_control['chain.length']
         burn_in = gibbs_control['burn.in']
         thinning = gibbs_control['thinning']
-        all_idx = np.arange(0, chain_length)
+        all_idx = np.arange(1, chain_length + 1)
         burned_idx = all_idx[int(burn_in):]
         thinned_idx = burned_idx[np.arange(0, len(burned_idx), thinning)]
         return thinned_idx
@@ -169,9 +169,10 @@ class GibbsSampler:
 
         multinom_coef = 0
 
-        iterations = chain_length if chain_length is not None else (np.max(gibbs_idx) + 1)
+        gibbs_idx_set = set(int(i) for i in np.atleast_1d(gibbs_idx))
+        iterations = int(np.max(gibbs_idx))
 
-        for i in range(iterations):
+        for i in range(1, iterations + 1):
             prob_mat = phi * theta_n_i[:, np.newaxis]
             prob_mat /= prob_mat.sum(axis=0, keepdims=True)
 
@@ -185,7 +186,7 @@ class GibbsSampler:
             Z_nk_i = np.sum(Z_n_i, axis=0)
             theta_n_i = GibbsSampler.rdirichlet(alpha=Z_nk_i + alpha, rng=rng, backend=rng_backend)
 
-            if i in gibbs_idx:
+            if i in gibbs_idx_set:
                 Z_n_sum += Z_n_i
                 theta_n_sum += theta_n_i
                 theta_n2_sum += theta_n_i**2
@@ -194,7 +195,7 @@ class GibbsSampler:
                         np.log(scipy.special.factorial(Z_n_i))
                     )
 
-        samples_size = len(gibbs_idx)
+        samples_size = len(gibbs_idx_set)
         Z_n = Z_n_sum / samples_size
         theta_n = theta_n_sum / samples_size
         theta_cv_n = np.sqrt(theta_n2_sum / samples_size - (theta_n ** 2)) / theta_n
@@ -221,9 +222,10 @@ class GibbsSampler:
         theta_n_sum = np.zeros(K)
         theta_n2_sum = np.zeros(K)
 
-        iterations = chain_length if chain_length is not None else (np.max(gibbs_idx) + 1)
+        gibbs_idx_set = set(int(i) for i in np.atleast_1d(gibbs_idx))
+        iterations = int(np.max(gibbs_idx))
 
-        for i in range(iterations):
+        for i in range(1, iterations + 1):
             prob_mat = phi * theta_n_i[:, np.newaxis]
             prob_mat /= prob_mat.sum(axis=0, keepdims=True)
             Z_n_i = multinomial_rvs(
@@ -235,11 +237,11 @@ class GibbsSampler:
 
             theta_n_i = GibbsSampler.rdirichlet(alpha=np.sum(Z_n_i, axis=0) + alpha, rng=rng, backend=rng_backend)
 
-            if i in gibbs_idx:
+            if i in gibbs_idx_set:
                 theta_n_sum += theta_n_i
                 theta_n2_sum += theta_n_i**2
 
-        samples_size = len(gibbs_idx)
+        samples_size = len(gibbs_idx_set)
         theta_n = theta_n_sum / samples_size
         theta_cv_n = np.sqrt(theta_n2_sum / samples_size - (theta_n**2)) / theta_n
 
