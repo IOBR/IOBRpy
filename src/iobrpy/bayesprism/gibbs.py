@@ -137,6 +137,11 @@ class GibbsSampler:
 
         raise ValueError("Unsupported RNG backend; use 'generator' or 'randomstate'")
 
+    def _duplicate_seed(seed, n_children):
+        """Return a per-sample seed list that mirrors R's repeated set.seed calls."""
+
+        return [seed for _ in range(n_children)]
+
     def sample_Z_theta_n(
         X_n,
         phi,
@@ -333,7 +338,7 @@ class GibbsSampler:
         ctx = multiprocessing.get_context("fork")
         chunk_size = max(1, int(np.ceil(X.shape[0] / (gibbs_control['n.cores'] * 4))))
         if not final:
-            seeds = GibbsSampler._spawn_seeds(seed, X.shape[0], backend=rng_backend)
+            seeds = GibbsSampler._duplicate_seed(seed, X.shape[0])
             with ctx.Pool(processes=gibbs_control['n.cores']) as pool:
                 X_input = [X[i, :] for i in np.arange(X.shape[0])]
                 star_input = zip(
@@ -350,7 +355,7 @@ class GibbsSampler:
                 gibbs_list = pool.starmap(GibbsSampler.sample_Z_theta_n, star_input, chunksize=chunk_size)
             return joint_post.JointPost.new(self.X.index, self.X.columns, phi.index, gibbs_list)
         else:
-            seeds = GibbsSampler._spawn_seeds(seed, X.shape[0], backend=rng_backend)
+            seeds = GibbsSampler._duplicate_seed(seed, X.shape[0])
             with ctx.Pool(processes=gibbs_control['n.cores']) as pool:
                 X_input = [X[i, :] for i in np.arange(X.shape[0])]
                 star_input = zip(
@@ -388,7 +393,7 @@ class GibbsSampler:
             psi_mal_n = pd.DataFrame(psi_mal.iloc[i, :]).T
             phi_n = pd.concat([psi_mal_n, psi_env])
             nonzero_idx = np.max(phi_n, axis = 0) > 0
-            child_seed = GibbsSampler._spawn_seeds(seed, 1, backend=rng_backend)[0]
+            child_seed = seed
             star_input.append((
                 X[i, nonzero_idx],
                 phi_n.loc[:, nonzero_idx],
