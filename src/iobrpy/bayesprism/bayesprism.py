@@ -33,7 +33,24 @@ def _load_csv_from_bp_data(filename: str, **read_kwargs) -> pd.DataFrame:
     with as_file(files(DATA_PACKAGE) / "BP_data" / filename) as path:
         return pd.read_csv(path, **read_kwargs)
 
-def run_bayesprism(bulk_path: Path, out_dir: Path, n_cores: int) -> None:
+def _read_user_csv(path: Path, **read_kwargs) -> pd.DataFrame:
+    """Read a user-provided CSV/TSV (optionally gzipped) with automatic sep."""
+
+    suffixes = path.suffixes
+    sep = "," if ".csv" in suffixes else "\t"
+    compression = "gzip" if ".gz" in suffixes else None
+
+    return pd.read_csv(path, sep=sep, compression=compression, **read_kwargs)
+
+
+def run_bayesprism(
+    bulk_path: Path,
+    out_dir: Path,
+    n_cores: int,
+    sc_dat_path: Optional[Path] = None,
+    cell_state_labels_path: Optional[Path] = None,
+    cell_type_labels_path: Optional[Path] = None,
+) -> None:
     """
     Core pipeline: load reference from BP_data, read bulk matrix, run BayesPrism,
     and write theta / theta_cv / Z_tumor to CSV files.
@@ -49,20 +66,35 @@ def run_bayesprism(bulk_path: Path, out_dir: Path, n_cores: int) -> None:
     """
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    # 1) Load reference data from BP_data
+    # 1) Load reference data (bundled or user-provided)
     #    Make sure you have sc_dat.csv, cell_type_labels.csv,
-    #    cell_state_labels.csv under BP_data.
-    sc_dat = _load_csv_from_bp_data(
-        "sc_dat.csv",
-        header=0,      # first row: gene names
-        index_col=0,   # first column: cell IDs
-    ).astype(np.int32)
-    cell_type_labels = list(
-        _load_csv_from_bp_data("cell_type_labels.csv", header=None).iloc[:, 0]
-    )
-    cell_state_labels = list(
-        _load_csv_from_bp_data("cell_state_labels.csv", header=None).iloc[:, 0]
-    )
+    #    cell_state_labels.csv under BP_data if you do not pass custom files.
+    if sc_dat_path is not None:
+        sc_dat = _read_user_csv(sc_dat_path, header=0, index_col=0).astype(np.int32)
+    else:
+        sc_dat = _load_csv_from_bp_data(
+            "sc_dat.csv",
+            header=0,      # first row: gene names
+            index_col=0,   # first column: cell IDs
+        ).astype(np.int32)
+
+    if cell_type_labels_path is not None:
+        cell_type_labels = list(
+            _read_user_csv(cell_type_labels_path, header=None).iloc[:, 0]
+        )
+    else:
+        cell_type_labels = list(
+            _load_csv_from_bp_data("cell_type_labels.csv", header=None).iloc[:, 0]
+        )
+
+    if cell_state_labels_path is not None:
+        cell_state_labels = list(
+            _read_user_csv(cell_state_labels_path, header=None).iloc[:, 0]
+        )
+    else:
+        cell_state_labels = list(
+            _load_csv_from_bp_data("cell_state_labels.csv", header=None).iloc[:, 0]
+        )
 
     # 2) Clean up reference genes (exactly as in tutorial)
     sc_dat_filtered = process_input.cleanup_genes(
@@ -170,6 +202,30 @@ def build_parser(parser: Optional[argparse.ArgumentParser] = None) -> argparse.A
         default=1,
         help="Number of CPU cores used by BayesPrism (n_cores).",
     )
+    parser.add_argument(
+        "--sc_dat",
+        dest="sc_dat",
+        help=(
+            "Path to a custom single-cell count matrix (genes x cells). "
+            "If omitted, the bundled BP_data/sc_dat.csv is used."
+        ),
+    )
+    parser.add_argument(
+        "--cell_state_labels",
+        dest="cell_state_labels",
+        help=(
+            "Path to a custom cell_state_labels file (one label per line). "
+            "If omitted, the bundled BP_data/cell_state_labels.csv is used."
+        ),
+    )
+    parser.add_argument(
+        "--cell_type_labels",
+        dest="cell_type_labels",
+        help=(
+            "Path to a custom cell_type_labels file (one label per line). "
+            "If omitted, the bundled BP_data/cell_type_labels.csv is used."
+        ),
+    )
 
     return parser
 
@@ -188,6 +244,17 @@ def main(argv=None) -> None:
     out_dir = Path(args.output)
     n_cores = int(args.threads)
 
-    run_bayesprism(bulk_path, out_dir, n_cores)
+    sc_dat_path = Path(args.sc_dat) if args.sc_dat else None
+    cell_state_labels_path = Path(args.cell_state_labels) if args.cell_state_labels else None
+    cell_type_labels_path = Path(args.cell_type_labels) if args.cell_type_labels else None
+
+    run_bayesprism(
+        bulk_path,
+        out_dir,
+        n_cores,
+        sc_dat_path=sc_dat_path,
+        cell_state_labels_path=cell_state_labels_path,
+        cell_type_labels_path=cell_type_labels_path,
+    )
 
     print("BayesPrism finished.")
