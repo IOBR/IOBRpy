@@ -145,8 +145,11 @@ def run_bayesprism(
     Z_tumor = extract.get_exp(bp_res, state_or_type="type", cell_name=key)
 
     # 6) Save as CSV files in the output directory
-    theta.to_csv(out_dir / "theta.csv")
-    theta_cv.to_csv(out_dir / "theta_cv.csv")
+    theta_with_suffix = theta.add_suffix("_BayesPrism")
+    theta_cv_with_suffix = theta_cv.add_suffix("_BayesPrism")
+
+    theta_with_suffix.to_csv(out_dir / "theta.csv")
+    theta_cv_with_suffix.to_csv(out_dir / "theta_cv.csv")
     
     # Z_tumor is an xarray.DataArray -> convert to pandas before saving
     if hasattr(Z_tumor, "to_pandas"):
