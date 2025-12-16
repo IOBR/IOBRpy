@@ -11,7 +11,6 @@ from . import joint_post
 from . import theta_post
 
 
-#https://stackoverflow.com/questions/55818845/fast-vectorized-multinomial-in-python
 def multinomial_rvs(count, p, rng=None, method="binomial"):
     """Vectorized multinomial sampling.
 

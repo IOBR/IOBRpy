@@ -8,10 +8,6 @@ from . import process_input
 from . import references as rf
 
 
-####################################################
-
-
-
 def logsumexp(x):
     y = np.max(x)
     return y + np.log(np.sum(np.exp(x - y)))
@@ -79,11 +75,6 @@ def optimize_psi(phi, Z_gt, prior_num, opt_control):
     return {"psi": psi, "value": value}
 
 
-
-####################################################
-
-
-
 def transform_phi_transpose(phi_transpose, gamma):
     psi = np.empty((phi_transpose.shape[1], phi_transpose.shape[0]))
     for t in range(psi.shape[0]):
@@ -106,7 +97,6 @@ def log_mle_gamma_grad(gamma, args):
     psi = transform_phi_transpose(phi_transpose, gamma)
     log_likelihood_grad = np.sum(Z_tg - (Z_t * psi), axis = 0)
     return -log_likelihood_grad
-
 
 
 def optimize_psi_oneGamma(phi, Z_gt, opt_control, optimizer = "Rcgmin"):
@@ -135,11 +125,6 @@ def optimize_psi_oneGamma(phi, Z_gt, opt_control, optimizer = "Rcgmin"):
                        dims=[phi.dims[1], phi.dims[0]])
 
     return {"psi": psi, "value": value, "gamma": opt_gamma}
-
-
-
-####################################################
-
 
 
 def transform_phi_t(phi_t, gamma_t):
@@ -217,5 +202,3 @@ def update_reference(Z, phi_prime, map, key, opt_control, optimizer=["MAP", "MLE
                                             Z_gt = Z_gt_env, 
                                             opt_control = opt_control)["psi"]
         return rf.RefTumor(psi_mal, psi_env, key, None)
-
-

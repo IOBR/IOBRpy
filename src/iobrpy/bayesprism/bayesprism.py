@@ -5,12 +5,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from typing import Optional
-
-# importlib.resources for bundled BP_data
-try:
-    from importlib.resources import files, as_file
-except ImportError:  # for Python <3.9, fallback to backport if installed
-    from importlib_resources import files, as_file  # type: ignore
+from importlib.resources import files, as_file
 
 from . import prism, extract, process_input
 
@@ -109,7 +104,6 @@ def run_bayesprism(
     )
 
     # 3) Load bulk matrix: genes x samples -> transpose to samples x genes
-    #    (bulk数据转置读取)
     suffixes = bulk_path.suffixes  # e.g. ['.txt', '.gz']
     compression = "gzip" if ".gz" in suffixes else None
 
@@ -199,7 +193,7 @@ def build_parser(parser: Optional[argparse.ArgumentParser] = None) -> argparse.A
         "--threads",
         dest="threads",
         type=int,
-        default=8,
+        default=1,
         help="Number of CPU cores used by BayesPrism (n_cores).",
     )
     parser.add_argument(

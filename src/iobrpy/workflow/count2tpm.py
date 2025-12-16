@@ -9,7 +9,6 @@ from iobrpy.utils.remove_version import strip_versions_in_dataframe
 try:
     from tqdm.auto import tqdm
 except Exception:
-    # fallback: if tqdm is not installed, tqdm(...) just returns the iterable unchanged
     def tqdm(iterable, **kwargs):
         return iterable
 

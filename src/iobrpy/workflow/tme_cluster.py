@@ -51,9 +51,6 @@ def detect_sep(path):
     return ','
 
 def hartigan_wong(data, k, max_iter=10, tol=1e-4, rng=None):
-    """
-    Hartigan-Wong K-means, with empty-cluster handling matching R's stats::kmeans.
-    """
     n, p = data.shape
     # initialize centers
     rng = rng or np.random
@@ -142,7 +139,6 @@ def main():
         ids = df.iloc[:, 0].astype(str)
         df = df.drop(df.columns[0], axis=1)
 
-    # Feature selection mirrors the R wrapper (pattern/feature based)
     if args.features:
         m = re.match(r'^(\d+):(\d+)$', args.features)
         cols = df.columns[int(m.group(1)) - 1:int(m.group(2))]
@@ -154,7 +150,6 @@ def main():
     data = df[cols].apply(pd.to_numeric, errors='coerce')
     if args.scale:
         data = (data - data.mean()) / data.std(ddof=1)
-        # Apply the same feature_manipulation filter used by the R pipeline (only when scaled)
         valid_features = feature_manipulation(data, feature=list(data.columns), print_result=args.print_result)
         data = data[valid_features]
     if data.empty:
@@ -170,7 +165,6 @@ def main():
 
     main_k_values = list(range(args.min_nc, args.max_nc + 1))
 
-    # First compute the best partition for every k with shared RNG state so draws mirror R's sequence
     for k in tqdm(main_k_values, desc="kmeans runs"):
         labels_k, _, w_k = best_hartigan_run(X, k, args.nstart, args.max_iter, args.tol, rng)
         labels_by_k[k] = labels_k

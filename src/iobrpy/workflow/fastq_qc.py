@@ -7,13 +7,6 @@ import random
 import argparse
 from multiprocessing import Pool
 
-# try tqdm for a nice progress bar; fall back gracefully if not installed
-try:
-    from tqdm.auto import tqdm  # type: ignore
-except Exception:  # pragma: no cover
-    def tqdm(iterable, **kwargs):
-        return iterable
-
 from iobrpy.utils.print_colorful_message import print_colorful_message
 
 def process_sample(file, path1_fastq, path2_fastp, num_threads, suffix1, se, length_required):
@@ -42,9 +35,10 @@ def process_sample(file, path1_fastq, path2_fastp, num_threads, suffix1, se, len
         outputs.append(output_forward)
         if not se:
             outputs.append(output_reverse)
+        print(f"[Skip] {sample_id} already finished; skipping.")
         return {"sample": sample_id, "status": "skipped", "outputs": outputs}
 
-    print_colorful_message(f"Processing: {sample_id}", "green")
+    print(f"[Start] {sample_id} is running...")
 
     try:
         if se:
@@ -71,7 +65,7 @@ def process_sample(file, path1_fastq, path2_fastp, num_threads, suffix1, se, len
         subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         with open(task_file, 'w') as f:
             f.write("Processing complete for " + sample_id)
-        print_colorful_message(f"Task complete for {sample_id}", "cyan")
+        print(f"[Done] {sample_id} finished successfully.")
 
         outputs.append(output_forward)
         if not se:
@@ -150,10 +144,7 @@ def step1_fastq_qc(path1_fastq, path2_fastp, num_threads=8, suffix1="_1.fastq.gz
     results = []
     if tasks:
         with Pool(processes=batch_size) as pool:
-            for res in tqdm(pool.imap_unordered(_worker, tasks),
-                            total=len(tasks),
-                            desc="Running fastp",
-                            unit="sample"):
+            for res in pool.imap_unordered(_worker, tasks):
                 results.append(res)
 
     # ------- FINAL: print output file paths first -------

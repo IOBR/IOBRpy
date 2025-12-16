@@ -3,7 +3,7 @@ import pandas as pd
 from sklearn.svm import NuSVR
 from importlib.resources import files
 from joblib import Parallel, delayed
-import joblib  # needed for custom tqdm_joblib fallback
+import joblib
 import argparse
 
 # -------- progress bar (tqdm) with robust fallbacks (Py3.9+) --------
@@ -216,7 +216,7 @@ def cibersort(input_path, perm=100, QN=True, absolute=False, abs_method='sig.sco
     # Ensure unique gene names to avoid accidental collapse later
     mix_df.index = make_unique(mix_df.index)
 
-    # 2) Order by gene name to mirror the R workflow
+    # 2) Order by gene name
     sig_df = sig_df.sort_index()
     mix_df = mix_df.sort_index()
 
@@ -233,7 +233,7 @@ def cibersort(input_path, perm=100, QN=True, absolute=False, abs_method='sig.sco
     Yorig = np.array(Y, copy=True)
     Ymedian = max(float(np.median(Yorig)), 1.0)
 
-    # 6) Intersect genes (after QN to match R ordering)
+    # 6) Intersect genes
     mix_common_mask = mix_df.index.isin(sig_df.index)
     mix_common = mix_df.index[mix_common_mask]
     if len(mix_common) == 0:
@@ -288,7 +288,7 @@ def cibersort(input_path, perm=100, QN=True, absolute=False, abs_method='sig.sco
     rmses = np.array([o[4] for o in outs], dtype=np.float32)
 
     if nulldist is not None:
-        # One-sided p-value: count(null >= r) / perm, matching the R script
+        # One-sided p-value: count(null >= r) / perm
         # Use direct counting to avoid any precision quirks from searchsorted
         counts = (nulldist[np.newaxis, :] >= rs[:, np.newaxis]).sum(axis=1)
         pvals = counts / len(nulldist)

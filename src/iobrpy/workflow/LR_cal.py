@@ -53,10 +53,6 @@ def compute_LR_pairs(RNA_tpm: pd.DataFrame,
                      intercell_networks: dict,
                      group_lrpairs: list,
                      verbose: bool = False) -> pd.DataFrame:
-    """
-    Compute LR interaction scores mirroring R logic exactly, using explicit position-based grouping.
-    """
-    # --- Apply feature_manipulation filter as in R wrapper ---
     valid_genes = feature_manipulation(RNA_tpm, is_matrix=True, print_result=verbose)
     RNA_tpm = RNA_tpm.loc[valid_genes]
     if verbose:
