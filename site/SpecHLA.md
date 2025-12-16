@@ -7,6 +7,8 @@ toc: true
 ## Single-sample SpecHLA (`iobrpy spechla`)
 Run SpecHLA in RNA-seq mode when you already have paired FASTQs.
 
+- **计算了什么 / 有什么用**：SpecHLA对样本进行HLA等位基因分型，输出高分辨率的HLA-A/B/C、DR/DQ/DP等基因型，可用于免疫逃逸/移植风险评估、免疫治疗预后分析及新抗原预测的基础数据。
+
 ```bash
 iobrpy spechla \
   -n SAMPLE1 \
@@ -23,6 +25,8 @@ iobrpy spechla \
 ## Extract HLA reads from BAM/CRAM (`iobrpy extract_hla_read`)
 Use SpecHLA's ExtractHLAread helper to pull HLA reads and convert them to FASTQ.
 
+- **计算了什么 / 有什么用**：从对齐好的BAM/CRAM中提取HLA相关reads并转换成FASTQ，保证HLA分型输入更纯净，提高后续SpecHLA结果的准确性；适合集成到批量HLA分型流程或质量复核。
+
 ```bash
 iobrpy extract_hla_read \
   -s SAMPLE1 \
@@ -38,6 +42,8 @@ iobrpy extract_hla_read \
 
 ## Batch HLA typing (`iobrpy hla_typing`)
 End-to-end wrapper that runs **ExtractHLAread** for every BAM in a directory, launches **SpecHLA** on the extracted FASTQs, and merges per-sample calls.
+
+- **计算了什么 / 有什么用**：批量自动产出每个样本的HLA分型结果并汇总成 `hla.results.txt`，便于跨队列比较、与临床特征关联，或直接作为免疫相关分析（如neoantigen预测、免疫匹配）的输入。
 
 ```bash
 iobrpy hla_typing \

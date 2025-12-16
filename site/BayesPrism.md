@@ -7,6 +7,8 @@ toc: true
 ## Overview
 `iobrpy bayesprism` runs the Python BayesPrism implementation bundled with iobrpy. It performs bulk RNA-seq deconvolution using a default single-cell reference or your own custom matrices.
 
+- **计算了什么 / 有什么用**：BayesPrism基于贝叶斯分解模型估计每个样本的细胞类型组成（肿瘤与免疫/基质亚型比例），并重建肿瘤特异的表达矩阵，适用于微环境构成分析、与免疫表型/治疗响应关联或作为后续差异/通路分析的输入。
+
 ## Required inputs
 - `-i/--input`: bulk expression matrix (genes × samples), CSV/TSV (optionally gzipped).
 - `-o/--output`: directory to receive `theta.csv`, `theta_cv.csv`, and `Z_tumor.csv`.
