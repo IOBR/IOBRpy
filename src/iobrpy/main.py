@@ -418,6 +418,21 @@ def main():
         default=1,
         help='Number of CPU cores for BayesPrism (n_cores).'
     )
+    p_bp.add_argument(
+        '--sc_dat',
+        dest='sc_dat',
+        help='Custom single-cell count matrix (genes x cells).',
+    )
+    p_bp.add_argument(
+        '--cell_state_labels',
+        dest='cell_state_labels',
+        help='Custom cell_state_labels file (one label per line).',
+    )
+    p_bp.add_argument(
+        '--cell_type_labels',
+        dest='cell_type_labels',
+        help='Custom cell_type_labels file (one label per line).',
+    )
 
     args, unknown = parser.parse_known_args()
 
@@ -859,6 +874,12 @@ def main():
             '-o', args.output,
             '--threads', str(args.threads),
         ]
+        if args.sc_dat:
+            bp_argv += ['--sc_dat', args.sc_dat]
+        if args.cell_state_labels:
+            bp_argv += ['--cell_state_labels', args.cell_state_labels]
+        if args.cell_type_labels:
+            bp_argv += ['--cell_type_labels', args.cell_type_labels]
         bp_argv += unknown
         bayesprism_main(bp_argv)
 
