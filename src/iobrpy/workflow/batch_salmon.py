@@ -11,8 +11,8 @@ Improvements in this fixed version:
   "R1.fq.gz" -> "R2.fq.gz").
 - Resume-friendly: skip finished samples; no UnboundLocalError on skip path.
 - Uses subprocess.run(list) (no shell=True) to avoid quoting/escaping issues.
-- Progress bar with tqdm over samples; per-sample logging.
-- Salmon stdout/stderr are suppressed, so logs no longer flood the terminal.
+  - Randomized sample order with clear start/done/skip logging.
+  - Salmon stdout/stderr are suppressed, so logs no longer flood the terminal.
 """
 
 import os
@@ -20,12 +20,11 @@ import re
 import sys
 import glob
 import json
+import random
 import argparse
 import subprocess
 from multiprocessing import Pool
 from functools import partial
-
-from tqdm.auto import tqdm
 
 
 def _salmon_version_tuple():
@@ -114,9 +113,10 @@ def _run_salmon_one(
     quant_sf = os.path.join(out_dir, "quant.sf")
     done_flag = os.path.join(out_dir, "task.complete")
     if _exists_nonempty(quant_sf) and os.path.exists(done_flag):
-        print(f"[skip] {sample_id}: quant.sf exists and task.complete present.")
-        print(f"Saved to: {quant_sf}", flush=True)
+        print(f"[Skip] {sample_id} already finished; skipping.")
         return sample_id, True, None
+
+    print(f"[Start] {sample_id} is running...", flush=True)
 
     cmd = [
         "salmon",
@@ -167,7 +167,7 @@ def _run_salmon_one(
     except Exception:
         pass
 
-    print(f"Saved to: {quant_sf}", flush=True)
+    print(f"[Done] {sample_id} finished successfully. Saved to: {quant_sf}", flush=True)
     return sample_id, True, None
 
 
@@ -270,6 +270,8 @@ def main():
             )
         )
 
+    random.shuffle(pairs)
+
     if not pairs:
         print("[error] No valid R1/R2 pairs to process.", file=sys.stderr)
         sys.exit(2)
@@ -279,20 +281,14 @@ def main():
 
     # Run
     print(
-        f"[Plan] {len(pairs)} samples; batch_size={args.batch_size}; "
-        f"threads_per_job={args.num_threads}"
+        f"[Plan] Processing {len(pairs)} samples (Order: RANDOM SHUFFLED). "
+        f"Batch size: {args.batch_size}; Threads per job: {args.num_threads}"
     )
     failures = []
     with Pool(processes=max(1, int(args.batch_size))) as pool:
-        for sid, ok, err in tqdm(
-            pool.imap_unordered(process_sample, pairs),
-            total=len(pairs),
-            desc="Samples",
-            unit="sample",
-        ):
+        for sid, ok, err in pool.imap_unordered(process_sample, pairs):
             if not ok:
                 failures.append((sid, err))
-                # If you want fail-fast, you could break here.
 
     if failures:
         print("\n[summary] Some samples failed:", file=sys.stderr)

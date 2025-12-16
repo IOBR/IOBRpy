@@ -4,11 +4,6 @@ import random
 import subprocess
 import argparse
 
-try:
-    from tqdm.auto import tqdm
-except Exception:  # tqdm not installed; degrade gracefully
-    tqdm = None
-
 
 def set_ulimit():
     """
@@ -46,11 +41,9 @@ def process_sample(f1, path_out, index, suffix1, num_threads):
     if os.path.exists(os.path.join(path_out, f"{sample_id}.task.complete")) and \
             os.path.exists(os.path.join(path_out, f"{sample_id}_Aligned.sortedByCoord.out.bam")) and \
             os.path.getsize(os.path.join(path_out, f"{sample_id}_Aligned.sortedByCoord.out.bam")) > 0:
-        # Output progress message
-        print(f"Skipping {sample_id} - task.complete and BAM files exist and are not empty.")
+        print(f"[Skip] {sample_id} already finished; skipping.")
     else:
-        # Output progress message
-        print(f">>> Processing {sample_id}...")
+        print(f"[Start] {sample_id} is running...")
 
         # Construct STAR command (splitted into multiple lines)
         command = (
@@ -73,8 +66,7 @@ def process_sample(f1, path_out, index, suffix1, num_threads):
         # Create task.complete file
         os.makedirs(os.path.join(path_out, sample_id), exist_ok=True)
         open(os.path.join(path_out, f"{sample_id}.task.complete"), 'w').close()
-        print(f">>> {sample_id} has completed the STAR process. ")
-        print(f" ")
+        print(f"[Done] {sample_id} finished successfully.")
 
 def _print_outputs_summary(files_1, path_out, suffix1):
     """
@@ -111,13 +103,15 @@ def process_samples(path_fq, path_out, index, suffix1="_1.fastq.gz", batch_size=
     files_1 = sorted([os.path.join(path_fq, file) for file in os.listdir(path_fq) if file.endswith(suffix1)])
     random.shuffle(files_1)
 
-    # Progress setup
     total = len(files_1)
     if total == 0:
         print(f"No files with suffix '{suffix1}' found under: {path_fq}")
         return
-    pbar = tqdm(total=total, desc="STAR (GeneCounts)", unit="sample") if tqdm else None
-    processed = 0
+
+    print(
+        f"[Plan] Processing {total} samples (Order: RANDOM SHUFFLED). "
+        f"Batch size: {batch_size}; Threads per job: {num_threads}"
+    )
 
     # Initialize batch index
     batch_index = 0
@@ -128,18 +122,9 @@ def process_samples(path_fq, path_out, index, suffix1="_1.fastq.gz", batch_size=
         # Process batch of files
         for f1 in batch_files:
             process_sample(f1, path_out, index, suffix1, num_threads)
-            if pbar:
-                pbar.update(1)
-            else:
-                processed += 1
-                if (processed % 10 == 0) or (processed == total):
-                    print(f"[Progress] {processed}/{total} samples")
 
         # Increment batch index
         batch_index += batch_size
-
-    if pbar:
-        pbar.close()
 
     # Final summary of output files
     _print_outputs_summary(files_1, path_out, suffix1)
