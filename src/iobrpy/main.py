@@ -415,7 +415,7 @@ def main():
         '--threads',
         dest='threads',
         type=int,
-        default=8,
+        default=1,
         help='Number of CPU cores for BayesPrism (n_cores).'
     )
     p_bp.add_argument(
