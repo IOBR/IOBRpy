@@ -34,7 +34,7 @@ from iobrpy.SpecHLA.extract_hla_read import main as extract_hla_read_main
 from iobrpy.workflow.hla_typing import main as hla_typing_main
 from iobrpy.bayesprism.bayesprism import main as bayesprism_main
 
-VERSION = "0.1.5"
+VERSION = "0.1.6"
 
 def main():
     parser = argparse.ArgumentParser(
@@ -415,7 +415,7 @@ def main():
         '--threads',
         dest='threads',
         type=int,
-        default=1,
+        default=8,
         help='Number of CPU cores for BayesPrism (n_cores).'
     )
     p_bp.add_argument(

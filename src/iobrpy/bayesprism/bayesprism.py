@@ -196,7 +196,7 @@ def build_parser(parser: Optional[argparse.ArgumentParser] = None) -> argparse.A
         "--threads",
         dest="threads",
         type=int,
-        default=1,
+        default=8,
         help="Number of CPU cores used by BayesPrism (n_cores).",
     )
     parser.add_argument(
@@ -255,3 +255,4 @@ def main(argv=None) -> None:
     )
 
     print("BayesPrism finished.")
+    print(f"Results were saved to: {out_dir.resolve()}")

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "iobrpy"
-version = "0.1.5"
+version = "0.1.6"
 description = "Immuno-Oncology Biological Research tools in Python"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -55,6 +55,7 @@ include = ["iobrpy*"]
 [tool.setuptools.package-data]
 "iobrpy.resources" = ["*"]
 "iobrpy.SpecHLA" = [
+  "*.sh",
   "bin/**",
   "db/**",
   "script/**"
