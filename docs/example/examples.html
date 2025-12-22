@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>7&nbsp; Examples – IOBRpy Book</title>
+<title>10&nbsp; Examples – IOBRpy Book</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -119,7 +119,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../example/examples.html"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Examples</span></a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../example/examples.html"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Examples</span></a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
       <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
@@ -177,32 +177,50 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../workflow.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Typical end-to-end workflow</span></span></a>
+  <a href="../trust4.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">TRUST4 &amp; TCR-BCR</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../SpecHLA.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">SpecHLA &amp; HLA typing</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../From-FASTQ-to-TPM.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">From FASTQ to TPM</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../TME-profiling.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">TME profiling</span></span></a>
   </div>
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../commands-and-options.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Commands &amp; common options</span></span></a>
+ <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Commands &amp; common options</span></span></a>
   </div>
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../example/examples.html" class="sidebar-item-text sidebar-link active">
- <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Examples</span></span></a>
+ <span class="menu-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Examples</span></span></a>
   </div>
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../Troubleshooting.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Troubleshooting</span></span></a>
+ <span class="menu-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Troubleshooting</span></span></a>
   </div>
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../Citation.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Citation</span></span></a>
+ <span class="menu-text"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">Citation</span></span></a>
   </div>
 </li>
     </ul>
@@ -215,26 +233,29 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <h2 id="toc-title">Table of contents</h2>
    
   <ul>
-  <li><a href="#from-downloading-data-to-tme" id="toc-from-downloading-data-to-tme" class="nav-link active" data-scroll-target="#from-downloading-data-to-tme"><span class="header-section-number">7.1</span> From downloading data to TME</a>
+  <li><a href="#from-downloading-data-to-tme" id="toc-from-downloading-data-to-tme" class="nav-link active" data-scroll-target="#from-downloading-data-to-tme"><span class="header-section-number">10.1</span> From downloading data to TME</a>
   <ul class="collapse">
-  <li><a href="#data-download" id="toc-data-download" class="nav-link" data-scroll-target="#data-download"><span class="header-section-number">7.1.1</span> Data download</a></li>
-  <li><a href="#from-fastq-to-tme---runall" id="toc-from-fastq-to-tme---runall" class="nav-link" data-scroll-target="#from-fastq-to-tme---runall"><span class="header-section-number">7.1.2</span> From FASTQ to TME - runall</a></li>
+  <li><a href="#data-download" id="toc-data-download" class="nav-link" data-scroll-target="#data-download"><span class="header-section-number">10.1.1</span> Data download</a></li>
+  <li><a href="#from-fastq-to-tme---runall" id="toc-from-fastq-to-tme---runall" class="nav-link" data-scroll-target="#from-fastq-to-tme---runall"><span class="header-section-number">10.1.2</span> From FASTQ to TME - runall</a></li>
   </ul></li>
-  <li><a href="#tpm-conversion" id="toc-tpm-conversion" class="nav-link" data-scroll-target="#tpm-conversion"><span class="header-section-number">7.2</span> TPM conversion</a>
+  <li><a href="#tpm-conversion" id="toc-tpm-conversion" class="nav-link" data-scroll-target="#tpm-conversion"><span class="header-section-number">10.2</span> TPM conversion</a>
   <ul class="collapse">
-  <li><a href="#from-count-matrix-to-tpm" id="toc-from-count-matrix-to-tpm" class="nav-link" data-scroll-target="#from-count-matrix-to-tpm"><span class="header-section-number">7.2.1</span> From <strong>count matrix</strong> to <strong>TPM</strong></a></li>
-  <li><a href="#from-salmon-matrix-to-tpm" id="toc-from-salmon-matrix-to-tpm" class="nav-link" data-scroll-target="#from-salmon-matrix-to-tpm"><span class="header-section-number">7.2.2</span> From <strong>Salmon matrix</strong> to <strong>TPM</strong></a></li>
-  <li><a href="#from-gene-expression-matrix-to-gene-level-matrix-with-annotation-anno_eset" id="toc-from-gene-expression-matrix-to-gene-level-matrix-with-annotation-anno_eset" class="nav-link" data-scroll-target="#from-gene-expression-matrix-to-gene-level-matrix-with-annotation-anno_eset"><span class="header-section-number">7.2.3</span> From <strong>gene-expression matrix</strong> to <strong>gene-level matrix</strong> with annotation (<code>anno_eset</code>)</a></li>
-  <li><a href="#mouse-human-gene-conversion-mouse2human_eset" id="toc-mouse-human-gene-conversion-mouse2human_eset" class="nav-link" data-scroll-target="#mouse-human-gene-conversion-mouse2human_eset"><span class="header-section-number">7.2.4</span> <strong>Mouse → Human</strong> gene conversion (<code>mouse2human_eset</code>)</a></li>
+  <li><a href="#from-count-matrix-to-tpm" id="toc-from-count-matrix-to-tpm" class="nav-link" data-scroll-target="#from-count-matrix-to-tpm"><span class="header-section-number">10.2.1</span> From <strong>count matrix</strong> to <strong>TPM</strong></a></li>
+  <li><a href="#from-salmon-matrix-to-tpm" id="toc-from-salmon-matrix-to-tpm" class="nav-link" data-scroll-target="#from-salmon-matrix-to-tpm"><span class="header-section-number">10.2.2</span> From <strong>Salmon matrix</strong> to <strong>TPM</strong></a></li>
+  <li><a href="#from-gene-expression-matrix-to-gene-level-matrix-with-annotation-anno_eset" id="toc-from-gene-expression-matrix-to-gene-level-matrix-with-annotation-anno_eset" class="nav-link" data-scroll-target="#from-gene-expression-matrix-to-gene-level-matrix-with-annotation-anno_eset"><span class="header-section-number">10.2.3</span> From <strong>gene-expression matrix</strong> to <strong>gene-level matrix</strong> with annotation (<code>anno_eset</code>)</a></li>
+  <li><a href="#mouse-human-gene-conversion-mouse2human_eset" id="toc-mouse-human-gene-conversion-mouse2human_eset" class="nav-link" data-scroll-target="#mouse-human-gene-conversion-mouse2human_eset"><span class="header-section-number">10.2.4</span> <strong>Mouse → Human</strong> gene conversion (<code>mouse2human_eset</code>)</a></li>
   </ul></li>
-  <li><a href="#from-tpm-to-tme" id="toc-from-tpm-to-tme" class="nav-link" data-scroll-target="#from-tpm-to-tme"><span class="header-section-number">7.3</span> From TPM to TME</a>
+  <li><a href="#from-tpm-to-tme" id="toc-from-tpm-to-tme" class="nav-link" data-scroll-target="#from-tpm-to-tme"><span class="header-section-number">10.3</span> From TPM to TME</a>
   <ul class="collapse">
-  <li><a href="#inputs" id="toc-inputs" class="nav-link" data-scroll-target="#inputs"><span class="header-section-number">7.3.1</span> Inputs</a></li>
-  <li><a href="#all-in-one-tme-profiling---tme_profile" id="toc-all-in-one-tme-profiling---tme_profile" class="nav-link" data-scroll-target="#all-in-one-tme-profiling---tme_profile"><span class="header-section-number">7.3.2</span> All-in-one TME profiling - <code>tme_profile</code></a></li>
-  <li><a href="#immune-deconvolution" id="toc-immune-deconvolution" class="nav-link" data-scroll-target="#immune-deconvolution"><span class="header-section-number">7.3.3</span> Immune deconvolution</a></li>
-  <li><a href="#tme-clustering" id="toc-tme-clustering" class="nav-link" data-scroll-target="#tme-clustering"><span class="header-section-number">7.3.4</span> TME clustering</a></li>
-  <li><a href="#ligandreceptor-scoring" id="toc-ligandreceptor-scoring" class="nav-link" data-scroll-target="#ligandreceptor-scoring"><span class="header-section-number">7.3.5</span> Ligand–receptor scoring</a></li>
+  <li><a href="#inputs" id="toc-inputs" class="nav-link" data-scroll-target="#inputs"><span class="header-section-number">10.3.1</span> Inputs</a></li>
+  <li><a href="#all-in-one-tme-profiling---tme_profile" id="toc-all-in-one-tme-profiling---tme_profile" class="nav-link" data-scroll-target="#all-in-one-tme-profiling---tme_profile"><span class="header-section-number">10.3.2</span> All-in-one TME profiling - <code>tme_profile</code></a></li>
+  <li><a href="#signature-scoring" id="toc-signature-scoring" class="nav-link" data-scroll-target="#signature-scoring"><span class="header-section-number">10.3.3</span> Signature scoring</a></li>
+  <li><a href="#immune-deconvolution" id="toc-immune-deconvolution" class="nav-link" data-scroll-target="#immune-deconvolution"><span class="header-section-number">10.3.4</span> Immune deconvolution</a></li>
+  <li><a href="#tme-clustering" id="toc-tme-clustering" class="nav-link" data-scroll-target="#tme-clustering"><span class="header-section-number">10.3.5</span> TME clustering</a></li>
+  <li><a href="#ligandreceptor-scoring" id="toc-ligandreceptor-scoring" class="nav-link" data-scroll-target="#ligandreceptor-scoring"><span class="header-section-number">10.3.6</span> Ligand–receptor scoring</a></li>
   </ul></li>
+  <li><a href="#hla-typing" id="toc-hla-typing" class="nav-link" data-scroll-target="#hla-typing"><span class="header-section-number">10.4</span> HLA typing</a></li>
+  <li><a href="#tcr-bcr" id="toc-tcr-bcr" class="nav-link" data-scroll-target="#tcr-bcr"><span class="header-section-number">10.5</span> TCR-BCR</a></li>
   </ul>
 <div class="toc-actions"><ul><li><a href="https://github.com/IOBR/IOBRpy/edit/main/site/example/examples.md" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li><li><a href="https://github.com/IOBR/IOBRpy/issues/new" class="toc-action"><i class="bi empty"></i>Report an issue</a></li></ul></div></nav>
     </div>
@@ -243,7 +264,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Examples</span></h1>
+<h1 class="title"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Examples</span></h1>
 </div>
 
 
@@ -260,19 +281,19 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<section id="from-downloading-data-to-tme" class="level2" data-number="7.1">
-<h2 data-number="7.1" class="anchored" data-anchor-id="from-downloading-data-to-tme"><span class="header-section-number">7.1</span> From downloading data to TME</h2>
-<section id="data-download" class="level3" data-number="7.1.1">
-<h3 data-number="7.1.1" class="anchored" data-anchor-id="data-download"><span class="header-section-number">7.1.1</span> Data download</h3>
-<section id="prepare-the-srr-list" class="level4" data-number="7.1.1.1">
-<h4 data-number="7.1.1.1" class="anchored" data-anchor-id="prepare-the-srr-list"><span class="header-section-number">7.1.1.1</span> Prepare the SRR list</h4>
+<section id="from-downloading-data-to-tme" class="level2" data-number="10.1">
+<h2 data-number="10.1" class="anchored" data-anchor-id="from-downloading-data-to-tme"><span class="header-section-number">10.1</span> From downloading data to TME</h2>
+<section id="data-download" class="level3" data-number="10.1.1">
+<h3 data-number="10.1.1" class="anchored" data-anchor-id="data-download"><span class="header-section-number">10.1.1</span> Data download</h3>
+<section id="prepare-the-srr-list" class="level4" data-number="10.1.1.1">
+<h4 data-number="10.1.1.1" class="anchored" data-anchor-id="prepare-the-srr-list"><span class="header-section-number">10.1.1.1</span> Prepare the SRR list</h4>
 <ul>
 <li>Retrieve the SRR accessions for <strong>PRJNA1161405</strong> from NCBI SRA: <a href="https://www.ncbi.nlm.nih.gov/sra/?term=PRJNA1161405" class="uri">https://www.ncbi.nlm.nih.gov/sra/?term=PRJNA1161405</a>.</li>
 <li>Save the accessions (one per line) into <code>PRJNA1161405.txt</code> and upload it to: <code>path/to/PRJNA1161405/</code>.</li>
 </ul>
 </section>
-<section id="high-speed-download-with-prefetch" class="level4" data-number="7.1.1.2">
-<h4 data-number="7.1.1.2" class="anchored" data-anchor-id="high-speed-download-with-prefetch"><span class="header-section-number">7.1.1.2</span> High-speed download with <code>prefetch</code></h4>
+<section id="high-speed-download-with-prefetch" class="level4" data-number="10.1.1.2">
+<h4 data-number="10.1.1.2" class="anchored" data-anchor-id="high-speed-download-with-prefetch"><span class="header-section-number">10.1.1.2</span> High-speed download with <code>prefetch</code></h4>
 <blockquote class="blockquote">
 <p>Requires <strong>SRA Toolkit</strong> installed and on your <code>PATH</code>.</p>
 </blockquote>
@@ -283,8 +304,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Download all SRR runs listed in PRJNA1161405.txt into the current directory</span></span>
 <span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="ex">prefetch</span> <span class="at">-O</span> ./ <span class="at">--option-file</span> PRJNA1161405.txt</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
-<section id="convert-.sra-to-fastq-with-fasterq-dump" class="level4" data-number="7.1.1.3">
-<h4 data-number="7.1.1.3" class="anchored" data-anchor-id="convert-.sra-to-fastq-with-fasterq-dump"><span class="header-section-number">7.1.1.3</span> Convert <code>.sra</code> to FASTQ with <code>fasterq-dump</code></h4>
+<section id="convert-.sra-to-fastq-with-fasterq-dump" class="level4" data-number="10.1.1.3">
+<h4 data-number="10.1.1.3" class="anchored" data-anchor-id="convert-.sra-to-fastq-with-fasterq-dump"><span class="header-section-number">10.1.1.3</span> Convert <code>.sra</code> to FASTQ with <code>fasterq-dump</code></h4>
 <p>This loop finds each run directory produced by <code>prefetch</code> and converts the <code>.sra</code> file to paired FASTQ files.</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="va">folder</span><span class="op">=</span><span class="st">"path/to/PRJNA1161405/"</span></span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> path/to/PRJNA1161405</span>
@@ -298,8 +319,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>  <span class="cf">fi</span></span>
 <span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a><span class="cf">done</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
-<section id="multi-thread-compression-with-pigz" class="level4" data-number="7.1.1.4">
-<h4 data-number="7.1.1.4" class="anchored" data-anchor-id="multi-thread-compression-with-pigz"><span class="header-section-number">7.1.1.4</span> Multi-thread compression with <code>pigz</code></h4>
+<section id="multi-thread-compression-with-pigz" class="level4" data-number="10.1.1.4">
+<h4 data-number="10.1.1.4" class="anchored" data-anchor-id="multi-thread-compression-with-pigz"><span class="header-section-number">10.1.1.4</span> Multi-thread compression with <code>pigz</code></h4>
 <p>Compress all <code>.fastq</code> files in the folder using 8 threads.</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> path/to/PRJNA1161405</span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> file <span class="kw">in</span> SRR<span class="pp">*</span>.fastq<span class="kw">;</span> <span class="cf">do</span></span>
@@ -308,8 +329,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>  <span class="cf">fi</span></span>
 <span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a><span class="cf">done</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
-<section id="optional-direct-downloads-from-ena-ftp-with-curl" class="level4" data-number="7.1.1.5">
-<h4 data-number="7.1.1.5" class="anchored" data-anchor-id="optional-direct-downloads-from-ena-ftp-with-curl"><span class="header-section-number">7.1.1.5</span> (Optional) Direct downloads from ENA FTP with <code>curl</code></h4>
+<section id="optional-direct-downloads-from-ena-ftp-with-curl" class="level4" data-number="10.1.1.5">
+<h4 data-number="10.1.1.5" class="anchored" data-anchor-id="optional-direct-downloads-from-ena-ftp-with-curl"><span class="header-section-number">10.1.1.5</span> (Optional) Direct downloads from ENA FTP with <code>curl</code></h4>
 <p>If you prefer pulling FASTQ files directly from ENA:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co">#!/usr/bin/env bash</span></span>
 <span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="bu">set</span> <span class="at">-euo</span> pipefail</span>
@@ -350,25 +371,25 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <hr>
 </section>
 </section>
-<section id="from-fastq-to-tme---runall" class="level3" data-number="7.1.2">
-<h3 data-number="7.1.2" class="anchored" data-anchor-id="from-fastq-to-tme---runall"><span class="header-section-number">7.1.2</span> From FASTQ to TME - runall</h3>
-<section id="salmon-mode" class="level4" data-number="7.1.2.1">
-<h4 data-number="7.1.2.1" class="anchored" data-anchor-id="salmon-mode"><span class="header-section-number">7.1.2.1</span> Salmon mode</h4>
+<section id="from-fastq-to-tme---runall" class="level3" data-number="10.1.2">
+<h3 data-number="10.1.2" class="anchored" data-anchor-id="from-fastq-to-tme---runall"><span class="header-section-number">10.1.2</span> From FASTQ to TME - runall</h3>
+<section id="salmon-mode" class="level4" data-number="10.1.2.1">
+<h4 data-number="10.1.2.1" class="anchored" data-anchor-id="salmon-mode"><span class="header-section-number">10.1.2.1</span> Salmon mode</h4>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> runall <span class="dt">\</span></span>
 <span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">--mode</span> salmon <span class="dt">\</span></span>
-<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">--outdir</span> <span class="st">"/path/to/outdir"</span> <span class="dt">\</span></span>
-<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">--fastq</span> <span class="st">"/path/to/fastq"</span> <span class="dt">\</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">--outdir</span> <span class="st">"/path/to/salmon_dir"</span> <span class="dt">\</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">--fastq</span> <span class="st">"path/to/PRJNA1161405"</span> <span class="dt">\</span></span>
 <span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">--threads</span> 8 <span class="dt">\</span></span>
 <span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">--batch_size</span> 1 <span class="dt">\</span></span>
 <span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">--index</span> <span class="st">"/path/to/salmon/index"</span> <span class="dt">\</span></span>
 <span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">--project</span> SRR</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
-<section id="star-mode" class="level4" data-number="7.1.2.2">
-<h4 data-number="7.1.2.2" class="anchored" data-anchor-id="star-mode"><span class="header-section-number">7.1.2.2</span> STAR mode</h4>
+<section id="star-mode" class="level4" data-number="10.1.2.2">
+<h4 data-number="10.1.2.2" class="anchored" data-anchor-id="star-mode"><span class="header-section-number">10.1.2.2</span> STAR mode</h4>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> runall <span class="dt">\</span></span>
 <span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">--mode</span> star <span class="dt">\</span></span>
-<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">--outdir</span> <span class="st">"/path/to/outdir"</span> <span class="dt">\</span></span>
-<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">--fastq</span> <span class="st">"/path/to/fastq"</span> <span class="dt">\</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">--outdir</span> <span class="st">"/path/to/star_dir"</span> <span class="dt">\</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">--fastq</span> <span class="st">"path/to/PRJNA1161405"</span> <span class="dt">\</span></span>
 <span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">--threads</span> 8 <span class="dt">\</span></span>
 <span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">--batch_size</span> 1 <span class="dt">\</span></span>
 <span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">--index</span> <span class="st">"/path/to/star/index"</span> <span class="dt">\</span></span>
@@ -376,8 +397,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 </section>
 </section>
-<section id="tpm-conversion" class="level2" data-number="7.2">
-<h2 data-number="7.2" class="anchored" data-anchor-id="tpm-conversion"><span class="header-section-number">7.2</span> TPM conversion</h2>
+<section id="tpm-conversion" class="level2" data-number="10.2">
+<h2 data-number="10.2" class="anchored" data-anchor-id="tpm-conversion"><span class="header-section-number">10.2</span> TPM conversion</h2>
 <p>This page shows four common entry points to a TPM matrix and the final <code>log2(x+1)</code> transform you should apply after each path.</p>
 <blockquote class="blockquote">
 <p>Quick rule of thumb<br>
@@ -387,8 +408,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 - <strong>Mouse → Human</strong>: use <code>mouse2human_eset</code> to map symbols. - After any of the above, run <code>log2_eset</code>.</p>
 </blockquote>
 <hr>
-<section id="from-count-matrix-to-tpm" class="level3" data-number="7.2.1">
-<h3 data-number="7.2.1" class="anchored" data-anchor-id="from-count-matrix-to-tpm"><span class="header-section-number">7.2.1</span> From <strong>count matrix</strong> to <strong>TPM</strong></h3>
+<section id="from-count-matrix-to-tpm" class="level3" data-number="10.2.1">
+<h3 data-number="10.2.1" class="anchored" data-anchor-id="from-count-matrix-to-tpm"><span class="header-section-number">10.2.1</span> From <strong>count matrix</strong> to <strong>TPM</strong></h3>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 1) counts → TPM</span></span>
 <span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> count2tpm <span class="dt">\</span></span>
 <span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-i</span> MyProj.STAR.count.tsv.gz <span class="dt">\</span></span>
@@ -404,8 +425,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> TPM_matrix.log2.csv</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <hr>
 </section>
-<section id="from-salmon-matrix-to-tpm" class="level3" data-number="7.2.2">
-<h3 data-number="7.2.2" class="anchored" data-anchor-id="from-salmon-matrix-to-tpm"><span class="header-section-number">7.2.2</span> From <strong>Salmon matrix</strong> to <strong>TPM</strong></h3>
+<section id="from-salmon-matrix-to-tpm" class="level3" data-number="10.2.2">
+<h3 data-number="10.2.2" class="anchored" data-anchor-id="from-salmon-matrix-to-tpm"><span class="header-section-number">10.2.2</span> From <strong>Salmon matrix</strong> to <strong>TPM</strong></h3>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 1) Salmon TPM (gene/transcript) → cleaned gene-level TPM</span></span>
 <span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> prepare_salmon <span class="dt">\</span></span>
 <span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-i</span> MyProj_salmon_tpm.tsv.gz <span class="dt">\</span></span>
@@ -418,8 +439,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> TPM_matrix.log2.csv</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <hr>
 </section>
-<section id="from-gene-expression-matrix-to-gene-level-matrix-with-annotation-anno_eset" class="level3" data-number="7.2.3">
-<h3 data-number="7.2.3" class="anchored" data-anchor-id="from-gene-expression-matrix-to-gene-level-matrix-with-annotation-anno_eset"><span class="header-section-number">7.2.3</span> From <strong>gene-expression matrix</strong> to <strong>gene-level matrix</strong> with annotation (<code>anno_eset</code>)</h3>
+<section id="from-gene-expression-matrix-to-gene-level-matrix-with-annotation-anno_eset" class="level3" data-number="10.2.3">
+<h3 data-number="10.2.3" class="anchored" data-anchor-id="from-gene-expression-matrix-to-gene-level-matrix-with-annotation-anno_eset"><span class="header-section-number">10.2.3</span> From <strong>gene-expression matrix</strong> to <strong>gene-level matrix</strong> with annotation (<code>anno_eset</code>)</h3>
 <p>Use when your input is an expression table that needs <strong>ID mapping / de-duplication</strong> (e.g., microarray probes → symbols, or TPM tables with mixed identifiers).</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Map/aggregate to symbols using a built-in annotation set</span></span>
 <span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> anno_eset <span class="dt">\</span></span>
@@ -439,13 +460,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> expression_anno.log2.csv</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <hr>
 </section>
-<section id="mouse-human-gene-conversion-mouse2human_eset" class="level3" data-number="7.2.4">
-<h3 data-number="7.2.4" class="anchored" data-anchor-id="mouse-human-gene-conversion-mouse2human_eset"><span class="header-section-number">7.2.4</span> <strong>Mouse → Human</strong> gene conversion (<code>mouse2human_eset</code>)</h3>
+<section id="mouse-human-gene-conversion-mouse2human_eset" class="level3" data-number="10.2.4">
+<h3 data-number="10.2.4" class="anchored" data-anchor-id="mouse-human-gene-conversion-mouse2human_eset"><span class="header-section-number">10.2.4</span> <strong>Mouse → Human</strong> gene conversion (<code>mouse2human_eset</code>)</h3>
 <p>Two common modes:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Matrix mode: rows = mouse gene symbols, columns = samples</span></span>
 <span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> mouse2human_eset <span class="dt">\</span></span>
-<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-i</span> mouse_matrix.tsv <span class="dt">\</span></span>
-<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> human_matrix.tsv <span class="dt">\</span></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-i</span> mouse_matrix.csv <span class="dt">\</span></span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> human_matrix.csv <span class="dt">\</span></span>
 <span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">--is_matrix</span> <span class="dt">\</span></span>
 <span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">--verbose</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb14"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Table mode: has a symbol column (e.g., SYMBOL); will de-duplicate then map</span></span>
@@ -456,16 +477,16 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">--verbose</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb15"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="co"># log2(x+1) after mapping</span></span>
 <span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> log2_eset <span class="dt">\</span></span>
-<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-i</span> human_matrix.tsv <span class="dt">\</span></span>
-<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> human_matrix.log2.tsv</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-i</span> human_matrix.csv <span class="dt">\</span></span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> human_matrix.log2.csv</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
 </section>
-<section id="from-tpm-to-tme" class="level2" data-number="7.3">
-<h2 data-number="7.3" class="anchored" data-anchor-id="from-tpm-to-tme"><span class="header-section-number">7.3</span> From TPM to TME</h2>
+<section id="from-tpm-to-tme" class="level2" data-number="10.3">
+<h2 data-number="10.3" class="anchored" data-anchor-id="from-tpm-to-tme"><span class="header-section-number">10.3</span> From TPM to TME</h2>
 <p>This page takes a <strong>TPM</strong> matrix and runs downstream <strong>TME</strong> analyses: signature scoring, immune deconvolution (multiple methods), clustering, and ligand–receptor scoring.</p>
 <hr>
-<section id="inputs" class="level3" data-number="7.3.1">
-<h3 data-number="7.3.1" class="anchored" data-anchor-id="inputs"><span class="header-section-number">7.3.1</span> Inputs</h3>
+<section id="inputs" class="level3" data-number="10.3.1">
+<h3 data-number="10.3.1" class="anchored" data-anchor-id="inputs"><span class="header-section-number">10.3.1</span> Inputs</h3>
 <ul>
 <li><strong>TPM matrix</strong>: <code>TPM_matrix.csv</code></li>
 <li>(Optional) <strong>log2 transform</strong>: if desired, apply:</li>
@@ -475,8 +496,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> TPM_matrix.log2.csv</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <hr>
 </section>
-<section id="all-in-one-tme-profiling---tme_profile" class="level3" data-number="7.3.2">
-<h3 data-number="7.3.2" class="anchored" data-anchor-id="all-in-one-tme-profiling---tme_profile"><span class="header-section-number">7.3.2</span> All-in-one TME profiling - <code>tme_profile</code></h3>
+<section id="all-in-one-tme-profiling---tme_profile" class="level3" data-number="10.3.2">
+<h3 data-number="10.3.2" class="anchored" data-anchor-id="all-in-one-tme-profiling---tme_profile"><span class="header-section-number">10.3.2</span> All-in-one TME profiling - <code>tme_profile</code></h3>
 <ul>
 <li><code>tme_profile</code> wraps the following functions into one command:
 <ul>
@@ -487,11 +508,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </ul></li>
 </ul>
 <blockquote class="blockquote">
-<p><strong>Not included:</strong> <code>deside</code> and any clustering (<code>tme_cluster</code>, <code>nmf</code>).<br>
+<p><strong>Not included:</strong> <code>deside</code>, <code>bayesprism</code> and any clustering (<code>tme_cluster</code>, <code>nmf</code>).<br>
 <strong>Tip:</strong> You can either run each function <strong>step-by-step</strong> (see the sections below for individual commands and options), <strong>or</strong> use <code>tme_profile</code> to execute the full chain in one go.</p>
 </blockquote>
-<section id="minimal-usage" class="level4" data-number="7.3.2.1">
-<h4 data-number="7.3.2.1" class="anchored" data-anchor-id="minimal-usage"><span class="header-section-number">7.3.2.1</span> Minimal usage</h4>
+<section id="minimal-usage" class="level4" data-number="10.3.2.1">
+<h4 data-number="10.3.2.1" class="anchored" data-anchor-id="minimal-usage"><span class="header-section-number">10.3.2.1</span> Minimal usage</h4>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb17"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> tme_profile <span class="dt">\</span></span>
 <span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">-i</span> TPM_matrix.csv <span class="dt">\</span></span>
 <span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> out/tme <span class="dt">\</span></span>
@@ -499,111 +520,157 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <hr>
 </section>
 </section>
-<section id="immune-deconvolution" class="level3" data-number="7.3.3">
-<h3 data-number="7.3.3" class="anchored" data-anchor-id="immune-deconvolution"><span class="header-section-number">7.3.3</span> Immune deconvolution</h3>
-<p>Choose one or several methods below; each writes one result file.</p>
-<section id="cibersort" class="level4" data-number="7.3.3.1">
-<h4 data-number="7.3.3.1" class="anchored" data-anchor-id="cibersort"><span class="header-section-number">7.3.3.1</span> CIBERSORT</h4>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb18"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> cibersort <span class="dt">\</span></span>
+<section id="signature-scoring" class="level3" data-number="10.3.3">
+<h3 data-number="10.3.3" class="anchored" data-anchor-id="signature-scoring"><span class="header-section-number">10.3.3</span> Signature scoring</h3>
+<p>Per-sample signature scores. Columns correspond to the selected signature set and method (<code>integration</code>, <code>pca</code>, <code>zscore</code>, or <code>ssgsea</code>).</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb18"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> calculate_sig_score <span class="dt">\</span></span>
 <span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">-i</span> TPM_matrix.csv <span class="dt">\</span></span>
-<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> cibersort.csv <span class="dt">\</span></span>
-<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">--perm</span> 100 <span class="dt">\</span></span>
-<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">--QN</span> True <span class="dt">\</span></span>
-<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">--absolute</span> False <span class="dt">\</span></span>
-<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">--abs_method</span> sig.score <span class="dt">\</span></span>
-<span id="cb18-8"><a href="#cb18-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">--threads</span> 1</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> sig_scores.csv <span class="dt">\</span></span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">--signature</span> all <span class="dt">\</span></span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">--method</span> integration <span class="dt">\</span></span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">--mini_gene_count</span> 2 <span class="dt">\</span></span>
+<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">--parallel_size</span> 1 <span class="dt">\</span></span>
+<span id="cb18-8"><a href="#cb18-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">--adjust_eset</span></span>
+<span id="cb18-9"><a href="#cb18-9" aria-hidden="true" tabindex="-1"></a><span class="co"># Accepts space‑separated or comma‑separated groups; use "all" for a full merge.</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<hr>
 </section>
-<section id="quantiseq" class="level4" data-number="7.3.3.2">
-<h4 data-number="7.3.3.2" class="anchored" data-anchor-id="quantiseq"><span class="header-section-number">7.3.3.2</span> quanTIseq</h4>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb19"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> quantiseq <span class="dt">\</span></span>
+<section id="immune-deconvolution" class="level3" data-number="10.3.4">
+<h3 data-number="10.3.4" class="anchored" data-anchor-id="immune-deconvolution"><span class="header-section-number">10.3.4</span> Immune deconvolution</h3>
+<p>Choose one or several methods below; each writes one result file.</p>
+<section id="cibersort" class="level4" data-number="10.3.4.1">
+<h4 data-number="10.3.4.1" class="anchored" data-anchor-id="cibersort"><span class="header-section-number">10.3.4.1</span> CIBERSORT</h4>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb19"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> cibersort <span class="dt">\</span></span>
 <span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">-i</span> TPM_matrix.csv <span class="dt">\</span></span>
-<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> quantiseq.csv <span class="dt">\</span></span>
-<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">--signame</span> TIL10 <span class="dt">\</span></span>
-<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">--method</span> lsei <span class="dt">\</span></span>
-<span id="cb19-6"><a href="#cb19-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">--tumor</span> <span class="dt">\</span></span>
-<span id="cb19-7"><a href="#cb19-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">--arrays</span> <span class="dt">\</span></span>
-<span id="cb19-8"><a href="#cb19-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">--scale_mrna</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> cibersort.csv <span class="dt">\</span></span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">--perm</span> 100 <span class="dt">\</span></span>
+<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">--QN</span> True <span class="dt">\</span></span>
+<span id="cb19-6"><a href="#cb19-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">--absolute</span> False <span class="dt">\</span></span>
+<span id="cb19-7"><a href="#cb19-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">--abs_method</span> sig.score <span class="dt">\</span></span>
+<span id="cb19-8"><a href="#cb19-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">--threads</span> 1</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
-<section id="epic" class="level4" data-number="7.3.3.3">
-<h4 data-number="7.3.3.3" class="anchored" data-anchor-id="epic"><span class="header-section-number">7.3.3.3</span> EPIC</h4>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb20"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> epic <span class="dt">\</span></span>
+<section id="bayesprism" class="level4" data-number="10.3.4.2">
+<h4 data-number="10.3.4.2" class="anchored" data-anchor-id="bayesprism"><span class="header-section-number">10.3.4.2</span> BayesPrism</h4>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb20"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> bayesprism <span class="dt">\</span></span>
 <span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">-i</span> TPM_matrix.csv <span class="dt">\</span></span>
-<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> epic.csv <span class="dt">\</span></span>
-<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">--reference</span> TRef</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> results/bayesprism <span class="dt">\</span></span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">--threads</span> 8</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
-<section id="estimate" class="level4" data-number="7.3.3.4">
-<h4 data-number="7.3.3.4" class="anchored" data-anchor-id="estimate"><span class="header-section-number">7.3.3.4</span> ESTIMATE</h4>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb21"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> estimate <span class="dt">\</span></span>
+<section id="quantiseq" class="level4" data-number="10.3.4.3">
+<h4 data-number="10.3.4.3" class="anchored" data-anchor-id="quantiseq"><span class="header-section-number">10.3.4.3</span> quanTIseq</h4>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb21"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> quantiseq <span class="dt">\</span></span>
 <span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">-i</span> TPM_matrix.csv <span class="dt">\</span></span>
-<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> estimate.csv <span class="dt">\</span></span>
-<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">--platform</span> affymetrix</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> quantiseq.csv <span class="dt">\</span></span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">--signame</span> TIL10 <span class="dt">\</span></span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">--method</span> lsei <span class="dt">\</span></span>
+<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">--tumor</span> <span class="dt">\</span></span>
+<span id="cb21-7"><a href="#cb21-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">--arrays</span> <span class="dt">\</span></span>
+<span id="cb21-8"><a href="#cb21-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">--scale_mrna</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
-<section id="mcpcounter" class="level4" data-number="7.3.3.5">
-<h4 data-number="7.3.3.5" class="anchored" data-anchor-id="mcpcounter"><span class="header-section-number">7.3.3.5</span> MCPcounter</h4>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb22"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> mcpcounter <span class="dt">\</span></span>
+<section id="epic" class="level4" data-number="10.3.4.4">
+<h4 data-number="10.3.4.4" class="anchored" data-anchor-id="epic"><span class="header-section-number">10.3.4.4</span> EPIC</h4>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb22"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> epic <span class="dt">\</span></span>
 <span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">-i</span> TPM_matrix.csv <span class="dt">\</span></span>
-<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> mcpcounter.csv <span class="dt">\</span></span>
-<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">--features</span> HUGO_symbols</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> epic.csv <span class="dt">\</span></span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">--reference</span> TRef</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
-<section id="ips" class="level4" data-number="7.3.3.6">
-<h4 data-number="7.3.3.6" class="anchored" data-anchor-id="ips"><span class="header-section-number">7.3.3.6</span> IPS</h4>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb23"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> IPS <span class="dt">\</span></span>
+<section id="estimate" class="level4" data-number="10.3.4.5">
+<h4 data-number="10.3.4.5" class="anchored" data-anchor-id="estimate"><span class="header-section-number">10.3.4.5</span> ESTIMATE</h4>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb23"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> estimate <span class="dt">\</span></span>
 <span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">-i</span> TPM_matrix.csv <span class="dt">\</span></span>
-<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> IPS.csv</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> estimate.csv <span class="dt">\</span></span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">--platform</span> affymetrix</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
-<section id="deside" class="level4" data-number="7.3.3.7">
-<h4 data-number="7.3.3.7" class="anchored" data-anchor-id="deside"><span class="header-section-number">7.3.3.7</span> DeSide</h4>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb24"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> deside <span class="dt">\</span></span>
-<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">--model_dir</span> path/to/your/DeSide_model <span class="dt">\</span></span>
-<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-i</span> TPM_matrix.csv <span class="dt">\</span></span>
-<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> deside.csv <span class="dt">\</span></span>
-<span id="cb24-5"><a href="#cb24-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">--result_dir</span> path/to/your/plot/folder <span class="dt">\</span></span>
-<span id="cb24-6"><a href="#cb24-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">--exp_type</span> TPM <span class="dt">\</span></span>
-<span id="cb24-7"><a href="#cb24-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">--scaling_by_constant</span> <span class="dt">\</span></span>
-<span id="cb24-8"><a href="#cb24-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">--transpose</span> <span class="dt">\</span></span>
-<span id="cb24-9"><a href="#cb24-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">--print_info</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<section id="mcpcounter" class="level4" data-number="10.3.4.6">
+<h4 data-number="10.3.4.6" class="anchored" data-anchor-id="mcpcounter"><span class="header-section-number">10.3.4.6</span> MCPcounter</h4>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb24"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> mcpcounter <span class="dt">\</span></span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">-i</span> TPM_matrix.csv <span class="dt">\</span></span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> mcpcounter.csv <span class="dt">\</span></span>
+<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">--features</span> HUGO_symbols</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="ips" class="level4" data-number="10.3.4.7">
+<h4 data-number="10.3.4.7" class="anchored" data-anchor-id="ips"><span class="header-section-number">10.3.4.7</span> IPS</h4>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb25"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> IPS <span class="dt">\</span></span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">-i</span> TPM_matrix.csv <span class="dt">\</span></span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> IPS.csv</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="deside" class="level4" data-number="10.3.4.8">
+<h4 data-number="10.3.4.8" class="anchored" data-anchor-id="deside"><span class="header-section-number">10.3.4.8</span> DeSide</h4>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb26"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> deside <span class="dt">\</span></span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">--model_dir</span> path/to/your/DeSide_model <span class="dt">\</span></span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-i</span> TPM_matrix.csv <span class="dt">\</span></span>
+<span id="cb26-4"><a href="#cb26-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> deside.csv <span class="dt">\</span></span>
+<span id="cb26-5"><a href="#cb26-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">--result_dir</span> path/to/your/plot/folder <span class="dt">\</span></span>
+<span id="cb26-6"><a href="#cb26-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">--exp_type</span> TPM <span class="dt">\</span></span>
+<span id="cb26-7"><a href="#cb26-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">--scaling_by_constant</span> <span class="dt">\</span></span>
+<span id="cb26-8"><a href="#cb26-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">--transpose</span> <span class="dt">\</span></span>
+<span id="cb26-9"><a href="#cb26-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">--print_info</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <hr>
 </section>
 </section>
-<section id="tme-clustering" class="level3" data-number="7.3.4">
-<h3 data-number="7.3.4" class="anchored" data-anchor-id="tme-clustering"><span class="header-section-number">7.3.4</span> TME clustering</h3>
+<section id="tme-clustering" class="level3" data-number="10.3.5">
+<h3 data-number="10.3.5" class="anchored" data-anchor-id="tme-clustering"><span class="header-section-number">10.3.5</span> TME clustering</h3>
 <p>You can cluster samples by cell fractions or signature scores.</p>
-<section id="k-means-with-kl-index-auto-k-recommended" class="level4" data-number="7.3.4.1">
-<h4 data-number="7.3.4.1" class="anchored" data-anchor-id="k-means-with-kl-index-auto-k-recommended"><span class="header-section-number">7.3.4.1</span> k-means with KL index auto-k (recommended)</h4>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb25"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> tme_cluster <span class="dt">\</span></span>
-<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">-i</span> cibersort.csv <span class="dt">\</span></span>
-<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> tme_cluster.csv <span class="dt">\</span></span>
-<span id="cb25-4"><a href="#cb25-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">--features</span> 1:22 <span class="dt">\</span></span>
-<span id="cb25-5"><a href="#cb25-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">--id</span> <span class="st">"ID"</span> <span class="dt">\</span></span>
-<span id="cb25-6"><a href="#cb25-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">--min_nc</span> 2 <span class="dt">\</span></span>
-<span id="cb25-7"><a href="#cb25-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">--max_nc</span> 5 <span class="dt">\</span></span>
-<span id="cb25-8"><a href="#cb25-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">--print_result</span> <span class="dt">\</span></span>
-<span id="cb25-9"><a href="#cb25-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">--scale</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<section id="tme_cluster-k-means-with-kl-index-auto-k-recommended" class="level4" data-number="10.3.5.1">
+<h4 data-number="10.3.5.1" class="anchored" data-anchor-id="tme_cluster-k-means-with-kl-index-auto-k-recommended"><span class="header-section-number">10.3.5.1</span> tme_cluster: k-means with KL index auto-k (recommended)</h4>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb27"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> tme_cluster <span class="dt">\</span></span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">-i</span> cibersort.csv <span class="dt">\</span></span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> tme_cluster.csv <span class="dt">\</span></span>
+<span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">--features</span> 1:22 <span class="dt">\</span></span>
+<span id="cb27-5"><a href="#cb27-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">--id</span> <span class="st">"ID"</span> <span class="dt">\</span></span>
+<span id="cb27-6"><a href="#cb27-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">--min_nc</span> 2 <span class="dt">\</span></span>
+<span id="cb27-7"><a href="#cb27-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">--max_nc</span> 5 <span class="dt">\</span></span>
+<span id="cb27-8"><a href="#cb27-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">--print_result</span> <span class="dt">\</span></span>
+<span id="cb27-9"><a href="#cb27-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">--scale</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
-<section id="nmf-clustering-auto-k-excluding-k2" class="level4" data-number="7.3.4.2">
-<h4 data-number="7.3.4.2" class="anchored" data-anchor-id="nmf-clustering-auto-k-excluding-k2"><span class="header-section-number">7.3.4.2</span> NMF clustering (auto-k, excluding k=2)</h4>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb26"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> nmf <span class="dt">\</span></span>
-<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">-i</span> cibersort.csv <span class="dt">\</span></span>
-<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> path/to/your/result/folder <span class="dt">\</span></span>
-<span id="cb26-4"><a href="#cb26-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">--kmax</span> 10 <span class="dt">\</span></span>
-<span id="cb26-5"><a href="#cb26-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">--features</span> 1:22 <span class="dt">\</span></span>
-<span id="cb26-6"><a href="#cb26-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">--skip_k_2</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<section id="nmf-clustering-auto-k-excluding-k2" class="level4" data-number="10.3.5.2">
+<h4 data-number="10.3.5.2" class="anchored" data-anchor-id="nmf-clustering-auto-k-excluding-k2"><span class="header-section-number">10.3.5.2</span> NMF clustering (auto-k, excluding k=2)</h4>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb28"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> nmf <span class="dt">\</span></span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">-i</span> cibersort.csv <span class="dt">\</span></span>
+<span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> path/to/your/result/folder <span class="dt">\</span></span>
+<span id="cb28-4"><a href="#cb28-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">--kmax</span> 10 <span class="dt">\</span></span>
+<span id="cb28-5"><a href="#cb28-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">--features</span> 1:22 <span class="dt">\</span></span>
+<span id="cb28-6"><a href="#cb28-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">--skip_k_2</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <hr>
 </section>
 </section>
-<section id="ligandreceptor-scoring" class="level3" data-number="7.3.5">
-<h3 data-number="7.3.5" class="anchored" data-anchor-id="ligandreceptor-scoring"><span class="header-section-number">7.3.5</span> Ligand–receptor scoring</h3>
+<section id="ligandreceptor-scoring" class="level3" data-number="10.3.6">
+<h3 data-number="10.3.6" class="anchored" data-anchor-id="ligandreceptor-scoring"><span class="header-section-number">10.3.6</span> Ligand–receptor scoring</h3>
 <p>Compute bulk ligand–receptor interaction scores from TPM:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb27"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> LR_cal <span class="dt">\</span></span>
-<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">-i</span> TPM_matrix.csv <span class="dt">\</span></span>
-<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> LR_score.csv <span class="dt">\</span></span>
-<span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">--data_type</span> <span class="st">"tpm"</span> <span class="dt">\</span></span>
-<span id="cb27-5"><a href="#cb27-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">--id_type</span> <span class="st">"symbol"</span> <span class="dt">\</span></span>
-<span id="cb27-6"><a href="#cb27-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">--cancer_type</span> pancan <span class="dt">\</span></span>
-<span id="cb27-7"><a href="#cb27-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">--verbose</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-
-
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb29"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> LR_cal <span class="dt">\</span></span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">-i</span> TPM_matrix.csv <span class="dt">\</span></span>
+<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> LR_score.csv <span class="dt">\</span></span>
+<span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">--data_type</span> <span class="st">"tpm"</span> <span class="dt">\</span></span>
+<span id="cb29-5"><a href="#cb29-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">--id_type</span> <span class="st">"symbol"</span> <span class="dt">\</span></span>
+<span id="cb29-6"><a href="#cb29-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">--cancer_type</span> pancan <span class="dt">\</span></span>
+<span id="cb29-7"><a href="#cb29-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">--verbose</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<hr>
 </section>
+</section>
+<section id="hla-typing" class="level2" data-number="10.4">
+<h2 data-number="10.4" class="anchored" data-anchor-id="hla-typing"><span class="header-section-number">10.4</span> HLA typing</h2>
+<p>Run <code>iobrpy hla_typing</code> to perform batch HLA typing on the samples.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb30"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> hla_typing <span class="dt">\</span></span>
+<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">-b</span> /path/to/star_dir/02-star <span class="dt">\ </span>   <span class="co"># Generated by the STAR mode of iobrpy runall</span></span>
+<span id="cb30-3"><a href="#cb30-3" aria-hidden="true" tabindex="-1"></a>  <span class="ex">-r</span> hg38 <span class="dt">\</span></span>
+<span id="cb30-4"><a href="#cb30-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> /data/hla_typing_results <span class="dt">\</span></span>
+<span id="cb30-5"><a href="#cb30-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">-j</span> 8</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<hr>
+</section>
+<section id="tcr-bcr" class="level2" data-number="10.5">
+<h2 data-number="10.5" class="anchored" data-anchor-id="tcr-bcr"><span class="header-section-number">10.5</span> TCR-BCR</h2>
+<p>Run <code>iobrpy trust4</code> to analyze TCR and BCR sequences</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb31"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Batch over a BAM directory</span></span>
+<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> trust4 <span class="dt">\</span></span>
+<span id="cb31-3"><a href="#cb31-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-b</span> /path/to/star_dir/02-star <span class="dt">\ </span>   <span class="co"># Generated by the STAR mode of iobrpy runall</span></span>
+<span id="cb31-4"><a href="#cb31-4" aria-hidden="true" tabindex="-1"></a>  <span class="ex">-o</span> /data/trust4_results <span class="dt">\</span></span>
+<span id="cb31-5"><a href="#cb31-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">-t</span> 8</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb32"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Batch over paired FASTQs</span></span>
+<span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> trust4 <span class="dt">\</span></span>
+<span id="cb32-3"><a href="#cb32-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">--fqdir</span> /path/to/salmon_dir/01-qc <span class="dt">\ </span>   <span class="co"># If you use the Salmon mode of iobrpy runall</span></span>
+<span id="cb32-4"><a href="#cb32-4" aria-hidden="true" tabindex="-1"></a>  <span class="ex">-o</span> /data/trust4_results <span class="dt">\</span></span>
+<span id="cb32-5"><a href="#cb32-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">-t</span> 8</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+
+
 </section>
 
 </main> <!-- /main -->
@@ -1010,12 +1077,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
       <a href="../commands-and-options.html" class="pagination-link" aria-label="Commands &amp; common options">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Commands &amp; common options</span></span>
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Commands &amp; common options</span></span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
       <a href="../Troubleshooting.html" class="pagination-link" aria-label="Troubleshooting">
-        <span class="nav-page-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Troubleshooting</span></span> <i class="bi bi-arrow-right-short"></i>
+        <span class="nav-page-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Troubleshooting</span></span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>

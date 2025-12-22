@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>3&nbsp; Build Salmon &amp; STAR Index – IOBRpy Book</title>
+<title>5&nbsp; TRUST4 &amp; TCR-BCR – IOBRpy Book</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -65,8 +65,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="site_libs/quarto-search/fuse.min.js"></script>
 <script src="site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="./">
-<link href="./runall.html" rel="next">
-<link href="./installation.html" rel="prev">
+<link href="./SpecHLA.html" rel="next">
+<link href="./runall.html" rel="prev">
 <script src="site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
 <script src="site_libs/quarto-html/axe/axe-check.js" type="module"></script>
@@ -119,7 +119,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./build-index.html"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Build Salmon &amp; STAR Index</span></a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./trust4.html"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">TRUST4 &amp; TCR-BCR</span></a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
       <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
@@ -165,7 +165,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./build-index.html" class="sidebar-item-text sidebar-link active">
+  <a href="./build-index.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Build Salmon &amp; STAR Index</span></span></a>
   </div>
 </li>
@@ -177,7 +177,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./trust4.html" class="sidebar-item-text sidebar-link">
+  <a href="./trust4.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">TRUST4 &amp; TCR-BCR</span></span></a>
   </div>
 </li>
@@ -233,21 +233,21 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <h2 id="toc-title">Table of contents</h2>
    
   <ul>
-  <li><a href="#overview" id="toc-overview" class="nav-link active" data-scroll-target="#overview"><span class="header-section-number">3.1</span> Overview</a></li>
-  <li><a href="#prerequisites" id="toc-prerequisites" class="nav-link" data-scroll-target="#prerequisites"><span class="header-section-number">3.2</span> Prerequisites</a></li>
-  <li><a href="#build-salmon-index" id="toc-build-salmon-index" class="nav-link" data-scroll-target="#build-salmon-index"><span class="header-section-number">3.3</span> Build Salmon index</a></li>
-  <li><a href="#build-star-index" id="toc-build-star-index" class="nav-link" data-scroll-target="#build-star-index"><span class="header-section-number">3.4</span> Build STAR index</a></li>
-  <li><a href="#notes" id="toc-notes" class="nav-link" data-scroll-target="#notes"><span class="header-section-number">3.5</span> Notes</a></li>
-  <li><a href="#references-acknowledgments" id="toc-references-acknowledgments" class="nav-link" data-scroll-target="#references-acknowledgments"><span class="header-section-number">3.6</span> References &amp; Acknowledgments</a></li>
+  <li><a href="#overview" id="toc-overview" class="nav-link active" data-scroll-target="#overview"><span class="header-section-number">5.1</span> Overview</a></li>
+  <li><a href="#inputs" id="toc-inputs" class="nav-link" data-scroll-target="#inputs"><span class="header-section-number">5.2</span> Inputs</a></li>
+  <li><a href="#basic-usage" id="toc-basic-usage" class="nav-link" data-scroll-target="#basic-usage"><span class="header-section-number">5.3</span> Basic usage</a>
+  <ul class="collapse">
+  <li><a href="#metrics-in-trust4_immune_indices.csv" id="toc-metrics-in-trust4_immune_indices.csv" class="nav-link" data-scroll-target="#metrics-in-trust4_immune_indices.csv"><span class="header-section-number">5.3.1</span> Metrics in <code>trust4_immune_indices.csv</code></a></li>
+  </ul></li>
   </ul>
-<div class="toc-actions"><ul><li><a href="https://github.com/IOBR/IOBRpy/edit/main/site/build-index.md" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li><li><a href="https://github.com/IOBR/IOBRpy/issues/new" class="toc-action"><i class="bi empty"></i>Report an issue</a></li></ul></div></nav>
+<div class="toc-actions"><ul><li><a href="https://github.com/IOBR/IOBRpy/edit/main/site/trust4.md" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li><li><a href="https://github.com/IOBR/IOBRpy/issues/new" class="toc-action"><i class="bi empty"></i>Report an issue</a></li></ul></div></nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Build Salmon &amp; STAR Index</span></h1>
+<h1 class="title"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">TRUST4 &amp; TCR-BCR</span></h1>
 </div>
 
 
@@ -264,110 +264,56 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<section id="overview" class="level2" data-number="3.1">
-<h2 data-number="3.1" class="anchored" data-anchor-id="overview"><span class="header-section-number">3.1</span> Overview</h2>
-<p><strong>Salmon</strong> and <strong>STAR</strong> are two cornerstone tools for RNA-seq quantification that serve complementary purposes:</p>
+<section id="overview" class="level2" data-number="5.1">
+<h2 data-number="5.1" class="anchored" data-anchor-id="overview"><span class="header-section-number">5.1</span> Overview</h2>
 <ul>
-<li><p><strong>Salmon</strong> — a fast, lightweight <em>alignment-free</em> (quasi-mapping / selective-alignment) quantifier that works on a <strong>transcriptome index</strong>, provides bias-aware transcript abundance estimates, and is ideal for rapid, large-scale quantification.<br>
-Docs : <a href="https://salmon.readthedocs.io/">Salmon Documentation</a> · Github : <a href="https://github.com/COMBINE-lab/salmon">COMBINE-lab/salmon</a></p></li>
-<li><p><strong>STAR</strong> — an <em>alignment-based</em> spliced read aligner that maps reads to the <strong>genome</strong>, discovers splice junctions, and produces alignment files suitable for downstream QC and gene-level counting.<br>
-Github : <a href="https://github.com/alexdobin/STAR">alexdobin/STAR</a></p></li>
+<li>TRUST4 is a computational tool to analyze TCR and BCR sequences using unselected RNA sequencing data, profiled from fluid and solid tissues, including tumors. TRUST4 performs de novo assembly on V, J, C genes including the hypervariable complementarity-determining region 3 (CDR3) and reports consensus contigs of BCR/TCR sequences. TRUST4 then realigns the contigs to IMGT reference gene sequences to identify the corresponding gene and CDR3 details.</li>
+<li>IOBRpy wraps the TRUST4 TCR/BCR reconstruction CLI, enabling single-sample or batch runs from BAMs/FASTQs with automatic immune repertoire summarization.</li>
+<li>Based on TRUST4 assemblies, iobrpy derives TCR/BCR clone counts, clone frequencies, and diversity statistics (e.g., Shannon, Gini) to quantify clonal expansion and immune activity. These summaries feed downstream comparisons of immune infiltration, therapy response, or survival analyses.</li>
 </ul>
-<blockquote class="blockquote">
-<p>This page shows how to build indices for <strong>both</strong> tools. Choose Salmon when you want fast transcript-level quantification from a transcriptome; choose STAR when you need full genomic alignments, splice junction discovery, or STAR-based counting workflows.</p>
-</blockquote>
 </section>
-<section id="prerequisites" class="level2" data-number="3.2">
-<h2 data-number="3.2" class="anchored" data-anchor-id="prerequisites"><span class="header-section-number">3.2</span> Prerequisites</h2>
+<section id="inputs" class="level2" data-number="5.2">
+<h2 data-number="5.2" class="anchored" data-anchor-id="inputs"><span class="header-section-number">5.2</span> Inputs</h2>
 <ul>
-<li>Activate iobrpy environment</li>
+<li><strong>Single BAM</strong>: pass a path to <code>-b &lt;sample.bam&gt;</code>.</li>
+<li><strong>Batch BAMs</strong>: point <code>-b</code> to a directory; every <code>*.bam</code> will be processed.</li>
+<li><strong>Single Sample Paired FASTQ</strong>: point <code>-1/-2</code> to paired-end read files</li>
+<li><strong>Batch Paired FASTQs</strong>: use <code>--fqdir &lt;dir&gt;</code>; files must end with <code>_1.fastq.gz</code> / <code>_2.fastq.gz</code> or <code>_1.fq.gz</code> / <code>_2.fq.gz</code> per sample.</li>
 </ul>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">conda</span> activate iobrpy</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="basic-usage" class="level2" data-number="5.3">
+<h2 data-number="5.3" class="anchored" data-anchor-id="basic-usage"><span class="header-section-number">5.3</span> Basic usage</h2>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Single BAM</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> trust4 <span class="at">-b</span> /path/to/sample.bam <span class="at">-o</span> /path/to/outdir <span class="at">-t</span> 8</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Batch over a BAM directory</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> trust4 <span class="at">-b</span> /data/bam_dir <span class="at">-o</span> /data/trust4_results <span class="at">-t</span> 8</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Single sample with paired FASTQ</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> trust4 <span class="at">-1</span> /path/to/sample_1.fastq.gz <span class="at">-2</span> /path/to/sample_2.fastq.gz <span class="at">-o</span> /path/to/outdir <span class="at">-t</span> 8</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> trust4 <span class="at">-1</span> /path/to/sample_1.fq.gz <span class="at">-2</span> /path/to/sample_2.fq.gz <span class="at">-o</span> /path/to/outdir <span class="at">-t</span> 8</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="co"># Batch over paired FASTQs</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> trust4 <span class="at">--fqdir</span> /data/fastqs <span class="at">-o</span> /data/trust4_results <span class="at">-t</span> 8</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p><strong>Notes:</strong> - Use <code>-t</code> to control TRUST4 threading. - After TRUST4 finishes, iobrpy scans the output tree for <code>*_report.tsv</code> files and produces <code>trust4_immdata.csv</code> and <code>trust4_immune_indices.csv</code> for downstream analysis.</p>
+<section id="metrics-in-trust4_immune_indices.csv" class="level3" data-number="5.3.1">
+<h3 data-number="5.3.1" class="anchored" data-anchor-id="metrics-in-trust4_immune_indices.csv"><span class="header-section-number">5.3.1</span> Metrics in <code>trust4_immune_indices.csv</code></h3>
+<p>When all samples finish, the output root contains <code>trust4_immune_indices.csv</code>, which aggregates per-sample repertoire metrics:</p>
 <ul>
-<li>Choose a base directory for index:</li>
-</ul>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="bu">export</span> <span class="va">BASE</span><span class="op">=</span>/path/to/index/dir</span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="fu">mkdir</span> <span class="at">-p</span> <span class="st">"</span><span class="va">$BASE</span><span class="st">"</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<hr>
-</section>
-<section id="build-salmon-index" class="level2" data-number="3.3">
-<h2 data-number="3.3" class="anchored" data-anchor-id="build-salmon-index"><span class="header-section-number">3.3</span> Build Salmon index</h2>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Move to the base directory for references</span></span>
-<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> <span class="st">"</span><span class="va">$BASE</span><span class="st">"</span></span>
-<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Download GENCODE v44 annotation &amp; transcript FASTA</span></span>
-<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="co"># (Use -c to resume if the download is interrupted)</span></span>
-<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a><span class="fu">wget</span> <span class="at">-c</span> ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_44/gencode.v44.annotation.gtf.gz</span>
-<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a><span class="fu">wget</span> <span class="at">-c</span> ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_44/gencode.v44.transcripts.fa.gz</span>
-<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a><span class="co"># Decompress the downloads</span></span>
-<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a><span class="fu">gunzip</span> <span class="at">-f</span> gencode.v44.annotation.gtf.gz</span>
-<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a><span class="fu">gunzip</span> <span class="at">-f</span> gencode.v44.transcripts.fa.gz</span>
-<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a><span class="co"># Paths</span></span>
-<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a><span class="va">fa</span><span class="op">=</span><span class="st">"</span><span class="va">$BASE</span><span class="st">/gencode.v44.transcripts.fa"</span></span>
-<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a><span class="co"># Output directory for Salmon index</span></span>
-<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a><span class="fu">mkdir</span> <span class="at">-p</span> <span class="st">"</span><span class="va">$BASE</span><span class="st">/salmon"</span></span>
-<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a><span class="co"># Build Salmon index</span></span>
-<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a><span class="co"># -t: transcript FASTA</span></span>
-<span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a><span class="co"># -i: index output directory</span></span>
-<span id="cb3-22"><a href="#cb3-22" aria-hidden="true" tabindex="-1"></a><span class="co"># -k: k-mer size (31 is common for human)</span></span>
-<span id="cb3-23"><a href="#cb3-23" aria-hidden="true" tabindex="-1"></a><span class="co"># -p: threads</span></span>
-<span id="cb3-24"><a href="#cb3-24" aria-hidden="true" tabindex="-1"></a><span class="ex">salmon</span> index <span class="at">-t</span> <span class="st">"</span><span class="va">$fa</span><span class="st">"</span> <span class="at">-i</span> <span class="st">"</span><span class="va">$BASE</span><span class="st">/salmon/gencode44"</span> <span class="at">-k</span> 31 <span class="at">-p</span> 8</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p><strong>Tip:</strong> Adjust <code>-p</code> to match your CPU cores; <code>-k</code> can be tuned depending on read length and species.</p>
-<hr>
-</section>
-<section id="build-star-index" class="level2" data-number="3.4">
-<h2 data-number="3.4" class="anchored" data-anchor-id="build-star-index"><span class="header-section-number">3.4</span> Build STAR index</h2>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Move to the base directory for references</span></span>
-<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> <span class="st">"</span><span class="va">$BASE</span><span class="st">"</span></span>
-<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Download the primary assembly and GTF (GENCODE v44)</span></span>
-<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="fu">wget</span> <span class="at">-c</span> https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_44/GRCh38.primary_assembly.genome.fa.gz</span>
-<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a><span class="fu">wget</span> <span class="at">-c</span> https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_44/gencode.v44.annotation.gtf.gz</span>
-<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a><span class="co"># Decompress the downloads</span></span>
-<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a><span class="fu">gunzip</span> <span class="at">-f</span> GRCh38.primary_assembly.genome.fa.gz</span>
-<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a><span class="fu">gunzip</span> <span class="at">-f</span> gencode.v44.annotation.gtf.gz</span>
-<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a><span class="co"># Paths</span></span>
-<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a><span class="va">STAR_INDEX</span><span class="op">=</span><span class="st">"</span><span class="va">$BASE</span><span class="st">/star"</span></span>
-<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a><span class="va">genome_fa</span><span class="op">=</span><span class="st">"</span><span class="va">$BASE</span><span class="st">/GRCh38.primary_assembly.genome.fa"</span></span>
-<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a><span class="va">gtf</span><span class="op">=</span><span class="st">"</span><span class="va">$BASE</span><span class="st">/gencode.v44.annotation.gtf"</span></span>
-<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a><span class="co"># Create output directory for STAR index</span></span>
-<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a><span class="fu">mkdir</span> <span class="at">-p</span> <span class="st">"</span><span class="va">$STAR_INDEX</span><span class="st">"</span></span>
-<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a><span class="co"># Build STAR genome index</span></span>
-<span id="cb4-21"><a href="#cb4-21" aria-hidden="true" tabindex="-1"></a><span class="ex">STAR</span> <span class="at">--runMode</span> genomeGenerate <span class="dt">\</span></span>
-<span id="cb4-22"><a href="#cb4-22" aria-hidden="true" tabindex="-1"></a>     <span class="at">--genomeDir</span> <span class="st">"</span><span class="va">$STAR_INDEX</span><span class="st">"</span> <span class="dt">\</span></span>
-<span id="cb4-23"><a href="#cb4-23" aria-hidden="true" tabindex="-1"></a>     <span class="at">--genomeFastaFiles</span> <span class="st">"</span><span class="va">$genome_fa</span><span class="st">"</span> <span class="dt">\</span></span>
-<span id="cb4-24"><a href="#cb4-24" aria-hidden="true" tabindex="-1"></a>     <span class="at">--sjdbGTFfile</span> <span class="st">"</span><span class="va">$gtf</span><span class="st">"</span> <span class="dt">\</span></span>
-<span id="cb4-25"><a href="#cb4-25" aria-hidden="true" tabindex="-1"></a>     <span class="at">--runThreadN</span> 16 <span class="dt">\</span></span>
-<span id="cb4-26"><a href="#cb4-26" aria-hidden="true" tabindex="-1"></a>     <span class="at">--sjdbOverhang</span> 100</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<hr>
-</section>
-<section id="notes" class="level2" data-number="3.5">
-<h2 data-number="3.5" class="anchored" data-anchor-id="notes"><span class="header-section-number">3.5</span> Notes</h2>
-<ul>
-<li><strong>Release/assembly:</strong> This guide uses <strong>GENCODE v44</strong> (GRCh38). If you need a different release or assembly (e.g., T2T-CHM13), update the URLs and filenames accordingly.</li>
-<li><strong>Threads:</strong> Increase <code>--runThreadN</code>/<code>-p</code> to speed up indexing if you have more cores.</li>
-<li><strong>Storage:</strong> STAR indexes are large (tens of GB). Ensure you have enough disk space.</li>
-<li><strong>Read length:</strong> For STAR, set <code>--sjdbOverhang = read_length - 1</code> for best splice junction annotations.</li>
-</ul>
-<hr>
-</section>
-<section id="references-acknowledgments" class="level2" data-number="3.6">
-<h2 data-number="3.6" class="anchored" data-anchor-id="references-acknowledgments"><span class="header-section-number">3.6</span> References &amp; Acknowledgments</h2>
-<p>We gratefully acknowledge the developers and maintainers of <strong>Salmon</strong> and <strong>STAR</strong>. If you use these tools, please cite:</p>
-<ul>
-<li><p>Patro R, Duggal G, Love MI, Irizarry RA, Kingsford C. Salmon provides fast and bias-aware quantification of transcript expression. Nat Methods. 2017 Apr;14(4):417-419. doi: 10.1038/nmeth.4197. Epub 2017 Mar 6. PMID: 28263959; PMCID: PMC5600148.</p></li>
-<li><p>Dobin A, Davis CA, Schlesinger F, Drenkow J, Zaleski C, Jha S, Batut P, Chaisson M, Gingeras TR. STAR: ultrafast universal RNA-seq aligner. Bioinformatics. 2013 Jan 1;29(1):15-21. doi: 10.1093/bioinformatics/bts635. Epub 2012 Oct 25. PMID: 23104886; PMCID: PMC3530905.</p></li>
+<li><p><strong>What it computes</strong>: These metrics summarize clonal expansion, richness, and evenness across samples, making it easier to compare immune repertoire shifts across cohorts or treatment arms.</p></li>
+<li><p><code>Nreads</code>: total reads used for clone analysis.</p></li>
+<li><p><code>Nclones</code>: number of non-zero clones detected.</p></li>
+<li><p><code>Length_CDR3</code>: read-weighted mean CDR3 length.</p></li>
+<li><p><code>Shannon_Index</code>: Shannon diversity index measuring clone diversity.</p></li>
+<li><p><code>Evenness</code>: normalized Shannon evenness across clones.</p></li>
+<li><p><code>Top_clone</code> / <code>Second_top_clone</code>: frequencies of the most and second-most abundant clones.</p></li>
+<li><p><code>Rare_clone</code> / <code>Second_Rare_clone</code>: frequencies of the rarest and second-rarest clones.</p></li>
+<li><p><code>Gini</code>: Gini coefficient for clone frequency concentration.</p></li>
+<li><p><code>Gini_Simpson</code>: Gini-Simpson index reflecting diversity and unevenness.</p></li>
 </ul>
 
 
+</section>
 </section>
 
 </main> <!-- /main -->
@@ -773,13 +719,13 @@ Github : <a href="https://github.com/alexdobin/STAR">alexdobin/STAR</a></p></li>
   </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
-      <a href="./installation.html" class="pagination-link" aria-label="Installation">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Installation</span></span>
+      <a href="./runall.html" class="pagination-link" aria-label="From FASTQ to TME — runall">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">From FASTQ to TME — runall</span></span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="./runall.html" class="pagination-link" aria-label="From FASTQ to TME — runall">
-        <span class="nav-page-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">From FASTQ to TME — runall</span></span> <i class="bi bi-arrow-right-short"></i>
+      <a href="./SpecHLA.html" class="pagination-link" aria-label="SpecHLA &amp; HLA typing">
+        <span class="nav-page-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">SpecHLA &amp; HLA typing</span></span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>
@@ -788,4 +734,4 @@ Github : <a href="https://github.com/alexdobin/STAR">alexdobin/STAR</a></p></li>
 
 
 
-<footer class="footer"><div class="nav-footer"><div class="nav-footer-center"><div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/IOBR/IOBRpy/edit/main/site/build-index.md" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li><li><a href="https://github.com/IOBR/IOBRpy/issues/new" class="toc-action"><i class="bi empty"></i>Report an issue</a></li></ul></div></div></div></footer></body></html>
+<footer class="footer"><div class="nav-footer"><div class="nav-footer-center"><div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/IOBR/IOBRpy/edit/main/site/trust4.md" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li><li><a href="https://github.com/IOBR/IOBRpy/issues/new" class="toc-action"><i class="bi empty"></i>Report an issue</a></li></ul></div></div></div></footer></body></html>

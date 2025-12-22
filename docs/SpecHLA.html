@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>3&nbsp; Build Salmon &amp; STAR Index – IOBRpy Book</title>
+<title>6&nbsp; SpecHLA &amp; HLA typing – IOBRpy Book</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -65,8 +65,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="site_libs/quarto-search/fuse.min.js"></script>
 <script src="site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="./">
-<link href="./runall.html" rel="next">
-<link href="./installation.html" rel="prev">
+<link href="./From-FASTQ-to-TPM.html" rel="next">
+<link href="./trust4.html" rel="prev">
 <script src="site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
 <script src="site_libs/quarto-html/axe/axe-check.js" type="module"></script>
@@ -119,7 +119,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./build-index.html"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Build Salmon &amp; STAR Index</span></a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./SpecHLA.html"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">SpecHLA &amp; HLA typing</span></a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
       <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
@@ -165,7 +165,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./build-index.html" class="sidebar-item-text sidebar-link active">
+  <a href="./build-index.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Build Salmon &amp; STAR Index</span></span></a>
   </div>
 </li>
@@ -183,7 +183,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./SpecHLA.html" class="sidebar-item-text sidebar-link">
+  <a href="./SpecHLA.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">SpecHLA &amp; HLA typing</span></span></a>
   </div>
 </li>
@@ -233,21 +233,22 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <h2 id="toc-title">Table of contents</h2>
    
   <ul>
-  <li><a href="#overview" id="toc-overview" class="nav-link active" data-scroll-target="#overview"><span class="header-section-number">3.1</span> Overview</a></li>
-  <li><a href="#prerequisites" id="toc-prerequisites" class="nav-link" data-scroll-target="#prerequisites"><span class="header-section-number">3.2</span> Prerequisites</a></li>
-  <li><a href="#build-salmon-index" id="toc-build-salmon-index" class="nav-link" data-scroll-target="#build-salmon-index"><span class="header-section-number">3.3</span> Build Salmon index</a></li>
-  <li><a href="#build-star-index" id="toc-build-star-index" class="nav-link" data-scroll-target="#build-star-index"><span class="header-section-number">3.4</span> Build STAR index</a></li>
-  <li><a href="#notes" id="toc-notes" class="nav-link" data-scroll-target="#notes"><span class="header-section-number">3.5</span> Notes</a></li>
-  <li><a href="#references-acknowledgments" id="toc-references-acknowledgments" class="nav-link" data-scroll-target="#references-acknowledgments"><span class="header-section-number">3.6</span> References &amp; Acknowledgments</a></li>
+  <li><a href="#automatic-dependency-installation" id="toc-automatic-dependency-installation" class="nav-link active" data-scroll-target="#automatic-dependency-installation"><span class="header-section-number">6.1</span> Automatic dependency installation</a></li>
+  <li><a href="#single-sample-hla-typing" id="toc-single-sample-hla-typing" class="nav-link" data-scroll-target="#single-sample-hla-typing"><span class="header-section-number">6.2</span> Single-sample HLA typing</a>
+  <ul class="collapse">
+  <li><a href="#extract-hla-reads-from-bamcram" id="toc-extract-hla-reads-from-bamcram" class="nav-link" data-scroll-target="#extract-hla-reads-from-bamcram"><span class="header-section-number">6.2.1</span> Extract HLA reads from BAM/CRAM</a></li>
+  <li><a href="#perform-hla-typing-using-hla-reads" id="toc-perform-hla-typing-using-hla-reads" class="nav-link" data-scroll-target="#perform-hla-typing-using-hla-reads"><span class="header-section-number">6.2.2</span> Perform HLA typing using HLA reads</a></li>
+  </ul></li>
+  <li><a href="#batch-hla-typing-iobrpy-hla_typing" id="toc-batch-hla-typing-iobrpy-hla_typing" class="nav-link" data-scroll-target="#batch-hla-typing-iobrpy-hla_typing"><span class="header-section-number">6.3</span> Batch HLA typing (<code>iobrpy hla_typing</code>)</a></li>
   </ul>
-<div class="toc-actions"><ul><li><a href="https://github.com/IOBR/IOBRpy/edit/main/site/build-index.md" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li><li><a href="https://github.com/IOBR/IOBRpy/issues/new" class="toc-action"><i class="bi empty"></i>Report an issue</a></li></ul></div></nav>
+<div class="toc-actions"><ul><li><a href="https://github.com/IOBR/IOBRpy/edit/main/site/SpecHLA.md" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li><li><a href="https://github.com/IOBR/IOBRpy/issues/new" class="toc-action"><i class="bi empty"></i>Report an issue</a></li></ul></div></nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Build Salmon &amp; STAR Index</span></h1>
+<h1 class="title"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">SpecHLA &amp; HLA typing</span></h1>
 </div>
 
 
@@ -264,108 +265,63 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<section id="overview" class="level2" data-number="3.1">
-<h2 data-number="3.1" class="anchored" data-anchor-id="overview"><span class="header-section-number">3.1</span> Overview</h2>
-<p><strong>Salmon</strong> and <strong>STAR</strong> are two cornerstone tools for RNA-seq quantification that serve complementary purposes:</p>
-<ul>
-<li><p><strong>Salmon</strong> — a fast, lightweight <em>alignment-free</em> (quasi-mapping / selective-alignment) quantifier that works on a <strong>transcriptome index</strong>, provides bias-aware transcript abundance estimates, and is ideal for rapid, large-scale quantification.<br>
-Docs : <a href="https://salmon.readthedocs.io/">Salmon Documentation</a> · Github : <a href="https://github.com/COMBINE-lab/salmon">COMBINE-lab/salmon</a></p></li>
-<li><p><strong>STAR</strong> — an <em>alignment-based</em> spliced read aligner that maps reads to the <strong>genome</strong>, discovers splice junctions, and produces alignment files suitable for downstream QC and gene-level counting.<br>
-Github : <a href="https://github.com/alexdobin/STAR">alexdobin/STAR</a></p></li>
-</ul>
-<blockquote class="blockquote">
-<p>This page shows how to build indices for <strong>both</strong> tools. Choose Salmon when you want fast transcript-level quantification from a transcriptome; choose STAR when you need full genomic alignments, splice junction discovery, or STAR-based counting workflows.</p>
-</blockquote>
+<section id="automatic-dependency-installation" class="level2" data-number="6.1">
+<h2 data-number="6.1" class="anchored" data-anchor-id="automatic-dependency-installation"><span class="header-section-number">6.1</span> Automatic dependency installation</h2>
+<p>Both <code>iobrpy extract_hla_read</code> and <code>iobrpy spechla</code> support <strong>lazy (on-demand) dependency installation</strong>.<br>
+When you run the command, iobrpy will first check whether required dependencies are available; if something is missing, it will <strong>automatically install</strong> via <code>conda install</code> and then continue the workflow.</p>
 </section>
-<section id="prerequisites" class="level2" data-number="3.2">
-<h2 data-number="3.2" class="anchored" data-anchor-id="prerequisites"><span class="header-section-number">3.2</span> Prerequisites</h2>
+<section id="single-sample-hla-typing" class="level2" data-number="6.2">
+<h2 data-number="6.2" class="anchored" data-anchor-id="single-sample-hla-typing"><span class="header-section-number">6.2</span> Single-sample HLA typing</h2>
+<section id="extract-hla-reads-from-bamcram" class="level3" data-number="6.2.1">
+<h3 data-number="6.2.1" class="anchored" data-anchor-id="extract-hla-reads-from-bamcram"><span class="header-section-number">6.2.1</span> Extract HLA reads from BAM/CRAM</h3>
+<p>Use <code>iobrpy extract_hla_read</code> to extract HLA reads and convert them to FASTQ.</p>
 <ul>
-<li>Activate iobrpy environment</li>
+<li><strong>What it computes</strong>: ExtractHLAread isolates HLA-mapped reads from aligned BAM/CRAM files and converts them to FASTQ to provide cleaner inputs for HLA typing, improving downstream SpecHLA accuracy and enabling QC-friendly batch pipelines.</li>
 </ul>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">conda</span> activate iobrpy</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> extract_hla_read <span class="dt">\</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">-s</span> SAMPLE1 <span class="dt">\</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-b</span> /data/bam/SAMPLE1.bam <span class="dt">\</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">-r</span> hg38 <span class="dt">\</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> /data/ExtractHLAread/SAMPLE1</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <ul>
-<li>Choose a base directory for index:</li>
+<li><code>-s</code>: desired sample name.</li>
+<li><code>-b</code>: sorted and indexed bam or cram.</li>
+<li><code>-r</code>: <code>hg19</code> or <code>hg38</code> reference.</li>
+<li><code>-o</code>: folder to save extracted reads.</li>
 </ul>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="bu">export</span> <span class="va">BASE</span><span class="op">=</span>/path/to/index/dir</span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="fu">mkdir</span> <span class="at">-p</span> <span class="st">"</span><span class="va">$BASE</span><span class="st">"</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<hr>
 </section>
-<section id="build-salmon-index" class="level2" data-number="3.3">
-<h2 data-number="3.3" class="anchored" data-anchor-id="build-salmon-index"><span class="header-section-number">3.3</span> Build Salmon index</h2>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Move to the base directory for references</span></span>
-<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> <span class="st">"</span><span class="va">$BASE</span><span class="st">"</span></span>
-<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Download GENCODE v44 annotation &amp; transcript FASTA</span></span>
-<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="co"># (Use -c to resume if the download is interrupted)</span></span>
-<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a><span class="fu">wget</span> <span class="at">-c</span> ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_44/gencode.v44.annotation.gtf.gz</span>
-<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a><span class="fu">wget</span> <span class="at">-c</span> ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_44/gencode.v44.transcripts.fa.gz</span>
-<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a><span class="co"># Decompress the downloads</span></span>
-<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a><span class="fu">gunzip</span> <span class="at">-f</span> gencode.v44.annotation.gtf.gz</span>
-<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a><span class="fu">gunzip</span> <span class="at">-f</span> gencode.v44.transcripts.fa.gz</span>
-<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a><span class="co"># Paths</span></span>
-<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a><span class="va">fa</span><span class="op">=</span><span class="st">"</span><span class="va">$BASE</span><span class="st">/gencode.v44.transcripts.fa"</span></span>
-<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a><span class="co"># Output directory for Salmon index</span></span>
-<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a><span class="fu">mkdir</span> <span class="at">-p</span> <span class="st">"</span><span class="va">$BASE</span><span class="st">/salmon"</span></span>
-<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a><span class="co"># Build Salmon index</span></span>
-<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a><span class="co"># -t: transcript FASTA</span></span>
-<span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a><span class="co"># -i: index output directory</span></span>
-<span id="cb3-22"><a href="#cb3-22" aria-hidden="true" tabindex="-1"></a><span class="co"># -k: k-mer size (31 is common for human)</span></span>
-<span id="cb3-23"><a href="#cb3-23" aria-hidden="true" tabindex="-1"></a><span class="co"># -p: threads</span></span>
-<span id="cb3-24"><a href="#cb3-24" aria-hidden="true" tabindex="-1"></a><span class="ex">salmon</span> index <span class="at">-t</span> <span class="st">"</span><span class="va">$fa</span><span class="st">"</span> <span class="at">-i</span> <span class="st">"</span><span class="va">$BASE</span><span class="st">/salmon/gencode44"</span> <span class="at">-k</span> 31 <span class="at">-p</span> 8</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p><strong>Tip:</strong> Adjust <code>-p</code> to match your CPU cores; <code>-k</code> can be tuned depending on read length and species.</p>
-<hr>
-</section>
-<section id="build-star-index" class="level2" data-number="3.4">
-<h2 data-number="3.4" class="anchored" data-anchor-id="build-star-index"><span class="header-section-number">3.4</span> Build STAR index</h2>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Move to the base directory for references</span></span>
-<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> <span class="st">"</span><span class="va">$BASE</span><span class="st">"</span></span>
-<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Download the primary assembly and GTF (GENCODE v44)</span></span>
-<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="fu">wget</span> <span class="at">-c</span> https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_44/GRCh38.primary_assembly.genome.fa.gz</span>
-<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a><span class="fu">wget</span> <span class="at">-c</span> https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_44/gencode.v44.annotation.gtf.gz</span>
-<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a><span class="co"># Decompress the downloads</span></span>
-<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a><span class="fu">gunzip</span> <span class="at">-f</span> GRCh38.primary_assembly.genome.fa.gz</span>
-<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a><span class="fu">gunzip</span> <span class="at">-f</span> gencode.v44.annotation.gtf.gz</span>
-<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a><span class="co"># Paths</span></span>
-<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a><span class="va">STAR_INDEX</span><span class="op">=</span><span class="st">"</span><span class="va">$BASE</span><span class="st">/star"</span></span>
-<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a><span class="va">genome_fa</span><span class="op">=</span><span class="st">"</span><span class="va">$BASE</span><span class="st">/GRCh38.primary_assembly.genome.fa"</span></span>
-<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a><span class="va">gtf</span><span class="op">=</span><span class="st">"</span><span class="va">$BASE</span><span class="st">/gencode.v44.annotation.gtf"</span></span>
-<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a><span class="co"># Create output directory for STAR index</span></span>
-<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a><span class="fu">mkdir</span> <span class="at">-p</span> <span class="st">"</span><span class="va">$STAR_INDEX</span><span class="st">"</span></span>
-<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a><span class="co"># Build STAR genome index</span></span>
-<span id="cb4-21"><a href="#cb4-21" aria-hidden="true" tabindex="-1"></a><span class="ex">STAR</span> <span class="at">--runMode</span> genomeGenerate <span class="dt">\</span></span>
-<span id="cb4-22"><a href="#cb4-22" aria-hidden="true" tabindex="-1"></a>     <span class="at">--genomeDir</span> <span class="st">"</span><span class="va">$STAR_INDEX</span><span class="st">"</span> <span class="dt">\</span></span>
-<span id="cb4-23"><a href="#cb4-23" aria-hidden="true" tabindex="-1"></a>     <span class="at">--genomeFastaFiles</span> <span class="st">"</span><span class="va">$genome_fa</span><span class="st">"</span> <span class="dt">\</span></span>
-<span id="cb4-24"><a href="#cb4-24" aria-hidden="true" tabindex="-1"></a>     <span class="at">--sjdbGTFfile</span> <span class="st">"</span><span class="va">$gtf</span><span class="st">"</span> <span class="dt">\</span></span>
-<span id="cb4-25"><a href="#cb4-25" aria-hidden="true" tabindex="-1"></a>     <span class="at">--runThreadN</span> 16 <span class="dt">\</span></span>
-<span id="cb4-26"><a href="#cb4-26" aria-hidden="true" tabindex="-1"></a>     <span class="at">--sjdbOverhang</span> 100</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<hr>
-</section>
-<section id="notes" class="level2" data-number="3.5">
-<h2 data-number="3.5" class="anchored" data-anchor-id="notes"><span class="header-section-number">3.5</span> Notes</h2>
+<section id="perform-hla-typing-using-hla-reads" class="level3" data-number="6.2.2">
+<h3 data-number="6.2.2" class="anchored" data-anchor-id="perform-hla-typing-using-hla-reads"><span class="header-section-number">6.2.2</span> Perform HLA typing using HLA reads</h3>
+<p>Run <code>iobrpy spechla</code> to perform HLA typing on HLA reads.</p>
 <ul>
-<li><strong>Release/assembly:</strong> This guide uses <strong>GENCODE v44</strong> (GRCh38). If you need a different release or assembly (e.g., T2T-CHM13), update the URLs and filenames accordingly.</li>
-<li><strong>Threads:</strong> Increase <code>--runThreadN</code>/<code>-p</code> to speed up indexing if you have more cores.</li>
-<li><strong>Storage:</strong> STAR indexes are large (tens of GB). Ensure you have enough disk space.</li>
-<li><strong>Read length:</strong> For STAR, set <code>--sjdbOverhang = read_length - 1</code> for best splice junction annotations.</li>
+<li><strong>What it computes</strong>: SpecHLA performs high-resolution HLA genotyping (HLA-A/B/C, DR/DQ/DP, and other loci), producing allele calls that support immune-escape assessment, transplant compatibility review, immunotherapy prognosis, and neoantigen prediction.</li>
 </ul>
-<hr>
-</section>
-<section id="references-acknowledgments" class="level2" data-number="3.6">
-<h2 data-number="3.6" class="anchored" data-anchor-id="references-acknowledgments"><span class="header-section-number">3.6</span> References &amp; Acknowledgments</h2>
-<p>We gratefully acknowledge the developers and maintainers of <strong>Salmon</strong> and <strong>STAR</strong>. If you use these tools, please cite:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> spechla <span class="dt">\</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">-n</span> SAMPLE1 <span class="dt">\</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-1</span> /data/ExtractHLAread/SAMPLE1/SAMPLE1_1.fq.gz <span class="dt">\</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">-2</span> /data/ExtractHLAread/SAMPLE1/SAMPLE1_2.fq.gz <span class="dt">\</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> /data/spechla_results <span class="dt">\</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">-j</span> 8</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <ul>
-<li><p>Patro R, Duggal G, Love MI, Irizarry RA, Kingsford C. Salmon provides fast and bias-aware quantification of transcript expression. Nat Methods. 2017 Apr;14(4):417-419. doi: 10.1038/nmeth.4197. Epub 2017 Mar 6. PMID: 28263959; PMCID: PMC5600148.</p></li>
-<li><p>Dobin A, Davis CA, Schlesinger F, Drenkow J, Zaleski C, Jha S, Batut P, Chaisson M, Gingeras TR. STAR: ultrafast universal RNA-seq aligner. Bioinformatics. 2013 Jan 1;29(1):15-21. doi: 10.1093/bioinformatics/bts635. Epub 2012 Oct 25. PMID: 23104886; PMCID: PMC3530905.</p></li>
+<li><code>-n</code>: sample ID.</li>
+<li><code>-1</code> and <code>-2</code>: The first and the second fastq file of paired-end data.</li>
+<li><code>-o</code>: result directory (created if missing).</li>
+<li><code>-j</code>: threads for SpecHLA (default 8).</li>
 </ul>
+</section>
+</section>
+<section id="batch-hla-typing-iobrpy-hla_typing" class="level2" data-number="6.3">
+<h2 data-number="6.3" class="anchored" data-anchor-id="batch-hla-typing-iobrpy-hla_typing"><span class="header-section-number">6.3</span> Batch HLA typing (<code>iobrpy hla_typing</code>)</h2>
+<p>End-to-end wrapper that runs <strong>ExtractHLAread</strong> for every BAM in a directory, launches <strong>SpecHLA</strong> on the extracted HLA reads, and merges per-sample results.</p>
+<ul>
+<li><strong>What it computes</strong>: The batch workflow outputs per-sample HLA genotypes and a merged <code>hla_result_merged.txt</code>.</li>
+</ul>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy</span> hla_typing <span class="dt">\</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">-b</span> /data/bam <span class="dt">\</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-r</span> hg38 <span class="dt">\</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">-o</span> /data/hla_typing_results <span class="dt">\</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">-j</span> 8</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Workflow details: - Input directory <code>-b</code> is scanned for <code>*.bam</code>; each sample gets <code>ExtractHLAread/&lt;sample&gt;</code> and <code>SpecHLA/&lt;sample&gt;</code> under the output root. - Resume-friendly markers (<code>*.ExtractHLAread.done</code>, <code>*.SpecHLA.done</code>) for each sample to prevent reruns on completed samples. - A merged <code>hla_result_merged.txt</code> is written alongside the per-sample folders for quick review.</p>
 
 
 </section>
@@ -773,13 +729,13 @@ Github : <a href="https://github.com/alexdobin/STAR">alexdobin/STAR</a></p></li>
   </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
-      <a href="./installation.html" class="pagination-link" aria-label="Installation">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Installation</span></span>
+      <a href="./trust4.html" class="pagination-link" aria-label="TRUST4 &amp; TCR-BCR">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">TRUST4 &amp; TCR-BCR</span></span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="./runall.html" class="pagination-link" aria-label="From FASTQ to TME — runall">
-        <span class="nav-page-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">From FASTQ to TME — runall</span></span> <i class="bi bi-arrow-right-short"></i>
+      <a href="./From-FASTQ-to-TPM.html" class="pagination-link" aria-label="From FASTQ to TPM">
+        <span class="nav-page-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">From FASTQ to TPM</span></span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>
@@ -788,4 +744,4 @@ Github : <a href="https://github.com/alexdobin/STAR">alexdobin/STAR</a></p></li>
 
 
 
-<footer class="footer"><div class="nav-footer"><div class="nav-footer-center"><div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/IOBR/IOBRpy/edit/main/site/build-index.md" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li><li><a href="https://github.com/IOBR/IOBRpy/issues/new" class="toc-action"><i class="bi empty"></i>Report an issue</a></li></ul></div></div></div></footer></body></html>
+<footer class="footer"><div class="nav-footer"><div class="nav-footer-center"><div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/IOBR/IOBRpy/edit/main/site/SpecHLA.md" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li><li><a href="https://github.com/IOBR/IOBRpy/issues/new" class="toc-action"><i class="bi empty"></i>Report an issue</a></li></ul></div></div></div></footer></body></html>
