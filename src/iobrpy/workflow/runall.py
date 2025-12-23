@@ -314,6 +314,33 @@ def main(argv: Optional[List[str]] = None) -> None:
     for k in set(list(blocks_named.keys()) + list(blocks_auto.keys())):
         blocks[k] = (blocks_named.get(k) or []) + (blocks_auto.get(k) or [])
 
+    # Guarantee that any provided --suffix1 also reaches the quantification step
+    # (salmon/star), even if the user only attached it to fastq_qc in sectioned mode.
+    suffix_tokens: Optional[List[str]] = None
+    for name in ("fastq_qc", "fastq"):
+        toks = blocks.get(name) or []
+        for idx, tok in enumerate(toks):
+            if tok == "--suffix1":
+                if idx + 1 < len(toks) and not toks[idx + 1].startswith("--"):
+                    suffix_tokens = [tok, toks[idx + 1]]
+                else:
+                    suffix_tokens = [tok]
+                break
+        if suffix_tokens:
+            break
+
+    if suffix_tokens:
+        quant_key = "batch_salmon" if ns.mode == "salmon" else "batch_star_count"
+        quant_alias = "salmon" if ns.mode == "salmon" else "star"
+
+        def _ensure_suffix(target: str) -> None:
+            tokens = blocks.setdefault(target, [])
+            if not any(t == "--suffix1" for t in tokens):
+                tokens += suffix_tokens
+
+        _ensure_suffix(quant_key)
+        _ensure_suffix(quant_alias)
+
     # Final unified values (explicit top-level overrides legacy)
     threads = ns.threads if ns.threads is not None else (legacy_threads if legacy_threads is not None else 8)
     batch_size = ns.batch_size if ns.batch_size is not None else (legacy_batch if legacy_batch is not None else 1)
