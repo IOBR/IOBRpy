@@ -429,6 +429,7 @@ Groups: <code>go_bp</code>, <code>go_cc</code>, <code>go_mf</code>, <code>signat
 <li><code>--sc_dat</code>: single-cell count matrix (cells × genes)</li>
 <li><code>--cell_state_labels</code>: A single-column CSV file, with cells ordered identically to –sc_dat, representing each cell’s state</li>
 <li><code>--cell_type_labels</code>: A single-column CSV file, with cells ordered identically to –sc_dat, representing each cell’s type</li>
+<li><code>--key</code>: Tumor key forwarded to <code>prism.Prism.new</code>. Required when <code>--sc_dat</code> is supplied; defaults to <code>Malignant_cells</code> when using the bundled reference.</li>
 </ul></li>
 <li><strong>quantiseq</strong>
 <ul>

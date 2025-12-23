@@ -45,6 +45,7 @@ def run_bayesprism(
     sc_dat_path: Optional[Path] = None,
     cell_state_labels_path: Optional[Path] = None,
     cell_type_labels_path: Optional[Path] = None,
+    key: str = "Malignant_cells",
 ) -> None:
     """
     Core pipeline: load reference from BP_data, read bulk matrix, run BayesPrism,
@@ -58,6 +59,10 @@ def run_bayesprism(
         Output directory where result CSVs will be written.
     n_cores : int
         Number of CPU cores passed to BayesPrism (n_cores).
+    key : str, default "Malignant_cells"
+        Tumor key passed through to `prism.Prism.new`. When using a custom
+        single-cell reference (``--sc_dat``), you must supply a key that matches
+        the malignant / tumor cell type in your reference.
     """
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -123,9 +128,7 @@ def run_bayesprism(
     # bulk: genes x samples  ->  mixture: samples x genes
     mixture = bulk_df.T.astype(np.int32)
 
-    # 4) Run BayesPrism (key fixed to 'Malignant_cells')
-    key = "Malignant_cells"
-
+    # 4) Run BayesPrism
     my_prism = prism.Prism.new(
         reference=sc_dat_filtered_pc,
         input_type="count.matrix",
@@ -223,6 +226,15 @@ def build_parser(parser: Optional[argparse.ArgumentParser] = None) -> argparse.A
             "If omitted, the bundled BP_data/cell_type_labels.csv is used."
         ),
     )
+    parser.add_argument(
+        "--key",
+        dest="key",
+        help=(
+            "Tumor key passed to prism.Prism.new. Required when providing "
+            "custom single-cell data via --sc_dat. Defaults to "
+            "'Malignant_cells' when using the bundled reference."
+        ),
+    )
 
     return parser
 
@@ -244,6 +256,10 @@ def main(argv=None) -> None:
     sc_dat_path = Path(args.sc_dat) if args.sc_dat else None
     cell_state_labels_path = Path(args.cell_state_labels) if args.cell_state_labels else None
     cell_type_labels_path = Path(args.cell_type_labels) if args.cell_type_labels else None
+    key = args.key or "Malignant_cells"
+
+    if sc_dat_path is not None and args.key is None:
+        parser.error("--key is required when using a custom single-cell reference (--sc_dat).")
 
     run_bayesprism(
         bulk_path,
@@ -252,6 +268,7 @@ def main(argv=None) -> None:
         sc_dat_path=sc_dat_path,
         cell_state_labels_path=cell_state_labels_path,
         cell_type_labels_path=cell_type_labels_path,
+        key=key,
     )
 
     print("BayesPrism finished.")
