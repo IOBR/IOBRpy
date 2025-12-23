@@ -86,13 +86,19 @@ def _run_multiqc(path2_fastp: str):
     Output directory: {path2_fastp}/multiqc_report
     Output file:      multiqc_fastp_report.html (+ multiqc_data/)
     """
+    out_dir = os.path.join(path2_fastp, "multiqc_report")
+    report_html = os.path.join(out_dir, "multiqc_fastp_report.html")
+    if os.path.isfile(report_html) and os.path.getsize(report_html) > 0:
+        print("MultiQC report already exists; skipping MultiQC.")
+        print(report_html)
+        return report_html
+
     # collect fastp JSONs; if none, skip quietly
     json_reports = [f for f in os.listdir(path2_fastp) if f.endswith("_fastp.json")]
     if not json_reports:
         print("No fastp JSON files found; skipping MultiQC.")
         return None
 
-    out_dir = os.path.join(path2_fastp, "multiqc_report")
     os.makedirs(out_dir, exist_ok=True)
 
     cmd = [

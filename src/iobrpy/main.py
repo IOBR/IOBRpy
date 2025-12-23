@@ -34,7 +34,7 @@ from iobrpy.SpecHLA.extract_hla_read import main as extract_hla_read_main
 from iobrpy.workflow.hla_typing import main as hla_typing_main
 from iobrpy.bayesprism.bayesprism import main as bayesprism_main
 
-VERSION = "0.1.6"
+VERSION = "0.1.7"
 
 def main():
     parser = argparse.ArgumentParser(
@@ -432,6 +432,15 @@ def main():
         '--cell_type_labels',
         dest='cell_type_labels',
         help='Custom cell_type_labels file (one label per line).',
+    )
+    p_bp.add_argument(
+        '--key',
+        dest='key',
+        help=(
+            "Tumor key forwarded to prism.Prism.new. Required when using a custom "
+            "single-cell reference via --sc_dat; defaults to 'Malignant_cells' "
+            "when the bundled reference is used."
+        ),
     )
 
     args, unknown = parser.parse_known_args()
@@ -880,6 +889,8 @@ def main():
             bp_argv += ['--cell_state_labels', args.cell_state_labels]
         if args.cell_type_labels:
             bp_argv += ['--cell_type_labels', args.cell_type_labels]
+        if args.key:
+            bp_argv += ['--key', args.key]
         bp_argv += unknown
         bayesprism_main(bp_argv)
 

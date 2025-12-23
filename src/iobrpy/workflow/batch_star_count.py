@@ -3,19 +3,15 @@ import os
 import random
 import subprocess
 import argparse
+import resource
 
-
-def set_ulimit():
-    """
-    Set the maximum number of open files to 65535 for the current process.
-    This helps avoid issues with too many open files during large-scale processing.
-    """
+def set_ulimit(n=65535):
+    soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+    target = min(n, hard)
     try:
-        # Attempt to set the ulimit value
-        subprocess.run("ulimit -n 65535", shell=True, check=True)
-        # print("ulimit set to 65535 successfully.")
-    except subprocess.CalledProcessError:
-        print("Warning: ulimit raise failed.")
+        resource.setrlimit(resource.RLIMIT_NOFILE, (target, hard))
+    except Exception as e:
+        print(f"Warning: ulimit raise failed: {e} (soft={soft}, hard={hard})")
 
 def process_sample(f1, path_out, index, suffix1, num_threads):
     """

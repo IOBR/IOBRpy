@@ -82,10 +82,10 @@ conda activate iobrpy
 ```bash
 # Install iobrpy 0.1.4 (from bioconda via conda-forge + bioconda)
 # Recommended: use mamba for faster solves (if available)
-mamba install -y -c conda-forge -c bioconda iobrpy=0.1.4
+mamba install -y -c conda-forge -c bioconda iobrpy=0.1.7
 
 # If you don't have mamba, use conda instead
-conda install -y -c conda-forge -c bioconda iobrpy=0.1.4
+conda install -y -c conda-forge -c bioconda iobrpy=0.1.7
 ```
 </details>
 

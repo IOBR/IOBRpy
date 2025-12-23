@@ -8,7 +8,7 @@ Features:
 - Reuses -b for both single and batch:
     * -b <file.bam>          -> single-run (TRUST4 native semantics)
     * -b <directory_of_bams> -> batch over all *.bam in that directory (non-recursive)
-- --fqdir: batch over paired FASTQ (prefix + _1/_2.fastq.gz).
+- --fqdir: batch over paired FASTQ (prefix + _1/_2.fastq.gz or _1/_2.fq.gz).
 - In batch modes (-b <dir> or --fqdir), CLI -o is treated as an OUTPUT ROOT directory.
   Each sample runs with:
       --od <OUT_ROOT>/<sample>
@@ -125,13 +125,19 @@ def _list_bams(bamdir: str) -> List[str]:
 def _infer_sample_from_fastq_name(filename: str) -> Optional[Tuple[str, str]]:
     """
     Return (sample_prefix, end_type) where end_type is 'R1' or 'R2',
-    based on suffixes '_1.fastq.gz' / '_2.fastq.gz'.
+    based on suffixes '_1.fastq.gz' / '_2.fastq.gz' or '_1.fq.gz' / '_2.fq.gz'.
     If not matched, return None.
     """
-    if filename.endswith("_1.fastq.gz"):
-        return (filename[: -len("_1.fastq.gz")], "R1")
-    if filename.endswith("_2.fastq.gz"):
-        return (filename[: -len("_2.fastq.gz")], "R2")
+    suffixes = [
+        ("_1.fastq.gz", "R1"),
+        ("_2.fastq.gz", "R2"),
+        ("_1.fq.gz", "R1"),
+        ("_2.fq.gz", "R2"),
+    ]
+
+    for suffix, read_type in suffixes:
+        if filename.endswith(suffix):
+            return (filename[: -len(suffix)], read_type)
     return None
 
 
@@ -152,7 +158,7 @@ def _pair_fastqs(fqdir: str) -> Dict[str, Tuple[str, str]]:
     r2_map: Dict[str, List[str]] = {}
 
     for fn in sorted(os.listdir(fqdir)):
-        if not fn.endswith(".fastq.gz"):
+        if not (fn.endswith(".fastq.gz") or fn.endswith(".fq.gz")):
             continue
         parsed = _infer_sample_from_fastq_name(fn)
         if parsed is None:
