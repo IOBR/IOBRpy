@@ -367,7 +367,8 @@ GSM1523745  0                        0.014678117               0.121834835      
 <span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">--sc_dat</span> sc_dat.csv <span class="dt">\ </span>   <span class="co"># single-cell count matrix (cells × genes)</span></span>
 <span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>  <span class="ex">--cell_state_labels</span> cell_state_labels.csv <span class="dt">\ </span>   <span class="co"># A single-column CSV file, with cells ordered identically to --sc_dat, representing each cell’s state</span></span>
 <span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>  <span class="ex">--cell_type_labels</span> cell_type_labels.csv <span class="dt">\ </span>   <span class="co"># A single-column CSV file, with cells ordered identically to --sc_dat, representing each cell’s type</span></span>
-<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>  <span class="ex">--threads</span> 8</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>  <span class="ex">--key</span> tumor_cell_type <span class="dt">\ </span>   <span class="co"># One of the cell types in cell_type_label must be designated as tumor</span></span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>  <span class="ex">--threads</span> 8</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <pre><code># The output includes theta.csv, theta_cv.csv, and Z_tumor.csv; here we show only a partial preview of the format of theta.csv.
 # theta.csv: estimated cell-type proportions.
 # theta_cv.csv: coefficient of variation for the proportions.
