@@ -256,10 +256,7 @@ def count2tpm(count_mat: pd.DataFrame,
     # Deduplicate by symbol with progress
     print("[INFO] Removing duplicate genes...")
     tpm = remove_duplicate_genes(tpm, 'symbol')
-
-    cols = list(tpm.columns)
-    cols[0] = ""
-    tpm.columns = cols
+    tpm.index.name = None
 
     return tpm
 
@@ -306,10 +303,6 @@ def main():
                         source=args.source, effLength_df=eff_df,
                         id_col=args.id_col, gene_symbol_col=args.gene_symbol_col,
                         length_col=args.length_col, check_data=args.check_data,remove_version=args.remove_version)
-
-    cols = list(tpm_df.columns)
-    cols[0] = ""
-    tpm_df.columns = cols
 
     print(f"Output matrix shape: {tpm_df.shape[0]} rows × {tpm_df.shape[1]} columns")
     print(tpm_df.iloc[:5, :5])
