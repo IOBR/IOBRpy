@@ -61,6 +61,22 @@ def prepend_to_path(path):
     os.environ["PATH"] = path + os.pathsep + current if current else path
     print(f"[SpecHLA] Prepending '{path}' to PATH")
 
+def force_prepend_to_path(path):
+    """
+    Force a directory to be the first entry in PATH (highest precedence).
+    If it already exists in PATH, move it to the front.
+    """
+    if not path or not os.path.isdir(path):
+        return
+
+    current = os.environ.get("PATH", "")
+    parts = current.split(os.pathsep) if current else []
+    parts = [p for p in parts if p]  # drop empty entries
+
+    # remove all existing occurrences
+    parts = [p for p in parts if p != path]
+    os.environ["PATH"] = os.pathsep.join([path] + parts) if parts else path
+    print(f"[SpecHLA] Forcing '{path}' to the front of PATH")
 
 # ------------------------------------------------------------
 # Detect SpecHLA root
@@ -423,6 +439,220 @@ def ensure_vcflib_after_freebayes():
         sys.exit(1)
 
 # ------------------------------------------------------------
+# bcftools version enforcement (require bcftools==1.21)
+# ------------------------------------------------------------
+def _parse_version_prefix(token):
+    """
+    Extract leading numeric version prefix from a token.
+    Examples:
+      "1.21" -> "1.21"
+      "1.21+htslib-1.21" -> "1.21"
+      "1.21-123-gabcdef" -> "1.21"
+    """
+    if not token:
+        return None
+    out = []
+    for ch in token:
+        if ch.isdigit() or ch == ".":
+            out.append(ch)
+        else:
+            break
+    return "".join(out) if out else None
+
+
+def get_bcftools_version(bcftools_path):
+    """
+    Return bcftools version string like "1.21", or None if cannot be determined.
+    """
+    try:
+        r = subprocess.run(
+            [bcftools_path, "--version"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=False,
+        )
+    except Exception:
+        return None
+
+    if r.returncode != 0:
+        return None
+
+    # first non-empty line usually: "bcftools 1.21"
+    first = None
+    for line in (r.stdout or "").splitlines():
+        line = line.strip()
+        if line:
+            first = line
+            break
+    if not first:
+        return None
+
+    toks = first.split()
+    if len(toks) < 2:
+        return None
+
+    return _parse_version_prefix(toks[1])
+
+
+def _ensure_exec(path):
+    """
+    Best-effort: make an existing file executable.
+    """
+    if not os.path.exists(path):
+        return
+    if os.access(path, os.X_OK):
+        return
+    try:
+        st = os.stat(path)
+        os.chmod(path, st.st_mode | 0o111)
+    except Exception:
+        pass
+
+
+def ensure_bcftools_121(spec_hla_root, required_version="1.21"):
+    """
+    Ensure bcftools exists AND version == required_version (default 1.21).
+
+    Fix (important):
+    - If conda already has bcftools==required_version, DO NOT re-run conda install.
+      Instead, use <conda_prefix>/bin/bcftools directly and force it to the front of PATH.
+    """
+    import json
+
+    bin_dir = os.path.join(spec_hla_root, "bin")
+
+    # Candidate order: $BCFTOOLS -> bundled SpecHLA/bin/bcftools -> PATH
+    candidates = []
+
+    env_bcftools = os.environ.get("BCFTOOLS")
+    if env_bcftools:
+        candidates.append(env_bcftools)
+
+    bundled = os.path.join(bin_dir, "bcftools")
+    if os.path.exists(bundled):
+        candidates.append(bundled)
+
+    path_bcftools = which("bcftools")
+    if path_bcftools:
+        candidates.append(path_bcftools)
+
+    # Helper: determine conda prefix (do NOT rely on PATH; SpecHLA/bin may be ahead)
+    def _get_conda_prefix(conda_exe):
+        prefix = os.environ.get("CONDA_PREFIX")
+        if prefix:
+            return prefix
+
+        # best-effort fallback: ask conda
+        try:
+            r = subprocess.run(
+                [conda_exe, "info", "--json"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                check=False,
+            )
+            if r.returncode != 0:
+                return None
+
+            info = json.loads(r.stdout)
+            return (
+                info.get("active_prefix")
+                or info.get("default_prefix")
+                or info.get("root_prefix")
+            )
+        except Exception:
+            return None
+
+    # 1) Try existing candidates; accept only if version matches
+    seen = set()
+    for p in candidates:
+        if not p or p in seen:
+            continue
+        seen.add(p)
+
+        if not os.path.exists(p):
+            continue
+
+        _ensure_exec(p)
+        if not os.access(p, os.X_OK):
+            continue
+
+        v = get_bcftools_version(p)
+        if v == required_version:
+            os.environ["BCFTOOLS"] = p
+            force_prepend_to_path(os.path.dirname(p))
+            print(f"[SpecHLA] Using bcftools {v}: {p}")
+            return p
+
+    # 2) Not found / mismatched -> check conda env FIRST (avoid reinstall)
+    conda_exe = detect_conda_exe()
+    if conda_exe is None:
+        print(
+            f"[SpecHLA] ERROR: bcftools is missing or not {required_version}, and 'conda' is not available.\n"
+            f"[SpecHLA]        Please install bcftools={required_version} in the current environment.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    installed_version = get_conda_package_version(conda_exe, "bcftools")
+    if installed_version == required_version:
+        prefix = _get_conda_prefix(conda_exe)
+        if prefix:
+            p = os.path.join(prefix, "bin", "bcftools")
+            _ensure_exec(p)
+            if os.path.exists(p) and os.access(p, os.X_OK):
+                v = get_bcftools_version(p)
+                if v == required_version:
+                    os.environ["BCFTOOLS"] = p
+                    force_prepend_to_path(os.path.dirname(p))
+                    print(f"[SpecHLA] Found conda bcftools {v}; reuse without reinstall: {p}")
+                    return p
+        # If something is odd (no prefix / binary), fall through to conda install.
+
+    # 3) Still missing or wrong -> install bcftools=required_version via conda
+    spec = f"bcftools={required_version}"
+    print(
+        f"[SpecHLA] bcftools is missing or not {required_version}. Trying to install '{spec}' via conda...",
+        file=sys.stderr,
+    )
+    run_cmd([conda_exe, "install", "-y", "-c", "bioconda", "-c", "conda-forge", spec])
+
+    prefix = _get_conda_prefix(conda_exe)
+    if not prefix:
+        print(
+            f"[SpecHLA] ERROR: cannot determine conda prefix after installing {spec}.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    # 4) Use conda's bcftools directly (avoid old SpecHLA/bin/bcftools shadowing)
+    p = os.path.join(prefix, "bin", "bcftools")
+    _ensure_exec(p)
+
+    if (not os.path.exists(p)) or (not os.access(p, os.X_OK)):
+        print(
+            f"[SpecHLA] ERROR: conda-installed bcftools not found/executable at: {p}",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    v = get_bcftools_version(p)
+    if v != required_version:
+        print(
+            f"[SpecHLA] ERROR: bcftools version mismatch after installation: found {v or 'none'}, "
+            f"require {required_version}.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    os.environ["BCFTOOLS"] = p
+    force_prepend_to_path(os.path.dirname(p))
+    print(f"[SpecHLA] Installed and using bcftools {v}: {p}")
+    return p
+
+
+# ------------------------------------------------------------
 # External tools (bwa, samtools, freebayes, bgzip, tabix, bowtie2, bcftools, blastn)
 # ------------------------------------------------------------
 def ensure_external_tools(spec_hla_root):
@@ -487,56 +717,8 @@ def ensure_external_tools(spec_hla_root):
         else:
             print(f"[SpecHLA] Found {tool}: {path}")
 
-    # ---------------- bundled bcftools ----------------
-    bcftools_bundled = os.path.join(bin_dir, "bcftools")
-
-    if os.path.exists(bcftools_bundled):
-        if os.access(bcftools_bundled, os.X_OK):
-            print(f"[SpecHLA] Using bundled bcftools at {bcftools_bundled}.")
-            os.environ["BCFTOOLS"] = bcftools_bundled
-        else:
-            print(
-                f"[SpecHLA] Found bundled bcftools at {bcftools_bundled} but it is not executable.\n"
-                f"[SpecHLA] Trying to add execute permission (chmod +x)..."
-            )
-            try:
-                st = os.stat(bcftools_bundled)
-                os.chmod(bcftools_bundled, st.st_mode | 0o111)
-            except Exception as e:
-                print(
-                    f"[SpecHLA] ERROR: failed to add execute permission to {bcftools_bundled}: {e}",
-                    file=sys.stderr,
-                )
-                print(
-                    "[SpecHLA]        Please run 'chmod +x' on this file manually and try again.",
-                    file=sys.stderr,
-                )
-                sys.exit(1)
-
-            if os.access(bcftools_bundled, os.X_OK):
-                print(f"[SpecHLA] Successfully made bcftools executable at {bcftools_bundled}.")
-                os.environ["BCFTOOLS"] = bcftools_bundled
-            else:
-                print(
-                    f"[SpecHLA] ERROR: bcftools at {bcftools_bundled} is still not executable after chmod.",
-                    file=sys.stderr,
-                )
-                print(
-                    "[SpecHLA]        Please check file permissions and filesystem mount options.",
-                    file=sys.stderr,
-                )
-                sys.exit(1)
-    else:
-        print(
-            f"[SpecHLA] ERROR: bundled bcftools not found at {bcftools_bundled}.",
-            file=sys.stderr,
-        )
-        print(
-            "[SpecHLA]        Please make sure SpecHLA/bin/bcftools exists, "
-            "for example by copying it from the original SpecHLA package.",
-            file=sys.stderr,
-        )
-        sys.exit(1)
+    # ---------------- bcftools (require 1.21) ----------------
+    ensure_bcftools_121(spec_hla_root, required_version="1.21")
 
     # ---------------- bundled blastn ----------------
     # Always prefer the blastn binary shipped with SpecHLA under SpecHLA/bin.

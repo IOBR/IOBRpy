@@ -223,6 +223,77 @@ def find_fastqs_for_sample(sample_dir: Path, sample_id: str) -> Tuple[Path, Path
     r2 = choose(r2_candidates)
     return r1, r2
 
+def hla_result_has_sample(sample_dir: Path, sample_id: str) -> bool:
+    """
+    Check whether hla.result.txt (or hla.results.txt) contains a data row whose
+    'Sample' column equals sample_id.
+    Return True only if:
+      - result file exists
+      - header contains 'Sample'
+      - at least one data row has Sample == sample_id
+    """
+    candidates = [
+        sample_dir / "hla.result.txt",
+        sample_dir / "hla.results.txt",
+    ]
+    result_path = None
+    for p in candidates:
+        if p.is_file():
+            result_path = p
+            break
+    if result_path is None:
+        return False
+
+    try:
+        lines = result_path.read_text(encoding="utf-8").splitlines()
+    except Exception:
+        return False
+
+    # drop empty lines
+    lines = [ln for ln in lines if ln.strip() != ""]
+    if not lines:
+        return False
+
+    # skip leading comment/version lines like "# version: ..."
+    i = 0
+    while i < len(lines) and lines[i].lstrip().startswith("#"):
+        i += 1
+    if i >= len(lines):
+        return False
+
+    header = lines[i]
+    i += 1
+
+    # Prefer tab-split; fallback to any whitespace
+    header_cols = header.split("\t") if "\t" in header else header.split()
+    if not header_cols:
+        return False
+
+    # find Sample column index
+    try:
+        sample_idx = header_cols.index("Sample")
+    except ValueError:
+        # tolerate case variations
+        sample_idx = None
+        for k, col in enumerate(header_cols):
+            if col.strip().lower() == "sample":
+                sample_idx = k
+                break
+        if sample_idx is None:
+            return False
+
+    # check data rows
+    for ln in lines[i:]:
+        if ln.lstrip().startswith("#"):
+            continue
+        cols = ln.split("\t") if "\t" in ln else ln.split()
+        if len(cols) <= sample_idx:
+            continue
+        if cols[sample_idx] == sample_id:
+            return True
+
+    return False
+
 
 def run_spechla_phase(
     samples: List[Tuple[str, Path]],
@@ -311,10 +382,17 @@ def run_spechla_phase(
             threads=threads,              # -j
         )
 
-        # Create the done marker only after successful completion.
+        # Create DONE only if the result table contains this sample in 'Sample' column
         try:
             spechla_sample_dir.mkdir(parents=True, exist_ok=True)
-            done_flag.touch()
+
+            if hla_result_has_sample(spechla_sample_dir, sample_id):
+                done_flag.touch()
+            else:
+                tqdm.write(
+                    f"[HLA_typing] WARNING: SpecHLA finished but '{spechla_sample_dir}/hla.result.txt' "
+                    f"does not contain Sample={sample_id}; NOT creating {done_flag.name}."
+                )
         except Exception as e:
             tqdm.write(
                 f"[HLA_typing] WARNING: failed to create done marker {done_flag}: {e}"
