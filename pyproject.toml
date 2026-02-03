@@ -38,6 +38,11 @@ dependencies = [
   "xarray>=0.20"
 ]
 
+[project.optional-dependencies]
+ai = [
+  "openai>=1.30"
+]
+
 [project.urls]
 Homepage = "https://github.com/IOBR/IOBRpy"
 Issues = "https://github.com/IOBR/IOBRpy/issues"
@@ -54,6 +59,7 @@ include = ["iobrpy*"]
 
 [tool.setuptools.package-data]
 "iobrpy.resources" = ["*"]
+"iobrpy.workflow_templates" = ["*.json"]
 "iobrpy.SpecHLA" = [
   "*.sh",
   "bin/**",

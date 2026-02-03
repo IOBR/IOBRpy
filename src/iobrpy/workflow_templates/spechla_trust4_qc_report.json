@@ -1,0 +1,26 @@
+{
+  "name": "spechla_trust4_qc_report",
+  "description": "Run SpecHLA, TRUST4, FASTQ QC, and render report.",
+  "steps": [
+    {
+      "id": "spechla_batch",
+      "action": "spechla_batch",
+      "description": "Run SpecHLA per sample using inferred manifest."
+    },
+    {
+      "id": "trust4",
+      "action": "trust4",
+      "description": "Run TRUST4 on paired FASTQs (batch mode)."
+    },
+    {
+      "id": "fastq_qc",
+      "action": "fastq_qc",
+      "description": "Run fastp QC/trim on FASTQs."
+    },
+    {
+      "id": "report",
+      "action": "report",
+      "description": "Summarize outputs and render HTML report."
+    }
+  ]
+}

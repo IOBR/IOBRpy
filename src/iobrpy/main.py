@@ -33,8 +33,8 @@ from iobrpy.SpecHLA.SpecHLA import main as spechla_main
 from iobrpy.SpecHLA.extract_hla_read import main as extract_hla_read_main
 from iobrpy.workflow.hla_typing import main as hla_typing_main
 from iobrpy.bayesprism.bayesprism import main as bayesprism_main
-
-VERSION = "0.1.7"
+from iobrpy.interface.chat import run_chat
+from iobrpy.version import VERSION
 
 def main():
     parser = argparse.ArgumentParser(
@@ -393,6 +393,9 @@ def main():
     p_runall.add_argument('--fastq', required=True)
     p_runall.add_argument('--resume', action='store_true')
     p_runall.add_argument('--dry_run', action='store_true')
+
+    p_chat = subparsers.add_parser('chat', help='Interactive natural language CLI')
+    p_chat.add_argument('--workspace', required=True, help='Workspace directory for runs')
 
     # BayesPrism: Python implementation for bulk RNA-seq deconvolution
     p_bp = subparsers.add_parser(
@@ -904,6 +907,8 @@ def main():
         print(" Email: interlaken@smu.edu.cn ")
         print_colorful_message("#########################################################", "blue")
         print("   ")
+    elif args.command == 'chat':
+        return run_chat(args.workspace)
 
 if __name__ == "__main__":
     main()

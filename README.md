@@ -49,6 +49,9 @@ python -m pip install --upgrade pip
 ```bash
 # Install iobrpy
 pip install iobrpy
+
+# Optional AI planning support
+pip install "iobrpy[ai]"
 ```
 ```bash
 # Install fastp, salmon, STAR and MultiQC
@@ -159,6 +162,41 @@ docker load -i iobrpy.tar.gz
 
 **Ligand–receptor**
 - `LR_cal` — Ligand–receptor interaction scoring using cancer‑type specific networks.
+---
+
+## Quickstart (non-technical users)
+
+> This workflow runs **locally** on your own Linux server. AI help is optional and disabled by default.
+
+1) Install iobrpy
+```bash
+pip install iobrpy
+```
+2) Prepare a workspace and FASTQ directory
+```bash
+mkdir -p /data/iobrpy_ws /data/fastq
+```
+3) Start the chat CLI
+```bash
+iobrpy chat --workspace /data/iobrpy_ws
+```
+4) In the chat, describe your intent (example)
+```
+对这批样本跑 spechla + trust4 + qc + report。输入是 /data/fastq，8 线程。
+```
+You can also invoke any existing CLI command by name (e.g., `runall`, `tme_profile`, `calculate_sig_score`) and the chat will prompt for missing arguments.
+5) Confirm the plan when prompted
+```
+confirm
+```
+
+## Privacy and data handling
+
+- **Default behavior:** IOBRpy does not upload raw data (FASTQ/BAM).
+- **AI is optional:** Without an API key, you can still run full workflows.
+- **Opt-in sharing:** Only if you enable `--share-logs` / `--share-paths` / `--allow-data` will limited metadata/logs be shared.
+- **Reproducibility:** Each run writes `plan.json`, `params.json`, `status.json`, and `versions.txt` under the run directory.
+
 ---
 
 ## Input Requirements
