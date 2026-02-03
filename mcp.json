@@ -1,0 +1,19 @@
+{
+  "servers": {
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "@modelcontextprotocol/server-filesystem",
+        "/workspace/IOBRpy"
+      ]
+    },
+    "git": {
+      "command": "npx",
+      "args": [
+        "@modelcontextprotocol/server-git",
+        "--repo",
+        "/workspace/IOBRpy"
+      ]
+    }
+  }
+}

@@ -18,6 +18,15 @@ A complete documentation for IOBRpy can be found at https://iobr.github.io/IOBRp
 
 ---
 
+## AI tooling (skills & MCP)
+
+This repository includes Codex skills and a Model Context Protocol (MCP) template to help AI agents work with the codebase.
+
+- Skills live in `skills/` (see `skills/iobrpy/SKILL.md`).
+- MCP configuration template is `mcp.json` (filesystem + git servers scoped to this repo).
+
+---
+
 ## Installation
 
 ### Quick install
