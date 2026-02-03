@@ -364,6 +364,14 @@ def main():
         'spechla',
         help='Run SpecHLA (RNA-seq exon-level HLA typing)',
     )
+    spechla_parser.add_argument(
+        '-u',
+        '--use-exon',
+        type=int,
+        choices=[0, 1],
+        default=1,
+        help='SpecHLA pipeline type (-u). 1 = exon/RNA (default), 0 = WGS.',
+    )
 
     p_extract_hla = subparsers.add_parser(
         'extract_hla_read',
@@ -871,7 +879,8 @@ def main():
             _sys.exit(code)
         return
     elif args.command == 'spechla':
-        return spechla_main(unknown)
+        spechla_argv = ['-u', str(args.use_exon)]
+        return spechla_main(spechla_argv + unknown)
     elif args.command == 'extract_hla_read':
         return extract_hla_read_main(unknown)
     elif args.command == 'hla_typing':

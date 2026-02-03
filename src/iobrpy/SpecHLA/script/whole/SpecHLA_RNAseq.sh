@@ -2,7 +2,7 @@
 # SpecHLA_RNAseq.sh
 # Thin wrapper around SpecHLA.sh for RNA-seq / exon typing.
 # Keeps the original SpecHLA.sh CLI (e.g. -n, -1, -2, -o, -j),
-# and only appends "-u 1" to force RNA/exon mode.
+# and defaults to "-u 1" (RNA/exon mode) if not provided.
 # It also tries to build SpecHap and ExtractHAIRs if they are missing.
 
 set -euo pipefail
@@ -74,10 +74,22 @@ fi
 # it only makes sure the binaries exist for scripts like link_fragment.py.
 ensure_spec_tools "${SPEC_HLA_ROOT}"
 
-echo "[SpecHLA_RNAseq] Delegating to SpecHLA.sh in RNA/exon mode (-u 1)"
+default_u=( "-u" "1" )
+for arg in "$@"; do
+    if [[ "${arg}" == "-u" ]]; then
+        default_u=( )
+        break
+    fi
+done
+
+if [[ ${#default_u[@]} -eq 0 ]]; then
+    echo "[SpecHLA_RNAseq] Delegating to SpecHLA.sh (using caller-provided -u)"
+else
+    echo "[SpecHLA_RNAseq] Delegating to SpecHLA.sh (default -u 1)"
+fi
 echo "[SpecHLA_RNAseq] SpecHLA.sh: ${SPEC_HLA_MAIN}"
 echo "[SpecHLA_RNAseq] SpecHLA root: ${SPEC_HLA_ROOT}"
 
 # Keep the original arguments exactly as they are,
-# and append "-u 1" to force the RNA/exon pipeline type.
-exec bash "${SPEC_HLA_MAIN}" "$@" -u 1
+# and add default "-u 1" only when the caller did not provide -u.
+exec bash "${SPEC_HLA_MAIN}" "$@" "${default_u[@]}"
