@@ -12,7 +12,7 @@ This script wires the two SpecHLA helpers shipped with iobrpy:
 
 Typical usage (through the main iobrpy CLI):
 
-    iobrpy hla_typing -b /path/to/bam_dir -r hg38 -o /path/to/output -j 8
+    iobrpy hla_typing -b /path/to/bam_dir -r hg38 -o /path/to/output -j 8 -u 1
 
 Arguments
 ---------
@@ -31,6 +31,8 @@ Arguments
         <outdir>/SpecHLA/<sample_id>        (SpecHLA output, assumed layout)
 -j / --threads
     Number of threads for SpecHLA (-j). Default: 8.
+-u / --use-exon
+    SpecHLA pipeline type (-u). 1 = exon/RNA (default), 0 = WGS.
 
 Layout for SpecHLA results
 --------------------------
@@ -298,6 +300,7 @@ def hla_result_has_sample(sample_dir: Path, sample_id: str) -> bool:
 def run_spechla_phase(
     samples: List[Tuple[str, Path]],
     threads: int,
+    use_exon: int,
     extract_root: Path,
     spechla_outdir: Path,
 ) -> None:
@@ -312,6 +315,8 @@ def run_spechla_phase(
         ExtractHLAread.sh.
     threads :
         Number of threads for SpecHLA (-j).
+    use_exon :
+        SpecHLA pipeline type (-u). 1 = exon/RNA (default), 0 = WGS.
     extract_root :
         Root directory that holds ExtractHLAread/<sample_id>/... with FASTQs.
     spechla_outdir :
@@ -341,9 +346,14 @@ def run_spechla_phase(
     ensure_spechap_built(spec_hla_root, threads)
 
     bowtie2_build_path = detect_bowtie2_build()
-    drb_ref_relpath = os.path.join(
-        "db", "ref", "hla_gen.format.filter.extend.DRB.no26789.fasta"
-    )
+    if use_exon == 1:
+        drb_ref_relpath = os.path.join(
+            "db", "ref", "hla_gen.format.filter.extend.DRB.no26789.fasta"
+        )
+    else:
+        drb_ref_relpath = os.path.join(
+            "db", "ref", "hla_gen.format.filter.extend.DRB.no26789.v2.fasta"
+        )
     ensure_bowtie2_index(spec_hla_root, bowtie2_build_path, drb_ref_relpath)
 
     total = len(samples)
@@ -380,6 +390,7 @@ def run_spechla_phase(
             read2=str(r2),                # -2
             outdir=str(spechla_outdir),   # -o
             threads=threads,              # -j
+            use_exon=use_exon,            # -u
         )
 
         # Create DONE only if the result table contains this sample in 'Sample' column
@@ -566,6 +577,15 @@ def build_arg_parser() -> argparse.ArgumentParser:
         default=8,
         help="Number of threads for SpecHLA (-j). Default: 8.",
     )
+    parser.add_argument(
+        "-u",
+        "--use-exon",
+        dest="use_exon",
+        type=int,
+        choices=[0, 1],
+        default=1,
+        help="SpecHLA pipeline type (-u). 1 = exon/RNA (default), 0 = WGS.",
+    )
     return parser
 
 
@@ -600,13 +620,20 @@ def main(argv: List[str] | None = None) -> None:
     print(f"[HLA_typing] Output root  : {outdir}")
     print(f"[HLA_typing] Reference    : {args.ref}")
     print(f"[HLA_typing] Threads      : {args.threads}")
+    print(f"[HLA_typing] Use exon (-u): {args.use_exon}")
     print(f"[HLA_typing] Detected {len(samples)} sample(s).")
 
     # 1) Run ExtractHLAread for all samples.
     run_extract_phase(samples, args.ref, extract_root)
 
     # 2) Run SpecHLA for all samples.
-    run_spechla_phase(samples, args.threads, extract_root, spechla_outdir)
+    run_spechla_phase(
+        samples,
+        args.threads,
+        args.use_exon,
+        extract_root,
+        spechla_outdir,
+    )
 
     # 3) Merge per-sample HLA result tables.
     merge_hla_results(samples, spechla_outdir, outdir)
