@@ -159,6 +159,50 @@ docker load -i iobrpy.tar.gz
 
 **Ligand–receptor**
 - `LR_cal` — Ligand–receptor interaction scoring using cancer‑type specific networks.
+
+---
+
+## AI mode (natural language → plan → tools)
+
+IOBRpy ships an AI orchestrator that converts a natural-language request into a structured plan, executes the selected tools, and records results in a reproducible run directory.
+
+### Run the AI orchestrator
+
+```bash
+iobrpy ai "From a TPM matrix, generate a full TME profile with 4 threads" \
+  --workspace ./iobrpy_ai_runs/example \
+  --verbose
+```
+
+### Run directory layout
+
+Each run creates `workspace/run_id/` with:
+
+```
+plan.json        # Planned steps
+calls.jsonl      # Per-step execution log
+artifacts.json   # Indexed outputs/return summaries
+```
+
+### Example prompts
+
+```bash
+# TME profile from a TPM matrix
+iobrpy ai "Run tme_profile on ./data/tpm.tsv and save to ./results/tme with 4 threads"
+
+# HLA typing from a BAM directory (argv-style tool)
+iobrpy ai "Use hla_typing with argv: --bam_dir ./data/bams --out ./results/hla"
+
+# BayesPrism deconvolution
+iobrpy ai "Run bayesprism with input ./data/bulk.tsv and output ./results/bayesprism"
+```
+
+### Optional flags
+
+- `--dry-run`: generate a plan but skip execution.
+- `--plan-only`: emit `plan.json` only.
+- `--json`: print machine-readable output.
+- `--allow-unknown`: allow passing through unknown CLI arguments (disabled by default).
 ---
 
 ## Input Requirements

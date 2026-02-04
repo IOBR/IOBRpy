@@ -2,6 +2,7 @@ import argparse
 import pickle
 from pathlib import Path
 import sys as _sys
+from typing import Optional, List, Dict
 import pandas as pd
 from iobrpy.workflow.prepare_salmon import prepare_salmon_tpm as prepare_salmon_tpm_main
 from iobrpy.workflow.count2tpm import count2tpm as count2tpm_main
@@ -36,7 +37,7 @@ from iobrpy.bayesprism.bayesprism import main as bayesprism_main
 
 VERSION = "0.1.7"
 
-def main():
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog='iobrpy',
         description=(
@@ -451,7 +452,50 @@ def main():
         ),
     )
 
-    args, unknown = parser.parse_known_args()
+    p_ai = subparsers.add_parser(
+        'ai',
+        help='Natural language AI orchestrator (plan → tools → summary)'
+    )
+    p_ai.add_argument(
+        'prompt',
+        help='Natural language request describing the analysis you want to run.',
+    )
+    p_ai.add_argument(
+        '--workspace',
+        default=None,
+        help='Workspace root directory for AI runs (default: ./iobrpy_ai_runs/<timestamp>)',
+    )
+    p_ai.add_argument(
+        '--dry-run',
+        action='store_true',
+        help='Only generate the plan and skip execution',
+    )
+    p_ai.add_argument(
+        '--plan-only',
+        action='store_true',
+        help='Only emit plan.json without executing any tools',
+    )
+    p_ai.add_argument(
+        '--json',
+        dest='json_output',
+        action='store_true',
+        help='Emit machine-readable JSON output',
+    )
+    p_ai.add_argument(
+        '--verbose',
+        action='store_true',
+        help='Print each step, parameters, timing, and artifact paths',
+    )
+    p_ai.add_argument(
+        '--allow-unknown',
+        action='store_true',
+        help='Allow passthrough of unknown CLI arguments to tools',
+    )
+
+    return parser
+
+
+def _dispatch(args: argparse.Namespace, unknown: List[str]) -> None:
 
     if args.command == 'prepare_salmon':
         prepare_salmon_tpm_main(
@@ -810,7 +854,7 @@ def main():
         print(" Email: interlaken@smu.edu.cn ")
         print_colorful_message("#########################################################", "blue")
         print("   ")
-    if args.command == 'fastq_qc':
+    elif args.command == 'fastq_qc':
         _sys_argv_orig = _sys.argv[:]
         _sys.argv = [
             _sys_argv_orig[0],
@@ -913,6 +957,53 @@ def main():
         print(" Email: interlaken@smu.edu.cn ")
         print_colorful_message("#########################################################", "blue")
         print("   ")
+    elif args.command == 'ai':
+        from iobrpy.ai.cli import run_ai
+
+        return run_ai(
+            prompt=args.prompt,
+            workspace=args.workspace,
+            dry_run=args.dry_run,
+            plan_only=args.plan_only,
+            json_output=args.json_output,
+            verbose=args.verbose,
+            allow_unknown=args.allow_unknown,
+        )
+
+
+def _defaults_for_command(command: str) -> dict:
+    parser = build_parser()
+    subparsers_action = None
+    for action in parser._actions:
+        if isinstance(action, argparse._SubParsersAction):
+            subparsers_action = action
+            break
+    if subparsers_action is None or command not in subparsers_action.choices:
+        return {}
+    subparser = subparsers_action.choices[command]
+    defaults = {}
+    for action in subparser._actions:
+        if isinstance(action, argparse._HelpAction):
+            continue
+        if action.dest not in defaults:
+            defaults[action.dest] = (
+                None if action.default is argparse.SUPPRESS else action.default
+            )
+    return defaults
+
+
+def dispatch(command: str, kwargs: Optional[Dict] = None, unknown: Optional[List[str]] = None) -> None:
+    defaults = _defaults_for_command(command)
+    merged = {**defaults, **(kwargs or {})}
+    args = argparse.Namespace(**merged)
+    args.command = command
+    return _dispatch(args, unknown or [])
+
+
+def main():
+    parser = build_parser()
+    args, unknown = parser.parse_known_args()
+    return _dispatch(args, unknown)
 
 if __name__ == "__main__":
     main()
