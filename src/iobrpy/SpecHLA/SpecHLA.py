@@ -1024,7 +1024,7 @@ def detect_bowtie2_build():
 # ------------------------------------------------------------
 # Delegate to SpecHLA_RNAseq.sh
 # ------------------------------------------------------------
-def run_spechla_rnaseq(spec_hla_root, sample_name, read1, read2, outdir, threads):
+def run_spechla_rnaseq(spec_hla_root, sample_name, read1, read2, outdir, threads, use_exon):
     """
     Delegate to SpecHLA_RNAseq.sh with the given arguments.
 
@@ -1042,6 +1042,8 @@ def run_spechla_rnaseq(spec_hla_root, sample_name, read1, read2, outdir, threads
         Output directory (-o).
     threads : int
         Number of threads (-j).
+    use_exon : int
+        SpecHLA pipeline type (-u). 1 = exon/RNA, 0 = WGS.
     """
     rnaseq_script = os.path.join(spec_hla_root, "script", "whole", "SpecHLA_RNAseq.sh")
     if not os.path.exists(rnaseq_script):
@@ -1063,6 +1065,8 @@ def run_spechla_rnaseq(spec_hla_root, sample_name, read1, read2, outdir, threads
         outdir,
         "-j",
         str(threads),
+        "-u",
+        str(use_exon),
     ]
     run_cmd(cmd)
 
@@ -1199,6 +1203,14 @@ def parse_args(argv=None):
         default=8,
         help="Number of threads to use (default: 8).",
     )
+    parser.add_argument(
+        "-u",
+        "--use-exon",
+        type=int,
+        choices=[0, 1],
+        default=1,
+        help="SpecHLA pipeline type (-u). 1 = exon/RNA (default), 0 = WGS.",
+    )
     return parser.parse_args(argv)
 
 
@@ -1222,7 +1234,14 @@ def main(argv=None):
 
     # 5. Make sure Bowtie2 index for DRB reference exists
     bowtie2_build_path = detect_bowtie2_build()
-    drb_ref_relpath = os.path.join("db", "ref", "hla_gen.format.filter.extend.DRB.no26789.fasta")
+    if args.use_exon == 1:
+        drb_ref_relpath = os.path.join(
+            "db", "ref", "hla_gen.format.filter.extend.DRB.no26789.fasta"
+        )
+    else:
+        drb_ref_relpath = os.path.join(
+            "db", "ref", "hla_gen.format.filter.extend.DRB.no26789.v2.fasta"
+        )
     ensure_bowtie2_index(spec_hla_root, bowtie2_build_path, drb_ref_relpath)
 
     # 6. Run SpecHLA_RNAseq.sh
@@ -1233,6 +1252,7 @@ def main(argv=None):
         read2=args.read2,
         outdir=args.outdir,
         threads=args.threads,
+        use_exon=args.use_exon,
     )
 
     try:
