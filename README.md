@@ -203,6 +203,9 @@ iobrpy ai "Run bayesprism with input ./data/bulk.tsv and output ./results/bayesp
 - `--plan-only`: emit `plan.json` only.
 - `--json`: print machine-readable output.
 - `--allow-unknown`: allow passing through unknown CLI arguments (disabled by default).
+- `--interactive/--no-interactive`: enable/disable interactive prompting for missing parameters.
+- `--max-turns`: cap interactive turns (default: 6).
+- `--list-tools`: list all tools discovered from the CLI registry.
 ---
 
 ## Input Requirements

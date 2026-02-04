@@ -482,6 +482,11 @@ def build_parser() -> argparse.ArgumentParser:
         help='Emit machine-readable JSON output',
     )
     p_ai.add_argument(
+        '--list-tools',
+        action='store_true',
+        help='List available tools discovered from the CLI registry',
+    )
+    p_ai.add_argument(
         '--verbose',
         action='store_true',
         help='Print each step, parameters, timing, and artifact paths',
@@ -490,6 +495,25 @@ def build_parser() -> argparse.ArgumentParser:
         '--allow-unknown',
         action='store_true',
         help='Allow passthrough of unknown CLI arguments to tools',
+    )
+    p_ai.add_argument(
+        '--interactive',
+        dest='interactive',
+        action='store_true',
+        default=True,
+        help='Enable interactive prompting for missing parameters (default: enabled)',
+    )
+    p_ai.add_argument(
+        '--no-interactive',
+        dest='interactive',
+        action='store_false',
+        help='Disable interactive prompting',
+    )
+    p_ai.add_argument(
+        '--max-turns',
+        type=int,
+        default=6,
+        help='Max interactive turns before exiting (default: 6)',
     )
 
     return parser
@@ -968,6 +992,9 @@ def _dispatch(args: argparse.Namespace, unknown: List[str]) -> None:
             json_output=args.json_output,
             verbose=args.verbose,
             allow_unknown=args.allow_unknown,
+            interactive=args.interactive,
+            max_turns=args.max_turns,
+            list_tools=args.list_tools,
         )
 
 
