@@ -128,6 +128,34 @@ def _ollama_generate_json(prompt: str, model: str) -> Dict[str, Any]:
         return {}
 
 
+def _contains_cjk(text: str) -> bool:
+    if not text:
+        return False
+    return re.search(r"[㐀-䶿一-鿿豈-﫿]", text) is not None
+
+
+def _translate_to_english(text: str) -> str:
+    """Best-effort translation to English for rule triggering; fallback to original text."""
+    if not text or not _contains_cjk(text):
+        return text
+    prompt = f"""
+Translate the following user message to concise English.
+Keep file paths, numbers, parameter names, and flags exactly unchanged.
+Return JSON only: {{"english": "..."}}
+
+User message:
+{text}
+""".strip()
+    try:
+        j = _ollama_generate_json(prompt, CHAT_MODEL)
+        en = j.get("english") if isinstance(j, dict) else None
+        if isinstance(en, str) and en.strip():
+            return en.strip()
+    except Exception:
+        pass
+    return text
+
+
 def _resolve_iobrpy_pythonpath() -> Optional[str]:
     """Return a PYTHONPATH prefix that makes 'import iobrpy' work (best-effort)."""
     cand: List[str] = []
@@ -443,6 +471,7 @@ class SessionState:
         self.subcommand = None
         self.params: Dict[str, Any] = {}
         self.confirmed = set()
+        self.prefer_english = False
 
 SESSIONS: Dict[str, SessionState] = {}
 
@@ -562,11 +591,11 @@ def compose_questions(subcommand: str, missing: List[str], need_confirm: List[st
     for m in missing:
         if m == "__one_of_group":
             msg = notes.get("required_one_of") or notes.get("input_mode")
-            lines.append(msg if isinstance(msg, str) and msg.strip() else "Please provide one valid input mode.")
+            lines.append(_translate_to_english(msg) if isinstance(msg, str) and msg.strip() else "Please provide one valid input mode.")
             continue
         msg = notes.get(m) if isinstance(notes, dict) else None
         if isinstance(msg, str) and msg.strip():
-            lines.append(msg)
+            lines.append(_translate_to_english(msg) if _contains_cjk(msg) else msg)
         else:
             lines.append(f"Please provide {m}.")
 
@@ -598,23 +627,28 @@ def tool_iobrpy_assistant(session_id: str, task: Optional[str] = None, answer_te
     rules = load_rules()
     state = get_session(session_id)
 
-    # Restart session on user request
+    task_en = _translate_to_english(task) if task else None
+    answer_text_en = _translate_to_english(answer_text) if answer_text else None
+
+    # Restart session on user request (match both original text and translated text)
     if answer_text:
         atl = _normalize_text(answer_text).lower()
-        if re.search(r"\b(restart|start over|new task|reset session)\b", atl):
+        atl_en = _normalize_text(answer_text_en or "").lower()
+        if re.search(r"\b(restart|start over|new task|reset session)\b", atl) or re.search(r"\b(restart|start over|new task|reset session)\b", atl_en):
             state.task = ""
             state.subcommand = None
             state.params = {}
             state.confirmed = set()
 
     if task:
-        state.task = task
-        state.subcommand = choose_subcommand(task, rules)
+        parse_task = task_en or task
+        state.task = parse_task
+        state.subcommand = choose_subcommand(parse_task, rules)
         state.params = {}
         state.confirmed = set()
 
         allowed = allowed_keys_for(state.subcommand, rules)
-        extracted = extract_slots(task, allowed)
+        extracted = extract_slots(parse_task, allowed)
         apply_confirmations(state, extracted)
         # Apply reset/unset requests
         resets = extracted.get("_reset")
@@ -630,13 +664,15 @@ def tool_iobrpy_assistant(session_id: str, task: Optional[str] = None, answer_te
         # Treat user reply as additional information for the current session.
         # If the user skipped the initial Task prompt, accept the first reply as the task.
         if not state.subcommand:
-            state.task = answer_text
-            state.subcommand = choose_subcommand(answer_text, rules)
+            parse_answer = answer_text_en or answer_text
+            state.task = parse_answer
+            state.subcommand = choose_subcommand(parse_answer, rules)
             state.params = {}
             state.confirmed = set()
 
         allowed = allowed_keys_for(state.subcommand, rules)
-        extracted = extract_slots(answer_text, allowed)
+        parse_answer = answer_text_en or answer_text
+        extracted = extract_slots(parse_answer, allowed)
         apply_confirmations(state, extracted)
 
         # Apply reset/unset requests (natural language): 'reset fastq', 'clear index', 'unset threads'
