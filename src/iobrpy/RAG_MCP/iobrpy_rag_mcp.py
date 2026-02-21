@@ -134,26 +134,39 @@ def _contains_cjk(text: str) -> bool:
     return re.search(r"[㐀-䶿一-鿿豈-﫿]", text) is not None
 
 
-def _translate_to_english(text: str) -> str:
-    """Best-effort translation to English for rule triggering; fallback to original text."""
-    if not text or not _contains_cjk(text):
+def _translate_text(text: str, target_lang: str, key: str) -> str:
+    if not text:
         return text
     prompt = f"""
-Translate the following user message to concise English.
+Translate the following text to {target_lang}.
 Keep file paths, numbers, parameter names, and flags exactly unchanged.
-Return JSON only: {{"english": "..."}}
+Return JSON only: {{{json.dumps(key)}: "..."}}
 
-User message:
+Text:
 {text}
 """.strip()
     try:
         j = _ollama_generate_json(prompt, CHAT_MODEL)
-        en = j.get("english") if isinstance(j, dict) else None
-        if isinstance(en, str) and en.strip():
-            return en.strip()
+        out = j.get(key) if isinstance(j, dict) else None
+        if isinstance(out, str) and out.strip():
+            return out.strip()
     except Exception:
         pass
     return text
+
+
+def _translate_to_english(text: str) -> str:
+    """Best-effort translation to English for rule triggering; fallback to original text."""
+    if not text or not _contains_cjk(text):
+        return text
+    return _translate_text(text, "English", "english")
+
+
+def _translate_to_chinese(text: str) -> str:
+    """Best-effort translation to Chinese for user-facing prompts; fallback to original text."""
+    if not text:
+        return text
+    return _translate_text(text, "Chinese", "chinese")
 
 
 def _resolve_iobrpy_pythonpath() -> Optional[str]:
@@ -471,7 +484,7 @@ class SessionState:
         self.subcommand = None
         self.params: Dict[str, Any] = {}
         self.confirmed = set()
-        self.prefer_english = False
+        self.prefer_chinese = False
 
 SESSIONS: Dict[str, SessionState] = {}
 
@@ -583,7 +596,7 @@ def compute_needs(subcommand: str, rules: Dict[str, Any], params: Dict[str, Any]
     need_confirm = [k for k in confirm if k not in confirmed]
     return missing, need_confirm
 
-def compose_questions(subcommand: str, missing: List[str], need_confirm: List[str], params: Dict[str, Any], rules: Dict[str, Any]) -> str:
+def compose_questions(subcommand: str, missing: List[str], need_confirm: List[str], params: Dict[str, Any], rules: Dict[str, Any], prefer_chinese: bool = False) -> str:
     lines = []
     rule = rules.get(subcommand, {})
     notes = rule.get("notes", {}) if isinstance(rule, dict) else {}
@@ -591,19 +604,19 @@ def compose_questions(subcommand: str, missing: List[str], need_confirm: List[st
     for m in missing:
         if m == "__one_of_group":
             msg = notes.get("required_one_of") or notes.get("input_mode")
-            lines.append(_translate_to_english(msg) if isinstance(msg, str) and msg.strip() else "Please provide one valid input mode.")
+            lines.append((_translate_to_chinese(msg) if prefer_chinese else msg) if isinstance(msg, str) and msg.strip() else ("请提供一种有效输入模式。" if prefer_chinese else "Please provide one valid input mode."))
             continue
         msg = notes.get(m) if isinstance(notes, dict) else None
         if isinstance(msg, str) and msg.strip():
-            lines.append(_translate_to_english(msg) if _contains_cjk(msg) else msg)
+            lines.append(_translate_to_chinese(msg) if prefer_chinese else msg)
         else:
-            lines.append(f"Please provide {m}.")
+            lines.append((f"请提供 {m}。") if prefer_chinese else (f"Please provide {m}."))
 
     for k in need_confirm:
         v = params.get(k)
         if v not in (None, "", []):
-            lines.append(f"Please confirm {k}={v}. Reply like: confirm {k}")
-    return "\n".join(lines) if lines else "Please provide the missing parameters."
+            lines.append((f"请确认 {k}={v}。可回复：confirm {k}") if prefer_chinese else (f"Please confirm {k}={v}. Reply like: confirm {k}"))
+    return "\n".join(lines) if lines else ("请补充缺失参数。" if prefer_chinese else "Please provide the missing parameters.")
 
 def merge_defaults(params: Dict[str, Any], subcommand: str, rules: Dict[str, Any]) -> Dict[str, Any]:
     d = load_defaults()
@@ -630,6 +643,9 @@ def tool_iobrpy_assistant(session_id: str, task: Optional[str] = None, answer_te
     task_en = _translate_to_english(task) if task else None
     answer_text_en = _translate_to_english(answer_text) if answer_text else None
 
+    if (task and _contains_cjk(task)) or (answer_text and _contains_cjk(answer_text)):
+        state.prefer_chinese = True
+
     # Restart session on user request (match both original text and translated text)
     if answer_text:
         atl = _normalize_text(answer_text).lower()
@@ -639,6 +655,7 @@ def tool_iobrpy_assistant(session_id: str, task: Optional[str] = None, answer_te
             state.subcommand = None
             state.params = {}
             state.confirmed = set()
+            state.prefer_chinese = False
 
     if task:
         parse_task = task_en or task
@@ -692,7 +709,7 @@ def tool_iobrpy_assistant(session_id: str, task: Optional[str] = None, answer_te
 
 
     if not state.subcommand:
-        return {"status": "need_info", "question": "Please describe what you want to do (natural language).", "needs": ["task"]}
+        return {"status": "need_info", "question": ("请用自然语言描述你的需求。" if state.prefer_chinese else "Please describe what you want to do (natural language)."), "needs": ["task"]}
 
     merged = merge_defaults(state.params, state.subcommand, rules)
     missing, need_confirm = compute_needs(state.subcommand, rules, merged, state.confirmed)
@@ -710,7 +727,7 @@ def tool_iobrpy_assistant(session_id: str, task: Optional[str] = None, answer_te
             return {"status": "need_info", "question": q, "needs": ["revise_options"], "draft_command": draft_cmd, "validation": val}
 
     if missing or need_confirm:
-        q = compose_questions(state.subcommand, missing, need_confirm, merged, rules)
+        q = compose_questions(state.subcommand, missing, need_confirm, merged, rules, prefer_chinese=state.prefer_chinese)
         return {"status": "need_info", "subcommand": state.subcommand, "needs": missing + [f"confirm:{c}" for c in need_confirm],
                 "question": q, "draft_command": draft_cmd, "params": merged}
 
