@@ -7,7 +7,7 @@ name = "iobrpy"
 version = "0.1.7"
 description = "Immuno-Oncology Biological Research tools in Python"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.11"
 license = { file = "LICENSE" }
 authors = [
   { name = "Haonan Huang" , email = "2905611068@qq.com" },

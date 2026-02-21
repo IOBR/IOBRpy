@@ -1,0 +1,19 @@
+{
+  "runall": {
+    "required": ["fastq", "outdir", "mode", "index", "threads", "batch_size","project"],
+    "confirm": ["mode", "threads", "batch_size","project"],
+    "choices": {
+      "mode": ["salmon", "star"]
+    },
+    "notes": {
+      "index": "Path to Salmon index (mode=salmon) or STAR genome index directory (mode=star).",
+      "threads": "Threads used per sample.",
+      "batch_size": "How many samples to process in parallel."
+    }
+  },
+  "cibersort": {
+    "required": ["input", "output"],
+    "confirm": ["threads"],
+    "optional": ["perm", "QN", "threads"]
+  }
+}

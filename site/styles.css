@@ -1,0 +1,40 @@
+/* -------- Code block sizing (Quarto + Pandoc + Rouge) -------- */
+
+/* Quarto/Pandoc code blocks */
+div.sourceCode pre,
+div.sourceCode pre code,
+pre.numberSource,                 /* when line numbers are enabled */
+pre.numberSource code,
+pre > code {                      /* fallback: plain Markdown fenced blocks */
+  font-size: 1.05rem;             /* try 1.0–1.125rem if you want bigger */
+  line-height: 1.6;
+}
+
+/* Legacy Rouge/Jekyll structure (kept for compatibility) */
+.highlight pre,
+.highlighter-rouge pre {
+  font-size: 1.05rem;
+  line-height: 1.6;
+}
+
+/* Keep line-number gutter in sync (Pandoc spans/anchors) */
+pre.numberSource code > span,
+pre.numberSource code > span > a::before {
+  font-size: 1.05rem;
+  line-height: 1.6;
+}
+
+/* Add right padding so the copy button doesn't overlap text */
+.code-with-copy pre,
+div.sourceCode pre.code-with-copy {
+  padding-right: 2.5rem;
+}
+
+/* -------- Inline code remains unchanged -------- */
+p code,
+li code,
+td code,
+th code {
+  font-size: inherit;
+  line-height: inherit;
+}

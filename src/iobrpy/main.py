@@ -451,6 +451,13 @@ def main():
         ),
     )
 
+    p_ai = subparsers.add_parser('ai', help='Interactive AI assistant (embedded RAG-MCP)')
+    p_ai.add_argument('--logdir', required=True, help='Directory to store AI logs and defaults')
+
+    p_ai.add_argument('--ollama-host', default=None, help='Override Ollama host, e.g. http://127.0.0.1:11434')
+    p_ai.add_argument('--chat-model', default=None, help='Override chat model, e.g. qwen3:8b')
+    p_ai.add_argument('--embed-model', default=None, help='Override embedding model, e.g. qwen3-embedding:8b')
+
     args, unknown = parser.parse_known_args()
 
     if args.command == 'prepare_salmon':
@@ -913,6 +920,15 @@ def main():
         print(" Email: interlaken@smu.edu.cn ")
         print_colorful_message("#########################################################", "blue")
         print("   ")
+    elif args.command == 'ai':
+        from iobrpy.RAG_MCP.ai import run_interactive
+        run_interactive(
+            args.logdir,
+            ollama_host=args.ollama_host,
+            chat_model=args.chat_model,
+            embed_model=args.embed_model,
+        )
+        return
 
 if __name__ == "__main__":
     main()

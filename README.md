@@ -39,7 +39,7 @@ docker pull hhn123123/iobrpy:latest
 
 ```bash
 # Creating a virtual environment is recommended
-conda create -n iobrpy python=3.9 -y
+conda create -n iobrpy python=3.11 -y
 conda activate iobrpy
 ```
 ```bash
@@ -76,7 +76,7 @@ conda install -y -c conda-forge -c bioconda \
 
 ```bash
 # Creating a virtual environment is recommended
-conda create -n iobrpy python=3.9 -y
+conda create -n iobrpy python=3.11 -y
 conda activate iobrpy
 ```
 ```bash
