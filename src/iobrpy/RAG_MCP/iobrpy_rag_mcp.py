@@ -193,11 +193,13 @@ def load_rules() -> Dict[str, Any]:
         conf = v.get("confirm", [])
         opt = v.get("optional", [])
         choices = v.get("choices", {})
+        req_one = v.get("required_one_of", [])
         if not isinstance(req, list): req = []
         if not isinstance(conf, list): conf = []
         if not isinstance(opt, list): opt = []
         if not isinstance(choices, dict): choices = {}
-        out[k] = {"required": req, "confirm": conf, "optional": opt, "choices": choices}
+        if not isinstance(req_one, list): req_one = []
+        out[k] = {"required": req, "confirm": conf, "optional": opt, "choices": choices, "required_one_of": req_one}
     return out or DEFAULT_RULES
 
 def allowed_keys_for(subcommand: str, rules: Dict[str, Any]) -> List[str]:
@@ -223,8 +225,8 @@ def set_defaults(new_defaults: Dict[str, Any], rules: Dict[str, Any]) -> Dict[st
     _write_json(DEFAULTS_FILE, cur)
     return cur
 
-PATH_KEYS = {"fastq", "outdir", "index", "input", "output"}
-INT_KEYS = {"threads", "batch_size"}
+PATH_KEYS = {"fastq", "outdir", "index", "input", "output", "bam", "r1", "r2", "ru", "fqdir", "o", "od"}
+INT_KEYS = {"threads", "batch_size", "t", "k", "stage", "clean", "use_exon"}
 
 def _sanitize_path(p: str) -> str:
     if not p:
@@ -309,6 +311,31 @@ def _regex_extract_slots(text: str, allowed: List[str]) -> Dict[str, Any]:
         )
         if mout:
             out["outdir"] = _sanitize_path(mout.group(2))
+
+    if "bam" in allowed:
+        mb = re.search(r"(?:\b-b\b|\bbam\b)\s*(?:is|=|:)?\s*(/[^ \t;,]+)", t, flags=re.I)
+        if mb:
+            out["bam"] = _sanitize_path(mb.group(1))
+
+    if "fqdir" in allowed:
+        mf = re.search(r"(?:\b--fqdir\b|\bfqdir\b|\bfastq\s*dir(?:ectory)?\b)\s*(?:is|=|:)?\s*(/[^ \t;,]+)", t, flags=re.I)
+        if mf:
+            out["fqdir"] = _sanitize_path(mf.group(1))
+
+    if "ru" in allowed:
+        mu = re.search(r"(?:\b-u\b|\bsingle(?:-end)?\b|\bru\b)\s*(?:is|=|:)?\s*(/[^ \t;,]+)", t, flags=re.I)
+        if mu:
+            out["ru"] = _sanitize_path(mu.group(1))
+
+    if "r1" in allowed:
+        m1 = re.search(r"(?:\b-1\b|\bread1\b|\br1\b)\s*(?:is|=|:)?\s*(/[^ \t;,]+)", t, flags=re.I)
+        if m1:
+            out["r1"] = _sanitize_path(m1.group(1))
+
+    if "r2" in allowed:
+        m2 = re.search(r"(?:\b-2\b|\bread2\b|\br2\b)\s*(?:is|=|:)?\s*(/[^ \t;,]+)", t, flags=re.I)
+        if m2:
+            out["r2"] = _sanitize_path(m2.group(1))
 
     if "confirm" in allowed:
         confirms = re.findall(r"\bconfirm\s+([A-Za-z0-9_]+)\b", tl)
@@ -456,6 +483,25 @@ FLAG_MAP = {
     "project": "--project",
     "input": "--input",
     "output": "--output",
+    "bam": "-b",
+    "r1": "-1",
+    "r2": "-2",
+    "ru": "-u",
+    "fqdir": "--fqdir",
+    "f": "-f",
+    "ref": "--ref",
+    "o": "-o",
+    "od": "--od",
+    "t": "-t",
+    "k": "-k",
+}
+BOOL_FLAGS = {
+    "repseq": "--repseq",
+    "skipMateExtension": "--skipMateExtension",
+    "abnormalUnmapFlag": "--abnormalUnmapFlag",
+    "assembleWithRef": "--assembleWithRef",
+    "noExtraction": "--noExtraction",
+    "outputReadAssignment": "--outputReadAssignment",
 }
 
 def _shell_quote(s: str) -> str:
@@ -478,6 +524,11 @@ def build_command(subcommand: str, params: Dict[str, Any], rules: Dict[str, Any]
         v = params[k]
         if v in (None, "", []):
             continue
+        if isinstance(v, bool):
+            bflag = BOOL_FLAGS.get(k)
+            if bflag and v:
+                argv.append(bflag)
+            continue
         flag = FLAG_MAP.get(k)
         if flag:
             argv.extend([flag, str(v)])
@@ -488,7 +539,16 @@ def compute_needs(subcommand: str, rules: Dict[str, Any], params: Dict[str, Any]
     rule = rules.get(subcommand, {})
     required = rule.get("required", [])
     confirm = rule.get("confirm", [])
+    required_one_of = rule.get("required_one_of", [])
+
     missing = [k for k in required if k not in params or params[k] in (None, "", [])]
+
+    if isinstance(required_one_of, list) and required_one_of:
+        def _group_ok(group):
+            return isinstance(group, list) and group and all((k in params and params[k] not in (None, "", [])) for k in group)
+        if not any(_group_ok(g) for g in required_one_of):
+            missing.append("__one_of_group")
+
     need_confirm = [k for k in confirm if k not in confirmed]
     return missing, need_confirm
 
@@ -512,6 +572,10 @@ def compose_questions(subcommand: str, missing: List[str], need_confirm: List[st
         lines.append("Please provide the FASTQ directory path (e.g., fastq /path/to/fastq).")
     if "outdir" in missing:
         lines.append("Please provide the output directory (e.g., outdir /path/to/outdir).")
+
+    one_of_missing = "__one_of_group" in missing
+    if one_of_missing and subcommand == "trust4":
+        lines.append("For trust4, please provide at least one input mode: -b <BAM|DIR> OR -1/-2 OR -u OR --fqdir.")
     for k in need_confirm:
         v = params.get(k)
         if v not in (None, "", []):
