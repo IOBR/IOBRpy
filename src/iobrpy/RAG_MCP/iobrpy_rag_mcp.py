@@ -194,12 +194,14 @@ def load_rules() -> Dict[str, Any]:
         opt = v.get("optional", [])
         choices = v.get("choices", {})
         req_one = v.get("required_one_of", [])
+        notes = v.get("notes", {})
         if not isinstance(req, list): req = []
         if not isinstance(conf, list): conf = []
         if not isinstance(opt, list): opt = []
         if not isinstance(choices, dict): choices = {}
         if not isinstance(req_one, list): req_one = []
-        out[k] = {"required": req, "confirm": conf, "optional": opt, "choices": choices, "required_one_of": req_one}
+        if not isinstance(notes, dict): notes = {}
+        out[k] = {"required": req, "confirm": conf, "optional": opt, "choices": choices, "required_one_of": req_one, "notes": notes}
     return out or DEFAULT_RULES
 
 def allowed_keys_for(subcommand: str, rules: Dict[str, Any]) -> List[str]:
@@ -554,28 +556,20 @@ def compute_needs(subcommand: str, rules: Dict[str, Any], params: Dict[str, Any]
 
 def compose_questions(subcommand: str, missing: List[str], need_confirm: List[str], params: Dict[str, Any], rules: Dict[str, Any]) -> str:
     lines = []
-    if "mode" in missing:
-        choices = (rules.get(subcommand, {}).get("choices", {}) or {}).get("mode", ["salmon", "star"])
-        if len(choices) >= 2:
-            lines.append(f"Which mode do you want for {subcommand}: {choices[0]} or {choices[1]}?")
-        else:
-            lines.append(f"Which mode do you want for {subcommand}?")
-    if "index" in missing:
-        lines.append("Please provide the index directory path (Salmon index for salmon mode, STAR index for star mode).")
-    if "threads" in missing:
-        lines.append("How many threads do you want to use per sample? (e.g., threads 16)")
-    if "batch_size" in missing:
-        lines.append("How many samples should run in parallel? (e.g., batch_size 2)")
-    if "project" in missing:
-        lines.append("Please provide the project identifier (e.g., project PRJNA320473).")
-    if "fastq" in missing:
-        lines.append("Please provide the FASTQ directory path (e.g., fastq /path/to/fastq).")
-    if "outdir" in missing:
-        lines.append("Please provide the output directory (e.g., outdir /path/to/outdir).")
+    rule = rules.get(subcommand, {})
+    notes = rule.get("notes", {}) if isinstance(rule, dict) else {}
 
-    one_of_missing = "__one_of_group" in missing
-    if one_of_missing and subcommand == "trust4":
-        lines.append("For trust4, please provide at least one input mode: -b <BAM|DIR> OR -1/-2 OR -u OR --fqdir.")
+    for m in missing:
+        if m == "__one_of_group":
+            msg = notes.get("required_one_of") or notes.get("input_mode")
+            lines.append(msg if isinstance(msg, str) and msg.strip() else "Please provide one valid input mode.")
+            continue
+        msg = notes.get(m) if isinstance(notes, dict) else None
+        if isinstance(msg, str) and msg.strip():
+            lines.append(msg)
+        else:
+            lines.append(f"Please provide {m}.")
+
     for k in need_confirm:
         v = params.get(k)
         if v not in (None, "", []):
