@@ -236,13 +236,15 @@ def load_rules() -> Dict[str, Any]:
         choices = v.get("choices", {})
         req_one = v.get("required_one_of", [])
         notes = v.get("notes", {})
+        aliases = v.get("aliases", [])
         if not isinstance(req, list): req = []
         if not isinstance(conf, list): conf = []
         if not isinstance(opt, list): opt = []
         if not isinstance(choices, dict): choices = {}
         if not isinstance(req_one, list): req_one = []
         if not isinstance(notes, dict): notes = {}
-        out[k] = {"required": req, "confirm": conf, "optional": opt, "choices": choices, "required_one_of": req_one, "notes": notes}
+        if not isinstance(aliases, list): aliases = []
+        out[k] = {"required": req, "confirm": conf, "optional": opt, "choices": choices, "required_one_of": req_one, "notes": notes, "aliases": aliases}
     return out or DEFAULT_RULES
 
 def allowed_keys_for(subcommand: str, rules: Dict[str, Any]) -> List[str]:
@@ -501,6 +503,28 @@ def get_session(session_id: str) -> SessionState:
 def choose_subcommand(task: str, rules: Dict[str, Any]) -> str:
     tl = _normalize_text(task).lower()
     tools = list(rules.keys())
+    q_en = _translate_to_english(task)
+    query_for_rag = q_en if isinstance(q_en, str) and q_en.strip() else task
+
+    # Build lexical priors from tool metadata (name/params/notes/aliases).
+    # This avoids hardcoded routing while still giving strong intent hints.
+    query_tokens = set(re.findall(r"[a-z0-9_]+", _normalize_text(query_for_rag).lower()))
+    priors: Dict[str, int] = {}
+    for t in tools:
+        r = rules.get(t, {}) if isinstance(rules.get(t, {}), dict) else {}
+        alias_tokens = []
+        aliases = r.get("aliases", [])
+        if isinstance(aliases, list):
+            alias_tokens = [str(x) for x in aliases]
+        txt = " ".join([
+            t,
+            " ".join(r.get("required", []) if isinstance(r.get("required", []), list) else []),
+            " ".join(r.get("optional", []) if isinstance(r.get("optional", []), list) else []),
+            " ".join(alias_tokens),
+            json.dumps(r.get("notes", {}), ensure_ascii=False),
+        ]).lower()
+        tool_tokens = set(re.findall(r"[a-z0-9_]+", txt))
+        priors[t] = len(query_tokens & tool_tokens)
 
     # Build tool profile from rule metadata so the model can reason even when RAG is weak.
     tool_profiles = []
@@ -511,18 +535,9 @@ def choose_subcommand(task: str, rules: Dict[str, Any]) -> str:
             "required": r.get("required", []),
             "required_one_of": r.get("required_one_of", []),
             "notes": r.get("notes", {}),
+            "aliases": r.get("aliases", []),
+            "lexical_prior": priors.get(t, 0),
         })
-
-    # Intent-first guardrails for high-risk routes that are often confused with runall.
-    if re.search(r"\b(hla|spechla|typing|hla[_\s-]?typing)\b", tl):
-        if "hla_typing" in tools:
-            return "hla_typing"
-        if "spechla" in tools:
-            return "spechla"
-
-    # Use both original query and English translation to improve retrieval/selection quality.
-    q_en = _translate_to_english(task)
-    query_for_rag = q_en if isinstance(q_en, str) and q_en.strip() else task
 
     try:
         ctx = rag_search(query_for_rag, top_k=10)
@@ -550,6 +565,11 @@ User request (english translation for intent matching):
 Helpful retrieved docs/snippets:
 {ctx_text}
 
+Selection policy:
+- Prefer tools whose lexical_prior is higher when intent is ambiguous.
+- Use aliases/notes as intent clues.
+- Do NOT choose runall just because query mentions "star" if intent is HLA typing from BAM/STAR outputs.
+
 Return JSON only: {{"subcommand": "<one of the list>", "reason": "<short>"}}
 """.strip()
 
@@ -562,8 +582,8 @@ Return JSON only: {{"subcommand": "<one of the list>", "reason": "<short>"}}
     if isinstance(sub, str) and sub in tools:
         return sub
 
-    # Last-resort fallback: lexical overlap against tool names and notes (not hardcoded routing).
-    bag = set(re.findall(r"[a-z0-9_]+", tl))
+    # Last-resort fallback: lexical overlap against metadata.
+    bag = set(re.findall(r"[a-z0-9_]+", _normalize_text(query_for_rag).lower()))
     best = tools[0]
     best_score = -1
     for t in tools:

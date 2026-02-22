@@ -2,6 +2,7 @@
   "runall": {
     "required": ["fastq", "outdir", "mode", "index", "threads", "batch_size", "project"],
     "confirm": ["mode", "threads", "batch_size", "project"],
+    "aliases": ["pipeline", "from_fastq", "qc", "salmon", "star_quant"],
     "choices": {
       "mode": ["salmon", "star"]
     },
@@ -108,7 +109,8 @@
   },
   "spechla": {
     "required": ["name", "read1", "read2", "outdir"],
-    "optional": ["threads", "use_exon"]
+    "optional": ["threads", "use_exon"],
+    "aliases": ["hla", "spechla", "typing", "hla_typing", "read1", "read2"]
   },
   "extract_hla_read": {
     "required": ["sample", "bam", "ref", "outdir"],
@@ -120,6 +122,7 @@
   "hla_typing": {
     "required": ["bam_dir", "ref", "outdir"],
     "optional": ["threads", "use_exon"],
+    "aliases": ["hla", "typing", "hla_typing", "bam", "bam_dir", "star", "02-star"],
     "notes": {
       "bam_dir": "Please provide STAR output directory that contains per-sample BAM files (e.g. .../02-star).",
       "ref": "Please provide reference genome build for HLA typing: hg19 or hg38.",
