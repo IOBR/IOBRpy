@@ -503,9 +503,22 @@ def _intent_tokenize(text: str) -> set:
     return set(tokens)
 
 
+def _rag_command_votes(ctx: List[Dict[str, Any]], tools: List[str]) -> Dict[str, int]:
+    """Count direct tool-name mentions in retrieved snippets as a lightweight reranking signal."""
+    votes = {t: 0 for t in tools}
+    for c in (ctx or []):
+        snippet = _normalize_text(str(c.get("text", ""))).lower().replace("_", " ")
+        for t in tools:
+            pat = r"\b" + re.escape(t.lower().replace("_", " ")) + r"\b"
+            if re.search(pat, snippet):
+                votes[t] += 1
+    return votes
+
+
 def choose_subcommand(task: str, rules: Dict[str, Any]) -> str:
     tl = _normalize_text(task).lower()
     tools = list(rules.keys())
+    bag = _intent_tokenize(tl)
 
     # Build tool profile from rule metadata so the model can reason even when RAG is weak.
     tool_profiles = []
@@ -548,6 +561,10 @@ User request (english translation for intent matching):
 Helpful retrieved docs/snippets:
 {ctx_text}
 
+Important:
+- If user asks for HLA typing/analysis, prioritize HLA-related commands (hla_typing/spechla/extract_hla_read), not runall.
+- Do not be biased by path fragments like '/.../star_2sample' when inferring intent.
+
 Return JSON only: {{"subcommand": "<one of the list>", "reason": "<short>"}}
 """.strip()
 
@@ -556,15 +573,12 @@ Return JSON only: {{"subcommand": "<one of the list>", "reason": "<short>"}}
     except Exception:
         j = {}
 
-    sub = j.get("subcommand") if isinstance(j, dict) else None
-    if isinstance(sub, str) and sub in tools:
-        return sub
-
-    # Last-resort fallback: lexical overlap against tool names and notes (not hardcoded routing).
-    bag = _intent_tokenize(tl)
-    best = tools[0]
-    best_score = (-1, -1, -1)
+    # RAG evidence + lexical fallback reranking
+    votes = _rag_command_votes(ctx, tools)
     has_abs_path = re.search(r"/[A-Za-z0-9._/-]+", _normalize_text(task)) is not None
+    has_hla_intent = ("hla" in bag) or ("hla" in tl)
+
+    scored: List[Tuple[Tuple[int, int, int, int], str]] = []
     for t in tools:
         r = rules.get(t, {}) if isinstance(rules.get(t, {}), dict) else {}
         name_tokens = set(re.findall(r"[a-z][a-z0-9]*", t.lower().replace('_', ' ')))
@@ -575,12 +589,21 @@ Return JSON only: {{"subcommand": "<one of the list>", "reason": "<short>"}}
         cand = set(re.findall(r"[a-z][a-z0-9]*", txt.replace('_', ' ')))
         required_keys = r.get("required", []) if isinstance(r.get("required", []), list) else []
         dir_bonus = 1 if has_abs_path and any(str(k).endswith("_dir") for k in required_keys) else 0
-        score = (len(bag & name_tokens), len(bag & (cand | name_tokens)), dir_bonus)
-        if score > best_score:
-            best_score = score
-            best = t
+        hla_bonus = 1 if has_hla_intent and ("hla" in name_tokens or "hla" in cand) else 0
+        score = (hla_bonus, len(bag & name_tokens), votes.get(t, 0), len(bag & (cand | name_tokens)) + dir_bonus)
+        scored.append((score, t))
 
-    return best
+    fallback_sub = sorted(scored, key=lambda x: x[0], reverse=True)[0][1] if scored else tools[0]
+
+    sub = j.get("subcommand") if isinstance(j, dict) else None
+    if isinstance(sub, str) and sub in tools:
+        # Guardrail: explicit HLA intent should not route to generic runall.
+        if has_hla_intent and sub == "runall":
+            return fallback_sub
+        return sub
+
+    return fallback_sub
+
 FLAG_MAP = {
     "fastq": "--fastq",
     "outdir": "--outdir",
