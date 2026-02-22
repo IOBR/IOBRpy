@@ -120,6 +120,11 @@
   "hla_typing": {
     "required": ["bam_dir", "ref", "outdir"],
     "optional": ["threads", "use_exon"],
+    "notes": {
+      "bam_dir": "Please provide STAR output directory that contains per-sample BAM files (e.g. .../02-star).",
+      "ref": "Please provide reference genome build for HLA typing: hg19 or hg38.",
+      "outdir": "Please provide output directory for HLA typing results."
+    },
     "choices": {
       "ref": ["hg19", "hg38"],
       "use_exon": [0, 1]

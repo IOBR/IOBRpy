@@ -268,7 +268,7 @@ def set_defaults(new_defaults: Dict[str, Any], rules: Dict[str, Any]) -> Dict[st
     _write_json(DEFAULTS_FILE, cur)
     return cur
 
-PATH_KEYS = {"fastq", "outdir", "index", "input", "output", "bam", "r1", "r2", "ru", "fqdir", "o", "od"}
+PATH_KEYS = {"fastq", "outdir", "index", "input", "output", "bam", "bam_dir", "r1", "r2", "ru", "fqdir", "o", "od"}
 INT_KEYS = {"threads", "batch_size", "t", "k", "stage", "clean", "use_exon"}
 
 def _sanitize_path(p: str) -> str:
@@ -359,6 +359,11 @@ def _regex_extract_slots(text: str, allowed: List[str]) -> Dict[str, Any]:
         mb = re.search(r"(?:\b-b\b|\bbam\b)\s*(?:is|=|:)?\s*(/[^ \t;,]+)", t, flags=re.I)
         if mb:
             out["bam"] = _sanitize_path(mb.group(1))
+
+    if "bam_dir" in allowed:
+        mbd = re.search(r"(?:\bbam[_\s-]?dir\b|\bbam\s*directory\b|\b-b\b)\s*(?:is|=|:)?\s*(/[^ \t;,]+)", t, flags=re.I)
+        if mbd:
+            out["bam_dir"] = _sanitize_path(mbd.group(1))
 
     if "fqdir" in allowed:
         mf = re.search(r"(?:\b--fqdir\b|\bfqdir\b|\bfastq\s*dir(?:ectory)?\b)\s*(?:is|=|:)?\s*(/[^ \t;,]+)", t, flags=re.I)
@@ -508,12 +513,19 @@ def choose_subcommand(task: str, rules: Dict[str, Any]) -> str:
             "notes": r.get("notes", {}),
         })
 
+    # Intent-first guardrails for high-risk routes that are often confused with runall.
+    if re.search(r"\b(hla|spechla|typing|hla[_\s-]?typing)\b", tl):
+        if "hla_typing" in tools:
+            return "hla_typing"
+        if "spechla" in tools:
+            return "spechla"
+
     # Use both original query and English translation to improve retrieval/selection quality.
     q_en = _translate_to_english(task)
     query_for_rag = q_en if isinstance(q_en, str) and q_en.strip() else task
 
     try:
-        ctx = rag_search(query_for_rag, top_k=12)
+        ctx = rag_search(query_for_rag, top_k=10)
     except Exception:
         ctx = []
 
@@ -579,6 +591,7 @@ FLAG_MAP = {
     "input": "--input",
     "output": "--output",
     "bam": "-b",
+    "bam_dir": "--bam_dir",
     "r1": "-1",
     "r2": "-2",
     "ru": "-u",
@@ -848,7 +861,7 @@ TOOLS = [
             "type": "object",
             "properties": {
                 "query": {"type": "string"},
-                "top_k": {"type": "integer", "default": 6, "minimum": 1, "maximum": 50}
+                "top_k": {"type": "integer", "default": 10, "minimum": 1, "maximum": 50}
             },
             "required": ["query"],
             "additionalProperties": False
@@ -887,7 +900,7 @@ def handle_tools_call(_id, params):
     try:
         if name == "rag_search":
             q = args["query"]
-            top_k = int(args.get("top_k", 6))
+            top_k = int(args.get("top_k", 10))
             data = rag_search(q, top_k=top_k)
             send({"jsonrpc":"2.0","id":_id,"result":{"content":[{"type":"text","text":json.dumps(data,ensure_ascii=False)}],"isError":False}})
             return
