@@ -493,65 +493,81 @@ def get_session(session_id: str) -> SessionState:
         SESSIONS[session_id] = SessionState()
     return SESSIONS[session_id]
 
-def _keyword_route_subcommand(task_l: str, tools: List[str]) -> Optional[str]:
-    """Deterministic routing fallback to avoid defaulting to runall."""
-    if "hla" in task_l:
-        if any(k in task_l for k in ["extract hla", "extract_hla", "extract"] ) and "extract_hla_read" in tools:
-            return "extract_hla_read"
-        if any(k in task_l for k in ["bam dir", "bam directory", "directory of bam", "all bam", "multiple bam", "batch"]) and "hla_typing" in tools:
-            return "hla_typing"
-        if "spechla" in tools:
-            return "spechla"
-        if "hla_typing" in tools:
-            return "hla_typing"
-
-    if "trust4" in task_l and "trust4" in tools:
-        return "trust4"
-    if "cibersort" in task_l and "cibersort" in tools:
-        return "cibersort"
-    if "runall" in task_l and "runall" in tools:
-        return "runall"
-    if "fastq" in task_l and "runall" in tools:
-        return "runall"
-    return None
-
 def choose_subcommand(task: str, rules: Dict[str, Any]) -> str:
     tl = _normalize_text(task).lower()
     tools = list(rules.keys())
 
-    routed = _keyword_route_subcommand(tl, tools)
-    if routed:
-        return routed
+    # Build tool profile from rule metadata so the model can reason even when RAG is weak.
+    tool_profiles = []
+    for t in tools:
+        r = rules.get(t, {}) if isinstance(rules.get(t, {}), dict) else {}
+        tool_profiles.append({
+            "name": t,
+            "required": r.get("required", []),
+            "required_one_of": r.get("required_one_of", []),
+            "notes": r.get("notes", {}),
+        })
+
+    # Use both original query and English translation to improve retrieval/selection quality.
+    q_en = _translate_to_english(task)
+    query_for_rag = q_en if isinstance(q_en, str) and q_en.strip() else task
 
     try:
-        ctx = rag_search(task, top_k=10)
+        ctx = rag_search(query_for_rag, top_k=12)
     except Exception:
         ctx = []
-    ctx_text = "\n\n".join([f"[{i}] {c.get('path')}:{c.get('start')}-{c.get('end')}\n{c.get('text','')[:600]}" for i,c in enumerate(ctx)])
-    prompt = f"""
-You are selecting the best iobrpy subcommand to satisfy the user's request.
-Choose exactly ONE from: {tools}
-Return JSON only: {{ "subcommand": "<one of the list>" }}
 
-User request:
+    ctx_text = "\n\n".join([
+        f"[{i}] {c.get('path')}:{c.get('start')}-{c.get('end')}\n{c.get('text','')[:700]}"
+        for i, c in enumerate(ctx)
+    ])
+
+    prompt = f"""
+You are selecting the best iobrpy subcommand for the user intent.
+Pick exactly ONE subcommand name from this list: {tools}
+
+Tool profiles (from machine rules):
+{json.dumps(tool_profiles, ensure_ascii=False)}
+
+User request (original):
 {task}
+
+User request (english translation for intent matching):
+{q_en}
 
 Helpful retrieved docs/snippets:
 {ctx_text}
+
+Return JSON only: {{"subcommand": "<one of the list>", "reason": "<short>"}}
 """.strip()
+
     try:
         j = _ollama_generate_json(prompt, CHAT_MODEL)
     except Exception:
         j = {}
+
     sub = j.get("subcommand") if isinstance(j, dict) else None
-    if isinstance(sub, str) and sub in rules:
+    if isinstance(sub, str) and sub in tools:
         return sub
 
-    routed2 = _keyword_route_subcommand(tl, tools)
-    if routed2:
-        return routed2
+    # Last-resort fallback: lexical overlap against tool names and notes (not hardcoded routing).
+    bag = set(re.findall(r"[a-z0-9_]+", tl))
+    best = tools[0]
+    best_score = -1
+    for t in tools:
+        r = rules.get(t, {}) if isinstance(rules.get(t, {}), dict) else {}
+        txt = " ".join([
+            t,
+            " ".join(r.get("required", []) if isinstance(r.get("required", []), list) else []),
+            json.dumps(r.get("notes", {}), ensure_ascii=False),
+        ]).lower()
+        cand = set(re.findall(r"[a-z0-9_]+", txt))
+        score = len(bag & cand)
+        if score > best_score:
+            best_score = score
+            best = t
 
-    return tools[0]
+    return best
 FLAG_MAP = {
     "fastq": "--fastq",
     "outdir": "--outdir",
