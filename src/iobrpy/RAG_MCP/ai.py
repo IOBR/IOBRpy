@@ -196,8 +196,8 @@ def run_interactive(
     if embed_model:
         print(f"embed  : {embed_model}")
 
-    print("\n直接输入你的自然语言需求即可。")
-    print("可用命令：:exit  :quit  :restart\n")
+    print("\nType your request in natural language.")
+    print("Commands: :exit  :quit  :restart\n")
 
     def call(answer: Optional[str] = None) -> Dict[str, Any]:
         # run=False here; we run ourselves in current env.
