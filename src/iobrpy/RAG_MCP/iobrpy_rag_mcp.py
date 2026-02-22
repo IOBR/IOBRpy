@@ -493,6 +493,16 @@ def get_session(session_id: str) -> SessionState:
         SESSIONS[session_id] = SessionState()
     return SESSIONS[session_id]
 
+def _intent_tokenize(text: str) -> set:
+    """Tokenize user intent while avoiding noisy path fragments (e.g., '/.../star_2sample')."""
+    if not text:
+        return set()
+    t = _normalize_text(text).lower()
+    t = re.sub(r"/[A-Za-z0-9._/-]+", " ", t)
+    tokens = re.findall(r"[a-z][a-z0-9]*", t.replace('_', ' '))
+    return set(tokens)
+
+
 def choose_subcommand(task: str, rules: Dict[str, Any]) -> str:
     tl = _normalize_text(task).lower()
     tools = list(rules.keys())
@@ -513,7 +523,7 @@ def choose_subcommand(task: str, rules: Dict[str, Any]) -> str:
     query_for_rag = q_en if isinstance(q_en, str) and q_en.strip() else task
 
     try:
-        ctx = rag_search(query_for_rag, top_k=12)
+        ctx = rag_search(query_for_rag, top_k=10)
     except Exception:
         ctx = []
 
@@ -551,18 +561,21 @@ Return JSON only: {{"subcommand": "<one of the list>", "reason": "<short>"}}
         return sub
 
     # Last-resort fallback: lexical overlap against tool names and notes (not hardcoded routing).
-    bag = set(re.findall(r"[a-z0-9_]+", tl))
+    bag = _intent_tokenize(tl)
     best = tools[0]
-    best_score = -1
+    best_score = (-1, -1, -1)
+    has_abs_path = re.search(r"/[A-Za-z0-9._/-]+", _normalize_text(task)) is not None
     for t in tools:
         r = rules.get(t, {}) if isinstance(rules.get(t, {}), dict) else {}
+        name_tokens = set(re.findall(r"[a-z][a-z0-9]*", t.lower().replace('_', ' ')))
         txt = " ".join([
-            t,
             " ".join(r.get("required", []) if isinstance(r.get("required", []), list) else []),
             json.dumps(r.get("notes", {}), ensure_ascii=False),
         ]).lower()
-        cand = set(re.findall(r"[a-z0-9_]+", txt))
-        score = len(bag & cand)
+        cand = set(re.findall(r"[a-z][a-z0-9]*", txt.replace('_', ' ')))
+        required_keys = r.get("required", []) if isinstance(r.get("required", []), list) else []
+        dir_bonus = 1 if has_abs_path and any(str(k).endswith("_dir") for k in required_keys) else 0
+        score = (len(bag & name_tokens), len(bag & (cand | name_tokens)), dir_bonus)
         if score > best_score:
             best_score = score
             best = t
@@ -848,7 +861,7 @@ TOOLS = [
             "type": "object",
             "properties": {
                 "query": {"type": "string"},
-                "top_k": {"type": "integer", "default": 6, "minimum": 1, "maximum": 50}
+                "top_k": {"type": "integer", "default": 10, "minimum": 1, "maximum": 50}
             },
             "required": ["query"],
             "additionalProperties": False
@@ -887,7 +900,7 @@ def handle_tools_call(_id, params):
     try:
         if name == "rag_search":
             q = args["query"]
-            top_k = int(args.get("top_k", 6))
+            top_k = int(args.get("top_k", 10))
             data = rag_search(q, top_k=top_k)
             send({"jsonrpc":"2.0","id":_id,"result":{"content":[{"type":"text","text":json.dumps(data,ensure_ascii=False)}],"isError":False}})
             return
