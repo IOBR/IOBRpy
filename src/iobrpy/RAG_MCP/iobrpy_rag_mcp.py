@@ -128,6 +128,47 @@ def _ollama_generate_json(prompt: str, model: str) -> Dict[str, Any]:
         return {}
 
 
+def _contains_cjk(text: str) -> bool:
+    if not text:
+        return False
+    return re.search(r"[㐀-䶿一-鿿豈-﫿]", text) is not None
+
+
+def _translate_text(text: str, target_lang: str, key: str) -> str:
+    if not text:
+        return text
+    prompt = f"""
+Translate the following text to {target_lang}.
+Keep file paths, numbers, parameter names, and flags exactly unchanged.
+Return JSON only: {{{json.dumps(key)}: "..."}}
+
+Text:
+{text}
+""".strip()
+    try:
+        j = _ollama_generate_json(prompt, CHAT_MODEL)
+        out = j.get(key) if isinstance(j, dict) else None
+        if isinstance(out, str) and out.strip():
+            return out.strip()
+    except Exception:
+        pass
+    return text
+
+
+def _translate_to_english(text: str) -> str:
+    """Best-effort translation to English for rule triggering; fallback to original text."""
+    if not text or not _contains_cjk(text):
+        return text
+    return _translate_text(text, "English", "english")
+
+
+def _translate_to_chinese(text: str) -> str:
+    """Best-effort translation to Chinese for user-facing prompts; fallback to original text."""
+    if not text:
+        return text
+    return _translate_text(text, "Chinese", "chinese")
+
+
 def _resolve_iobrpy_pythonpath() -> Optional[str]:
     """Return a PYTHONPATH prefix that makes 'import iobrpy' work (best-effort)."""
     cand: List[str] = []
@@ -193,11 +234,15 @@ def load_rules() -> Dict[str, Any]:
         conf = v.get("confirm", [])
         opt = v.get("optional", [])
         choices = v.get("choices", {})
+        req_one = v.get("required_one_of", [])
+        notes = v.get("notes", {})
         if not isinstance(req, list): req = []
         if not isinstance(conf, list): conf = []
         if not isinstance(opt, list): opt = []
         if not isinstance(choices, dict): choices = {}
-        out[k] = {"required": req, "confirm": conf, "optional": opt, "choices": choices}
+        if not isinstance(req_one, list): req_one = []
+        if not isinstance(notes, dict): notes = {}
+        out[k] = {"required": req, "confirm": conf, "optional": opt, "choices": choices, "required_one_of": req_one, "notes": notes}
     return out or DEFAULT_RULES
 
 def allowed_keys_for(subcommand: str, rules: Dict[str, Any]) -> List[str]:
@@ -223,8 +268,8 @@ def set_defaults(new_defaults: Dict[str, Any], rules: Dict[str, Any]) -> Dict[st
     _write_json(DEFAULTS_FILE, cur)
     return cur
 
-PATH_KEYS = {"fastq", "outdir", "index", "input", "output"}
-INT_KEYS = {"threads", "batch_size"}
+PATH_KEYS = {"fastq", "outdir", "index", "input", "output", "bam", "r1", "r2", "ru", "fqdir", "o", "od"}
+INT_KEYS = {"threads", "batch_size", "t", "k", "stage", "clean", "use_exon"}
 
 def _sanitize_path(p: str) -> str:
     if not p:
@@ -309,6 +354,31 @@ def _regex_extract_slots(text: str, allowed: List[str]) -> Dict[str, Any]:
         )
         if mout:
             out["outdir"] = _sanitize_path(mout.group(2))
+
+    if "bam" in allowed:
+        mb = re.search(r"(?:\b-b\b|\bbam\b)\s*(?:is|=|:)?\s*(/[^ \t;,]+)", t, flags=re.I)
+        if mb:
+            out["bam"] = _sanitize_path(mb.group(1))
+
+    if "fqdir" in allowed:
+        mf = re.search(r"(?:\b--fqdir\b|\bfqdir\b|\bfastq\s*dir(?:ectory)?\b)\s*(?:is|=|:)?\s*(/[^ \t;,]+)", t, flags=re.I)
+        if mf:
+            out["fqdir"] = _sanitize_path(mf.group(1))
+
+    if "ru" in allowed:
+        mu = re.search(r"(?:\b-u\b|\bsingle(?:-end)?\b|\bru\b)\s*(?:is|=|:)?\s*(/[^ \t;,]+)", t, flags=re.I)
+        if mu:
+            out["ru"] = _sanitize_path(mu.group(1))
+
+    if "r1" in allowed:
+        m1 = re.search(r"(?:\b-1\b|\bread1\b|\br1\b)\s*(?:is|=|:)?\s*(/[^ \t;,]+)", t, flags=re.I)
+        if m1:
+            out["r1"] = _sanitize_path(m1.group(1))
+
+    if "r2" in allowed:
+        m2 = re.search(r"(?:\b-2\b|\bread2\b|\br2\b)\s*(?:is|=|:)?\s*(/[^ \t;,]+)", t, flags=re.I)
+        if m2:
+            out["r2"] = _sanitize_path(m2.group(1))
 
     if "confirm" in allowed:
         confirms = re.findall(r"\bconfirm\s+([A-Za-z0-9_]+)\b", tl)
@@ -414,6 +484,7 @@ class SessionState:
         self.subcommand = None
         self.params: Dict[str, Any] = {}
         self.confirmed = set()
+        self.prefer_chinese = False
 
 SESSIONS: Dict[str, SessionState] = {}
 
@@ -425,27 +496,78 @@ def get_session(session_id: str) -> SessionState:
 def choose_subcommand(task: str, rules: Dict[str, Any]) -> str:
     tl = _normalize_text(task).lower()
     tools = list(rules.keys())
-    if "fastq" in tl and "runall" in tools:
-        return "runall"
-    ctx = rag_search(task, top_k=10)
-    ctx_text = "\n\n".join([f"[{i}] {c.get('path')}:{c.get('start')}-{c.get('end')}\n{c.get('text','')[:600]}" for i,c in enumerate(ctx)])
-    prompt = f"""
-You are selecting the best iobrpy subcommand to satisfy the user's request.
-Choose exactly ONE from: {tools}
-Return JSON only: {{ \"subcommand\": \"<one of the list>\" }}
 
-User request:
+    # Build tool profile from rule metadata so the model can reason even when RAG is weak.
+    tool_profiles = []
+    for t in tools:
+        r = rules.get(t, {}) if isinstance(rules.get(t, {}), dict) else {}
+        tool_profiles.append({
+            "name": t,
+            "required": r.get("required", []),
+            "required_one_of": r.get("required_one_of", []),
+            "notes": r.get("notes", {}),
+        })
+
+    # Use both original query and English translation to improve retrieval/selection quality.
+    q_en = _translate_to_english(task)
+    query_for_rag = q_en if isinstance(q_en, str) and q_en.strip() else task
+
+    try:
+        ctx = rag_search(query_for_rag, top_k=12)
+    except Exception:
+        ctx = []
+
+    ctx_text = "\n\n".join([
+        f"[{i}] {c.get('path')}:{c.get('start')}-{c.get('end')}\n{c.get('text','')[:700]}"
+        for i, c in enumerate(ctx)
+    ])
+
+    prompt = f"""
+You are selecting the best iobrpy subcommand for the user intent.
+Pick exactly ONE subcommand name from this list: {tools}
+
+Tool profiles (from machine rules):
+{json.dumps(tool_profiles, ensure_ascii=False)}
+
+User request (original):
 {task}
+
+User request (english translation for intent matching):
+{q_en}
 
 Helpful retrieved docs/snippets:
 {ctx_text}
-""".strip()
-    j = _ollama_generate_json(prompt, CHAT_MODEL)
-    sub = j.get("subcommand") if isinstance(j, dict) else None
-    if isinstance(sub, str) and sub in rules:
-        return sub
-    return tools[0]
 
+Return JSON only: {{"subcommand": "<one of the list>", "reason": "<short>"}}
+""".strip()
+
+    try:
+        j = _ollama_generate_json(prompt, CHAT_MODEL)
+    except Exception:
+        j = {}
+
+    sub = j.get("subcommand") if isinstance(j, dict) else None
+    if isinstance(sub, str) and sub in tools:
+        return sub
+
+    # Last-resort fallback: lexical overlap against tool names and notes (not hardcoded routing).
+    bag = set(re.findall(r"[a-z0-9_]+", tl))
+    best = tools[0]
+    best_score = -1
+    for t in tools:
+        r = rules.get(t, {}) if isinstance(rules.get(t, {}), dict) else {}
+        txt = " ".join([
+            t,
+            " ".join(r.get("required", []) if isinstance(r.get("required", []), list) else []),
+            json.dumps(r.get("notes", {}), ensure_ascii=False),
+        ]).lower()
+        cand = set(re.findall(r"[a-z0-9_]+", txt))
+        score = len(bag & cand)
+        if score > best_score:
+            best_score = score
+            best = t
+
+    return best
 FLAG_MAP = {
     "fastq": "--fastq",
     "outdir": "--outdir",
@@ -456,6 +578,25 @@ FLAG_MAP = {
     "project": "--project",
     "input": "--input",
     "output": "--output",
+    "bam": "-b",
+    "r1": "-1",
+    "r2": "-2",
+    "ru": "-u",
+    "fqdir": "--fqdir",
+    "f": "-f",
+    "ref": "--ref",
+    "o": "-o",
+    "od": "--od",
+    "t": "-t",
+    "k": "-k",
+}
+BOOL_FLAGS = {
+    "repseq": "--repseq",
+    "skipMateExtension": "--skipMateExtension",
+    "abnormalUnmapFlag": "--abnormalUnmapFlag",
+    "assembleWithRef": "--assembleWithRef",
+    "noExtraction": "--noExtraction",
+    "outputReadAssignment": "--outputReadAssignment",
 }
 
 def _shell_quote(s: str) -> str:
@@ -478,6 +619,11 @@ def build_command(subcommand: str, params: Dict[str, Any], rules: Dict[str, Any]
         v = params[k]
         if v in (None, "", []):
             continue
+        if isinstance(v, bool):
+            bflag = BOOL_FLAGS.get(k)
+            if bflag and v:
+                argv.append(bflag)
+            continue
         flag = FLAG_MAP.get(k)
         if flag:
             argv.extend([flag, str(v)])
@@ -488,35 +634,40 @@ def compute_needs(subcommand: str, rules: Dict[str, Any], params: Dict[str, Any]
     rule = rules.get(subcommand, {})
     required = rule.get("required", [])
     confirm = rule.get("confirm", [])
+    required_one_of = rule.get("required_one_of", [])
+
     missing = [k for k in required if k not in params or params[k] in (None, "", [])]
+
+    if isinstance(required_one_of, list) and required_one_of:
+        def _group_ok(group):
+            return isinstance(group, list) and group and all((k in params and params[k] not in (None, "", [])) for k in group)
+        if not any(_group_ok(g) for g in required_one_of):
+            missing.append("__one_of_group")
+
     need_confirm = [k for k in confirm if k not in confirmed]
     return missing, need_confirm
 
-def compose_questions(subcommand: str, missing: List[str], need_confirm: List[str], params: Dict[str, Any], rules: Dict[str, Any]) -> str:
+def compose_questions(subcommand: str, missing: List[str], need_confirm: List[str], params: Dict[str, Any], rules: Dict[str, Any], prefer_chinese: bool = False) -> str:
     lines = []
-    if "mode" in missing:
-        choices = (rules.get(subcommand, {}).get("choices", {}) or {}).get("mode", ["salmon", "star"])
-        if len(choices) >= 2:
-            lines.append(f"Which mode do you want for {subcommand}: {choices[0]} or {choices[1]}?")
+    rule = rules.get(subcommand, {})
+    notes = rule.get("notes", {}) if isinstance(rule, dict) else {}
+
+    for m in missing:
+        if m == "__one_of_group":
+            msg = notes.get("required_one_of") or notes.get("input_mode")
+            lines.append((_translate_to_chinese(msg) if prefer_chinese else msg) if isinstance(msg, str) and msg.strip() else ("请提供一种有效输入模式。" if prefer_chinese else "Please provide one valid input mode."))
+            continue
+        msg = notes.get(m) if isinstance(notes, dict) else None
+        if isinstance(msg, str) and msg.strip():
+            lines.append(_translate_to_chinese(msg) if prefer_chinese else msg)
         else:
-            lines.append(f"Which mode do you want for {subcommand}?")
-    if "index" in missing:
-        lines.append("Please provide the index directory path (Salmon index for salmon mode, STAR index for star mode).")
-    if "threads" in missing:
-        lines.append("How many threads do you want to use per sample? (e.g., threads 16)")
-    if "batch_size" in missing:
-        lines.append("How many samples should run in parallel? (e.g., batch_size 2)")
-    if "project" in missing:
-        lines.append("Please provide the project identifier (e.g., project PRJNA320473).")
-    if "fastq" in missing:
-        lines.append("Please provide the FASTQ directory path (e.g., fastq /path/to/fastq).")
-    if "outdir" in missing:
-        lines.append("Please provide the output directory (e.g., outdir /path/to/outdir).")
+            lines.append((f"请提供 {m}。") if prefer_chinese else (f"Please provide {m}."))
+
     for k in need_confirm:
         v = params.get(k)
         if v not in (None, "", []):
-            lines.append(f"Please confirm {k}={v}. Reply like: confirm {k}")
-    return "\n".join(lines) if lines else "Please provide the missing parameters."
+            lines.append((f"请确认 {k}={v}。可回复：confirm {k}") if prefer_chinese else (f"Please confirm {k}={v}. Reply like: confirm {k}"))
+    return "\n".join(lines) if lines else ("请补充缺失参数。" if prefer_chinese else "Please provide the missing parameters.")
 
 def merge_defaults(params: Dict[str, Any], subcommand: str, rules: Dict[str, Any]) -> Dict[str, Any]:
     d = load_defaults()
@@ -540,23 +691,32 @@ def tool_iobrpy_assistant(session_id: str, task: Optional[str] = None, answer_te
     rules = load_rules()
     state = get_session(session_id)
 
-    # Restart session on user request
+    task_en = _translate_to_english(task) if task else None
+    answer_text_en = _translate_to_english(answer_text) if answer_text else None
+
+    if (task and _contains_cjk(task)) or (answer_text and _contains_cjk(answer_text)):
+        state.prefer_chinese = True
+
+    # Restart session on user request (match both original text and translated text)
     if answer_text:
         atl = _normalize_text(answer_text).lower()
-        if re.search(r"\b(restart|start over|new task|reset session)\b", atl):
+        atl_en = _normalize_text(answer_text_en or "").lower()
+        if re.search(r"\b(restart|start over|new task|reset session)\b", atl) or re.search(r"\b(restart|start over|new task|reset session)\b", atl_en):
             state.task = ""
             state.subcommand = None
             state.params = {}
             state.confirmed = set()
+            state.prefer_chinese = False
 
     if task:
-        state.task = task
-        state.subcommand = choose_subcommand(task, rules)
+        parse_task = task_en or task
+        state.task = parse_task
+        state.subcommand = choose_subcommand(parse_task, rules)
         state.params = {}
         state.confirmed = set()
 
         allowed = allowed_keys_for(state.subcommand, rules)
-        extracted = extract_slots(task, allowed)
+        extracted = extract_slots(parse_task, allowed)
         apply_confirmations(state, extracted)
         # Apply reset/unset requests
         resets = extracted.get("_reset")
@@ -572,13 +732,15 @@ def tool_iobrpy_assistant(session_id: str, task: Optional[str] = None, answer_te
         # Treat user reply as additional information for the current session.
         # If the user skipped the initial Task prompt, accept the first reply as the task.
         if not state.subcommand:
-            state.task = answer_text
-            state.subcommand = choose_subcommand(answer_text, rules)
+            parse_answer = answer_text_en or answer_text
+            state.task = parse_answer
+            state.subcommand = choose_subcommand(parse_answer, rules)
             state.params = {}
             state.confirmed = set()
 
         allowed = allowed_keys_for(state.subcommand, rules)
-        extracted = extract_slots(answer_text, allowed)
+        parse_answer = answer_text_en or answer_text
+        extracted = extract_slots(parse_answer, allowed)
         apply_confirmations(state, extracted)
 
         # Apply reset/unset requests (natural language): 'reset fastq', 'clear index', 'unset threads'
@@ -598,7 +760,7 @@ def tool_iobrpy_assistant(session_id: str, task: Optional[str] = None, answer_te
 
 
     if not state.subcommand:
-        return {"status": "need_info", "question": "Please describe what you want to do (natural language).", "needs": ["task"]}
+        return {"status": "need_info", "question": ("请用自然语言描述你的需求。" if state.prefer_chinese else "Please describe what you want to do (natural language)."), "needs": ["task"]}
 
     merged = merge_defaults(state.params, state.subcommand, rules)
     missing, need_confirm = compute_needs(state.subcommand, rules, merged, state.confirmed)
@@ -616,7 +778,7 @@ def tool_iobrpy_assistant(session_id: str, task: Optional[str] = None, answer_te
             return {"status": "need_info", "question": q, "needs": ["revise_options"], "draft_command": draft_cmd, "validation": val}
 
     if missing or need_confirm:
-        q = compose_questions(state.subcommand, missing, need_confirm, merged, rules)
+        q = compose_questions(state.subcommand, missing, need_confirm, merged, rules, prefer_chinese=state.prefer_chinese)
         return {"status": "need_info", "subcommand": state.subcommand, "needs": missing + [f"confirm:{c}" for c in need_confirm],
                 "question": q, "draft_command": draft_cmd, "params": merged}
 
