@@ -501,7 +501,6 @@ def get_session(session_id: str) -> SessionState:
     return SESSIONS[session_id]
 
 def choose_subcommand(task: str, rules: Dict[str, Any]) -> str:
-    tl = _normalize_text(task).lower()
     tools = list(rules.keys())
     q_en = _translate_to_english(task)
     query_for_rag = q_en if isinstance(q_en, str) and q_en.strip() else task
@@ -525,6 +524,11 @@ def choose_subcommand(task: str, rules: Dict[str, Any]) -> str:
         ]).lower()
         tool_tokens = set(re.findall(r"[a-z0-9_]+", txt))
         priors[t] = len(query_tokens & tool_tokens)
+
+    sorted_priors = sorted(priors.items(), key=lambda kv: kv[1], reverse=True)
+    best_tool = sorted_priors[0][0] if sorted_priors else tools[0]
+    best_prior = sorted_priors[0][1] if sorted_priors else 0
+    second_prior = sorted_priors[1][1] if len(sorted_priors) > 1 else -1
 
     # Build tool profile from rule metadata so the model can reason even when RAG is weak.
     tool_profiles = []
@@ -580,6 +584,10 @@ Return JSON only: {{"subcommand": "<one of the list>", "reason": "<short>"}}
 
     sub = j.get("subcommand") if isinstance(j, dict) else None
     if isinstance(sub, str) and sub in tools:
+        # If LLM picks a much weaker lexical match, prefer the metadata-best tool.
+        # This prevents common confusions like choosing runall for HLA + STAR-dir requests.
+        if best_prior >= 2 and priors.get(sub, 0) + 1 <= best_prior and second_prior < best_prior:
+            return best_tool
         return sub
 
     # Last-resort fallback: lexical overlap against metadata.
