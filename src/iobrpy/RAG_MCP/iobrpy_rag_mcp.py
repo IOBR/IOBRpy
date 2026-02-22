@@ -493,17 +493,45 @@ def get_session(session_id: str) -> SessionState:
         SESSIONS[session_id] = SessionState()
     return SESSIONS[session_id]
 
+def _keyword_route_subcommand(task_l: str, tools: List[str]) -> Optional[str]:
+    """Deterministic routing fallback to avoid defaulting to runall."""
+    if "hla" in task_l:
+        if any(k in task_l for k in ["extract hla", "extract_hla", "extract"] ) and "extract_hla_read" in tools:
+            return "extract_hla_read"
+        if any(k in task_l for k in ["bam dir", "bam directory", "directory of bam", "all bam", "multiple bam", "batch"]) and "hla_typing" in tools:
+            return "hla_typing"
+        if "spechla" in tools:
+            return "spechla"
+        if "hla_typing" in tools:
+            return "hla_typing"
+
+    if "trust4" in task_l and "trust4" in tools:
+        return "trust4"
+    if "cibersort" in task_l and "cibersort" in tools:
+        return "cibersort"
+    if "runall" in task_l and "runall" in tools:
+        return "runall"
+    if "fastq" in task_l and "runall" in tools:
+        return "runall"
+    return None
+
 def choose_subcommand(task: str, rules: Dict[str, Any]) -> str:
     tl = _normalize_text(task).lower()
     tools = list(rules.keys())
-    if "fastq" in tl and "runall" in tools:
-        return "runall"
-    ctx = rag_search(task, top_k=10)
+
+    routed = _keyword_route_subcommand(tl, tools)
+    if routed:
+        return routed
+
+    try:
+        ctx = rag_search(task, top_k=10)
+    except Exception:
+        ctx = []
     ctx_text = "\n\n".join([f"[{i}] {c.get('path')}:{c.get('start')}-{c.get('end')}\n{c.get('text','')[:600]}" for i,c in enumerate(ctx)])
     prompt = f"""
 You are selecting the best iobrpy subcommand to satisfy the user's request.
 Choose exactly ONE from: {tools}
-Return JSON only: {{ \"subcommand\": \"<one of the list>\" }}
+Return JSON only: {{ "subcommand": "<one of the list>" }}
 
 User request:
 {task}
@@ -511,12 +539,19 @@ User request:
 Helpful retrieved docs/snippets:
 {ctx_text}
 """.strip()
-    j = _ollama_generate_json(prompt, CHAT_MODEL)
+    try:
+        j = _ollama_generate_json(prompt, CHAT_MODEL)
+    except Exception:
+        j = {}
     sub = j.get("subcommand") if isinstance(j, dict) else None
     if isinstance(sub, str) and sub in rules:
         return sub
-    return tools[0]
 
+    routed2 = _keyword_route_subcommand(tl, tools)
+    if routed2:
+        return routed2
+
+    return tools[0]
 FLAG_MAP = {
     "fastq": "--fastq",
     "outdir": "--outdir",
