@@ -599,8 +599,8 @@ def choose_subcommand(task: str, rules: Dict[str, Any]) -> str:
         dir_bonus = 1 if has_abs_path and any(str(k).endswith("_dir") for k in required_keys) else 0
         intent_kw_bonus = _intent_keyword_score(tl, bag, rules.get(t, {}))
         score = (
-            votes.get(t, 0),
             intent_kw_bonus,
+            votes.get(t, 0),
             len(bag & req_tokens),
             len(bag & name_tokens),
             _tool_profile_overlap(bag, profile),
@@ -668,7 +668,7 @@ Return JSON only: {{"subcommand": "<one of candidate list>", "reason": "<short>"
         top_score = score_map.get(fallback_sub)
         sub_score = score_map.get(sub)
         if top_score is not None and sub_score is not None:
-            # score tuple = (rag_votes, intent_kw_bonus, req_overlap, name_overlap, profile_overlap, dir_bonus)
+            # score tuple = (intent_kw_bonus, rag_votes, req_overlap, name_overlap, profile_overlap, dir_bonus)
             # If LLM-picked command has weaker retrieval+intent evidence than top, keep deterministic top.
             if (sub_score[0], sub_score[1], sub_score[2]) < (top_score[0], top_score[1], top_score[2]):
                 return fallback_sub
