@@ -1,74 +1,4 @@
 {
-  "_param_hints": {
-    "input": {
-      "zh": "输入表达矩阵/文件路径。",
-      "en": "Input expression matrix/file path."
-    },
-    "output": {
-      "zh": "输出文件路径。",
-      "en": "Output file path."
-    },
-    "outdir": {
-      "zh": "输出目录路径。",
-      "en": "Output directory path."
-    },
-    "fastq": {
-      "zh": "FASTQ目录路径。",
-      "en": "FASTQ directory path."
-    },
-    "index": {
-      "zh": "参考索引路径/目录。",
-      "en": "Reference index path/directory."
-    },
-    "threads": {
-      "zh": "CPU线程数。",
-      "en": "Number of CPU threads."
-    },
-    "batch_size": {
-      "zh": "并行处理样本数。",
-      "en": "Number of samples processed in parallel."
-    },
-    "perm": {
-      "zh": "置换次数（越大越稳定但更慢）。",
-      "en": "Number of permutations (more stable p-values but slower)."
-    },
-    "QN": {
-      "zh": "是否启用分位数归一化（芯片常为TRUE，RNA-seq常为FALSE）。",
-      "en": "Quantile normalization switch (often TRUE for microarray, FALSE for RNA-seq)."
-    },
-    "bam": {
-      "zh": "输入BAM文件路径或BAM目录。",
-      "en": "Input BAM file path or BAM directory."
-    },
-    "r1": {
-      "zh": "Read1 FASTQ文件路径。",
-      "en": "Read1 FASTQ file path."
-    },
-    "r2": {
-      "zh": "Read2 FASTQ文件路径。",
-      "en": "Read2 FASTQ file path."
-    },
-    "ru": {
-      "zh": "单端FASTQ文件路径。",
-      "en": "Single-end FASTQ file path."
-    },
-    "fqdir": {
-      "zh": "批量FASTQ目录路径。",
-      "en": "FASTQ directory for batch processing."
-    },
-    "o": {
-      "zh": "输出前缀或输出文件名基名。",
-      "en": "Output prefix or output basename."
-    },
-    "od": {
-      "zh": "输出目录路径。",
-      "en": "Output directory path."
-    },
-    "t": {
-      "zh": "该命令的线程数。",
-      "en": "Thread count for this command."
-    }
-  },
   "runall": {
     "required": [
       "fastq",
@@ -106,7 +36,37 @@
       "pipeline",
       "from fastq to tme",
       "bulk workflow"
-    ]
+    ],
+    "param_hints": {
+      "fastq": {
+        "zh": "FASTQ目录路径。",
+        "en": "FASTQ directory path."
+      },
+      "outdir": {
+        "zh": "输出目录路径。",
+        "en": "Output directory path."
+      },
+      "mode": {
+        "zh": "参数 mode 的说明。",
+        "en": "Description for parameter 'mode'."
+      },
+      "index": {
+        "zh": "参考索引路径/目录。",
+        "en": "Reference index path/directory."
+      },
+      "threads": {
+        "zh": "CPU线程数。",
+        "en": "Number of CPU threads."
+      },
+      "batch_size": {
+        "zh": "并行处理样本数。",
+        "en": "Number of samples processed in parallel."
+      },
+      "project": {
+        "zh": "参数 project 的说明。",
+        "en": "Description for parameter 'project'."
+      }
+    }
   },
   "prepare_salmon": {
     "required": [
@@ -116,7 +76,25 @@
     "optional": [
       "return_feature",
       "remove_version"
-    ]
+    ],
+    "param_hints": {
+      "input": {
+        "zh": "输入表达矩阵/文件路径。",
+        "en": "Input expression matrix/file path."
+      },
+      "output": {
+        "zh": "输出文件路径。",
+        "en": "Output file path."
+      },
+      "return_feature": {
+        "zh": "参数 return_feature 的说明。",
+        "en": "Description for parameter 'return_feature'."
+      },
+      "remove_version": {
+        "zh": "参数 remove_version 的说明。",
+        "en": "Description for parameter 'remove_version'."
+      }
+    }
   },
   "count2tpm": {
     "required": [
@@ -133,7 +111,53 @@
       "gene_symbol",
       "check_data",
       "remove_version"
-    ]
+    ],
+    "param_hints": {
+      "input": {
+        "zh": "输入表达矩阵/文件路径。",
+        "en": "Input expression matrix/file path."
+      },
+      "output": {
+        "zh": "输出文件路径。",
+        "en": "Output file path."
+      },
+      "effLength_csv": {
+        "zh": "参数 effLength_csv 的说明。",
+        "en": "Description for parameter 'effLength_csv'."
+      },
+      "idtype": {
+        "zh": "参数 idtype 的说明。",
+        "en": "Description for parameter 'idtype'."
+      },
+      "org": {
+        "zh": "参数 org 的说明。",
+        "en": "Description for parameter 'org'."
+      },
+      "source": {
+        "zh": "参数 source 的说明。",
+        "en": "Description for parameter 'source'."
+      },
+      "id": {
+        "zh": "参数 id 的说明。",
+        "en": "Description for parameter 'id'."
+      },
+      "length": {
+        "zh": "参数 length 的说明。",
+        "en": "Description for parameter 'length'."
+      },
+      "gene_symbol": {
+        "zh": "参数 gene_symbol 的说明。",
+        "en": "Description for parameter 'gene_symbol'."
+      },
+      "check_data": {
+        "zh": "参数 check_data 的说明。",
+        "en": "Description for parameter 'check_data'."
+      },
+      "remove_version": {
+        "zh": "参数 remove_version 的说明。",
+        "en": "Description for parameter 'remove_version'."
+      }
+    }
   },
   "anno_eset": {
     "required": [
@@ -148,7 +172,45 @@
       "probe",
       "method",
       "remove_version"
-    ]
+    ],
+    "param_hints": {
+      "input": {
+        "zh": "输入表达矩阵/文件路径。",
+        "en": "Input expression matrix/file path."
+      },
+      "output": {
+        "zh": "输出文件路径。",
+        "en": "Output file path."
+      },
+      "annotation": {
+        "zh": "参数 annotation 的说明。",
+        "en": "Description for parameter 'annotation'."
+      },
+      "annotation_file": {
+        "zh": "参数 annotation_file 的说明。",
+        "en": "Description for parameter 'annotation_file'."
+      },
+      "annotation_key": {
+        "zh": "参数 annotation_key 的说明。",
+        "en": "Description for parameter 'annotation_key'."
+      },
+      "symbol": {
+        "zh": "参数 symbol 的说明。",
+        "en": "Description for parameter 'symbol'."
+      },
+      "probe": {
+        "zh": "参数 probe 的说明。",
+        "en": "Description for parameter 'probe'."
+      },
+      "method": {
+        "zh": "参数 method 的说明。",
+        "en": "Description for parameter 'method'."
+      },
+      "remove_version": {
+        "zh": "参数 remove_version 的说明。",
+        "en": "Description for parameter 'remove_version'."
+      }
+    }
   },
   "calculate_sig_score": {
     "required": [
@@ -162,7 +224,41 @@
       "parallel_size",
       "ssgsea_norm",
       "id_type"
-    ]
+    ],
+    "param_hints": {
+      "input": {
+        "zh": "输入表达矩阵/文件路径。",
+        "en": "Input expression matrix/file path."
+      },
+      "output": {
+        "zh": "输出文件路径。",
+        "en": "Output file path."
+      },
+      "signature": {
+        "zh": "参数 signature 的说明。",
+        "en": "Description for parameter 'signature'."
+      },
+      "method": {
+        "zh": "参数 method 的说明。",
+        "en": "Description for parameter 'method'."
+      },
+      "parallel": {
+        "zh": "参数 parallel 的说明。",
+        "en": "Description for parameter 'parallel'."
+      },
+      "parallel_size": {
+        "zh": "参数 parallel_size 的说明。",
+        "en": "Description for parameter 'parallel_size'."
+      },
+      "ssgsea_norm": {
+        "zh": "参数 ssgsea_norm 的说明。",
+        "en": "Description for parameter 'ssgsea_norm'."
+      },
+      "id_type": {
+        "zh": "参数 id_type 的说明。",
+        "en": "Description for parameter 'id_type'."
+      }
+    }
   },
   "cibersort": {
     "required": [
@@ -176,13 +272,45 @@
       "perm",
       "QN",
       "threads"
-    ]
+    ],
+    "param_hints": {
+      "input": {
+        "zh": "输入表达矩阵/文件路径。",
+        "en": "Input expression matrix/file path."
+      },
+      "output": {
+        "zh": "输出文件路径。",
+        "en": "Output file path."
+      },
+      "perm": {
+        "zh": "置换次数（越大越稳定但更慢）。",
+        "en": "Number of permutations (more stable p-values but slower)."
+      },
+      "QN": {
+        "zh": "是否启用分位数归一化（芯片常为TRUE，RNA-seq常为FALSE）。",
+        "en": "Quantile normalization switch (often TRUE for microarray, FALSE for RNA-seq)."
+      },
+      "threads": {
+        "zh": "CPU线程数。",
+        "en": "Number of CPU threads."
+      }
+    }
   },
   "IPS": {
     "required": [
       "input",
       "output"
-    ]
+    ],
+    "param_hints": {
+      "input": {
+        "zh": "输入表达矩阵/文件路径。",
+        "en": "Input expression matrix/file path."
+      },
+      "output": {
+        "zh": "输出文件路径。",
+        "en": "Output file path."
+      }
+    }
   },
   "estimate": {
     "required": [
@@ -191,14 +319,42 @@
     ],
     "optional": [
       "platform"
-    ]
+    ],
+    "param_hints": {
+      "input": {
+        "zh": "输入表达矩阵/文件路径。",
+        "en": "Input expression matrix/file path."
+      },
+      "output": {
+        "zh": "输出文件路径。",
+        "en": "Output file path."
+      },
+      "platform": {
+        "zh": "参数 platform 的说明。",
+        "en": "Description for parameter 'platform'."
+      }
+    }
   },
   "mcpcounter": {
     "required": [
       "input",
       "features",
       "output"
-    ]
+    ],
+    "param_hints": {
+      "input": {
+        "zh": "输入表达矩阵/文件路径。",
+        "en": "Input expression matrix/file path."
+      },
+      "features": {
+        "zh": "参数 features 的说明。",
+        "en": "Description for parameter 'features'."
+      },
+      "output": {
+        "zh": "输出文件路径。",
+        "en": "Output file path."
+      }
+    }
   },
   "quantiseq": {
     "required": [
@@ -212,7 +368,41 @@
       "scale_mrna",
       "method",
       "rmgenes"
-    ]
+    ],
+    "param_hints": {
+      "input": {
+        "zh": "输入表达矩阵/文件路径。",
+        "en": "Input expression matrix/file path."
+      },
+      "output": {
+        "zh": "输出文件路径。",
+        "en": "Output file path."
+      },
+      "arrays": {
+        "zh": "参数 arrays 的说明。",
+        "en": "Description for parameter 'arrays'."
+      },
+      "signame": {
+        "zh": "参数 signame 的说明。",
+        "en": "Description for parameter 'signame'."
+      },
+      "tumor": {
+        "zh": "参数 tumor 的说明。",
+        "en": "Description for parameter 'tumor'."
+      },
+      "scale_mrna": {
+        "zh": "参数 scale_mrna 的说明。",
+        "en": "Description for parameter 'scale_mrna'."
+      },
+      "method": {
+        "zh": "参数 method 的说明。",
+        "en": "Description for parameter 'method'."
+      },
+      "rmgenes": {
+        "zh": "参数 rmgenes 的说明。",
+        "en": "Description for parameter 'rmgenes'."
+      }
+    }
   },
   "epic": {
     "required": [
@@ -221,7 +411,21 @@
     ],
     "optional": [
       "reference"
-    ]
+    ],
+    "param_hints": {
+      "input": {
+        "zh": "输入表达矩阵/文件路径。",
+        "en": "Input expression matrix/file path."
+      },
+      "output": {
+        "zh": "输出文件路径。",
+        "en": "Output file path."
+      },
+      "reference": {
+        "zh": "参数 reference 的说明。",
+        "en": "Description for parameter 'reference'."
+      }
+    }
   },
   "deside": {
     "required": [
@@ -240,7 +444,61 @@
       "method_adding_pathway",
       "transpose",
       "result_dir"
-    ]
+    ],
+    "param_hints": {
+      "model_dir": {
+        "zh": "参数 model_dir 的说明。",
+        "en": "Description for parameter 'model_dir'."
+      },
+      "input": {
+        "zh": "输入表达矩阵/文件路径。",
+        "en": "Input expression matrix/file path."
+      },
+      "output": {
+        "zh": "输出文件路径。",
+        "en": "Output file path."
+      },
+      "exp_type": {
+        "zh": "参数 exp_type 的说明。",
+        "en": "Description for parameter 'exp_type'."
+      },
+      "gmt": {
+        "zh": "参数 gmt 的说明。",
+        "en": "Description for parameter 'gmt'."
+      },
+      "print_info": {
+        "zh": "参数 print_info 的说明。",
+        "en": "Description for parameter 'print_info'."
+      },
+      "add_cell_type": {
+        "zh": "参数 add_cell_type 的说明。",
+        "en": "Description for parameter 'add_cell_type'."
+      },
+      "scaling_by_constant": {
+        "zh": "参数 scaling_by_constant 的说明。",
+        "en": "Description for parameter 'scaling_by_constant'."
+      },
+      "scaling_by_sample": {
+        "zh": "参数 scaling_by_sample 的说明。",
+        "en": "Description for parameter 'scaling_by_sample'."
+      },
+      "one_minus_alpha": {
+        "zh": "参数 one_minus_alpha 的说明。",
+        "en": "Description for parameter 'one_minus_alpha'."
+      },
+      "method_adding_pathway": {
+        "zh": "参数 method_adding_pathway 的说明。",
+        "en": "Description for parameter 'method_adding_pathway'."
+      },
+      "transpose": {
+        "zh": "参数 transpose 的说明。",
+        "en": "Description for parameter 'transpose'."
+      },
+      "result_dir": {
+        "zh": "参数 result_dir 的说明。",
+        "en": "Description for parameter 'result_dir'."
+      }
+    }
   },
   "tme_cluster": {
     "required": [
@@ -257,7 +515,53 @@
       "max_iter",
       "tol",
       "random_state"
-    ]
+    ],
+    "param_hints": {
+      "input": {
+        "zh": "输入表达矩阵/文件路径。",
+        "en": "Input expression matrix/file path."
+      },
+      "output": {
+        "zh": "输出文件路径。",
+        "en": "Output file path."
+      },
+      "features": {
+        "zh": "参数 features 的说明。",
+        "en": "Description for parameter 'features'."
+      },
+      "pattern": {
+        "zh": "参数 pattern 的说明。",
+        "en": "Description for parameter 'pattern'."
+      },
+      "id": {
+        "zh": "参数 id 的说明。",
+        "en": "Description for parameter 'id'."
+      },
+      "scale": {
+        "zh": "参数 scale 的说明。",
+        "en": "Description for parameter 'scale'."
+      },
+      "min_nc": {
+        "zh": "参数 min_nc 的说明。",
+        "en": "Description for parameter 'min_nc'."
+      },
+      "max_nc": {
+        "zh": "参数 max_nc 的说明。",
+        "en": "Description for parameter 'max_nc'."
+      },
+      "max_iter": {
+        "zh": "参数 max_iter 的说明。",
+        "en": "Description for parameter 'max_iter'."
+      },
+      "tol": {
+        "zh": "参数 tol 的说明。",
+        "en": "Description for parameter 'tol'."
+      },
+      "random_state": {
+        "zh": "参数 random_state 的说明。",
+        "en": "Description for parameter 'random_state'."
+      }
+    }
   },
   "LR_cal": {
     "required": [
@@ -269,7 +573,33 @@
       "group",
       "min_expr",
       "fdr"
-    ]
+    ],
+    "param_hints": {
+      "input": {
+        "zh": "输入表达矩阵/文件路径。",
+        "en": "Input expression matrix/file path."
+      },
+      "output": {
+        "zh": "输出文件路径。",
+        "en": "Output file path."
+      },
+      "database": {
+        "zh": "参数 database 的说明。",
+        "en": "Description for parameter 'database'."
+      },
+      "group": {
+        "zh": "参数 group 的说明。",
+        "en": "Description for parameter 'group'."
+      },
+      "min_expr": {
+        "zh": "参数 min_expr 的说明。",
+        "en": "Description for parameter 'min_expr'."
+      },
+      "fdr": {
+        "zh": "参数 fdr 的说明。",
+        "en": "Description for parameter 'fdr'."
+      }
+    }
   },
   "nmf": {
     "required": [
@@ -282,7 +612,37 @@
       "seed",
       "max_iter",
       "method"
-    ]
+    ],
+    "param_hints": {
+      "input": {
+        "zh": "输入表达矩阵/文件路径。",
+        "en": "Input expression matrix/file path."
+      },
+      "output": {
+        "zh": "输出文件路径。",
+        "en": "Output file path."
+      },
+      "ranks": {
+        "zh": "参数 ranks 的说明。",
+        "en": "Description for parameter 'ranks'."
+      },
+      "nrun": {
+        "zh": "参数 nrun 的说明。",
+        "en": "Description for parameter 'nrun'."
+      },
+      "seed": {
+        "zh": "参数 seed 的说明。",
+        "en": "Description for parameter 'seed'."
+      },
+      "max_iter": {
+        "zh": "参数 max_iter 的说明。",
+        "en": "Description for parameter 'max_iter'."
+      },
+      "method": {
+        "zh": "参数 method 的说明。",
+        "en": "Description for parameter 'method'."
+      }
+    }
   },
   "mouse2human_eset": {
     "required": [
@@ -291,7 +651,21 @@
     ],
     "optional": [
       "method"
-    ]
+    ],
+    "param_hints": {
+      "input": {
+        "zh": "输入表达矩阵/文件路径。",
+        "en": "Input expression matrix/file path."
+      },
+      "output": {
+        "zh": "输出文件路径。",
+        "en": "Output file path."
+      },
+      "method": {
+        "zh": "参数 method 的说明。",
+        "en": "Description for parameter 'method'."
+      }
+    }
   },
   "batch_salmon": {
     "required": [
@@ -304,7 +678,37 @@
       "batch_size",
       "num_threads",
       "gtf"
-    ]
+    ],
+    "param_hints": {
+      "index": {
+        "zh": "参考索引路径/目录。",
+        "en": "Reference index path/directory."
+      },
+      "path_fq": {
+        "zh": "参数 path_fq 的说明。",
+        "en": "Description for parameter 'path_fq'."
+      },
+      "path_out": {
+        "zh": "参数 path_out 的说明。",
+        "en": "Description for parameter 'path_out'."
+      },
+      "suffix1": {
+        "zh": "参数 suffix1 的说明。",
+        "en": "Description for parameter 'suffix1'."
+      },
+      "batch_size": {
+        "zh": "并行处理样本数。",
+        "en": "Number of samples processed in parallel."
+      },
+      "num_threads": {
+        "zh": "参数 num_threads 的说明。",
+        "en": "Description for parameter 'num_threads'."
+      },
+      "gtf": {
+        "zh": "参数 gtf 的说明。",
+        "en": "Description for parameter 'gtf'."
+      }
+    }
   },
   "merge_salmon": {
     "required": [
@@ -313,13 +717,37 @@
     ],
     "optional": [
       "num_processes"
-    ]
+    ],
+    "param_hints": {
+      "path_salmon": {
+        "zh": "参数 path_salmon 的说明。",
+        "en": "Description for parameter 'path_salmon'."
+      },
+      "project": {
+        "zh": "参数 project 的说明。",
+        "en": "Description for parameter 'project'."
+      },
+      "num_processes": {
+        "zh": "参数 num_processes 的说明。",
+        "en": "Description for parameter 'num_processes'."
+      }
+    }
   },
   "merge_star_count": {
     "required": [
       "path",
       "project"
-    ]
+    ],
+    "param_hints": {
+      "path": {
+        "zh": "参数 path 的说明。",
+        "en": "Description for parameter 'path'."
+      },
+      "project": {
+        "zh": "参数 project 的说明。",
+        "en": "Description for parameter 'project'."
+      }
+    }
   },
   "batch_star_count": {
     "required": [
@@ -331,7 +759,33 @@
       "suffix1",
       "batch_size",
       "num_threads"
-    ]
+    ],
+    "param_hints": {
+      "index": {
+        "zh": "参考索引路径/目录。",
+        "en": "Reference index path/directory."
+      },
+      "path_fq": {
+        "zh": "参数 path_fq 的说明。",
+        "en": "Description for parameter 'path_fq'."
+      },
+      "path_out": {
+        "zh": "参数 path_out 的说明。",
+        "en": "Description for parameter 'path_out'."
+      },
+      "suffix1": {
+        "zh": "参数 suffix1 的说明。",
+        "en": "Description for parameter 'suffix1'."
+      },
+      "batch_size": {
+        "zh": "并行处理样本数。",
+        "en": "Number of samples processed in parallel."
+      },
+      "num_threads": {
+        "zh": "参数 num_threads 的说明。",
+        "en": "Description for parameter 'num_threads'."
+      }
+    }
   },
   "fastq_qc": {
     "required": [
@@ -344,13 +798,53 @@
       "batch_size",
       "se",
       "length_required"
-    ]
+    ],
+    "param_hints": {
+      "path1_fastq": {
+        "zh": "参数 path1_fastq 的说明。",
+        "en": "Description for parameter 'path1_fastq'."
+      },
+      "path2_fastp": {
+        "zh": "参数 path2_fastp 的说明。",
+        "en": "Description for parameter 'path2_fastp'."
+      },
+      "num_threads": {
+        "zh": "参数 num_threads 的说明。",
+        "en": "Description for parameter 'num_threads'."
+      },
+      "suffix1": {
+        "zh": "参数 suffix1 的说明。",
+        "en": "Description for parameter 'suffix1'."
+      },
+      "batch_size": {
+        "zh": "并行处理样本数。",
+        "en": "Number of samples processed in parallel."
+      },
+      "se": {
+        "zh": "参数 se 的说明。",
+        "en": "Description for parameter 'se'."
+      },
+      "length_required": {
+        "zh": "参数 length_required 的说明。",
+        "en": "Description for parameter 'length_required'."
+      }
+    }
   },
   "log2_eset": {
     "required": [
       "input",
       "output"
-    ]
+    ],
+    "param_hints": {
+      "input": {
+        "zh": "输入表达矩阵/文件路径。",
+        "en": "Input expression matrix/file path."
+      },
+      "output": {
+        "zh": "输出文件路径。",
+        "en": "Output file path."
+      }
+    }
   },
   "trust4": {
     "required": [],
@@ -391,7 +885,41 @@
       "repertoire",
       "clonotype",
       "immune receptor"
-    ]
+    ],
+    "param_hints": {
+      "bam": {
+        "zh": "输入BAM文件路径或BAM目录。",
+        "en": "Input BAM file path or BAM directory."
+      },
+      "r1": {
+        "zh": "Read1 FASTQ文件路径。",
+        "en": "Read1 FASTQ file path."
+      },
+      "r2": {
+        "zh": "Read2 FASTQ文件路径。",
+        "en": "Read2 FASTQ file path."
+      },
+      "ru": {
+        "zh": "单端FASTQ文件路径。",
+        "en": "Single-end FASTQ file path."
+      },
+      "fqdir": {
+        "zh": "批量FASTQ目录路径。",
+        "en": "FASTQ directory for batch processing."
+      },
+      "o": {
+        "zh": "输出前缀或输出文件名基名。",
+        "en": "Output prefix or output basename."
+      },
+      "od": {
+        "zh": "输出目录路径。",
+        "en": "Output directory path."
+      },
+      "t": {
+        "zh": "该命令的线程数。",
+        "en": "Thread count for this command."
+      }
+    }
   },
   "spechla": {
     "required": [
@@ -407,7 +935,33 @@
     "intent_keywords": [
       "hla",
       "typing"
-    ]
+    ],
+    "param_hints": {
+      "name": {
+        "zh": "参数 name 的说明。",
+        "en": "Description for parameter 'name'."
+      },
+      "read1": {
+        "zh": "参数 read1 的说明。",
+        "en": "Description for parameter 'read1'."
+      },
+      "read2": {
+        "zh": "参数 read2 的说明。",
+        "en": "Description for parameter 'read2'."
+      },
+      "outdir": {
+        "zh": "输出目录路径。",
+        "en": "Output directory path."
+      },
+      "threads": {
+        "zh": "CPU线程数。",
+        "en": "Number of CPU threads."
+      },
+      "use_exon": {
+        "zh": "参数 use_exon 的说明。",
+        "en": "Description for parameter 'use_exon'."
+      }
+    }
   },
   "extract_hla_read": {
     "required": [
@@ -428,7 +982,29 @@
     "intent_keywords": [
       "hla",
       "extract hla read"
-    ]
+    ],
+    "param_hints": {
+      "sample": {
+        "zh": "参数 sample 的说明。",
+        "en": "Description for parameter 'sample'."
+      },
+      "bam": {
+        "zh": "输入BAM文件路径或BAM目录。",
+        "en": "Input BAM file path or BAM directory."
+      },
+      "ref": {
+        "zh": "参数 ref 的说明。",
+        "en": "Description for parameter 'ref'."
+      },
+      "outdir": {
+        "zh": "输出目录路径。",
+        "en": "Output directory path."
+      },
+      "no_auto_install": {
+        "zh": "参数 no_auto_install 的说明。",
+        "en": "Description for parameter 'no_auto_install'."
+      }
+    }
   },
   "hla_typing": {
     "required": [
@@ -454,7 +1030,29 @@
       "hla",
       "typing",
       "hla analysis"
-    ]
+    ],
+    "param_hints": {
+      "bam_dir": {
+        "zh": "参数 bam_dir 的说明。",
+        "en": "Description for parameter 'bam_dir'."
+      },
+      "ref": {
+        "zh": "参数 ref 的说明。",
+        "en": "Description for parameter 'ref'."
+      },
+      "outdir": {
+        "zh": "输出目录路径。",
+        "en": "Output directory path."
+      },
+      "threads": {
+        "zh": "CPU线程数。",
+        "en": "Number of CPU threads."
+      },
+      "use_exon": {
+        "zh": "参数 use_exon 的说明。",
+        "en": "Description for parameter 'use_exon'."
+      }
+    }
   },
   "tme_profile": {
     "required": [
@@ -463,7 +1061,21 @@
     ],
     "optional": [
       "threads"
-    ]
+    ],
+    "param_hints": {
+      "input": {
+        "zh": "输入表达矩阵/文件路径。",
+        "en": "Input expression matrix/file path."
+      },
+      "output": {
+        "zh": "输出文件路径。",
+        "en": "Output file path."
+      },
+      "threads": {
+        "zh": "CPU线程数。",
+        "en": "Number of CPU threads."
+      }
+    }
   },
   "bayesprism": {
     "required": [
@@ -476,7 +1088,37 @@
       "cell_state_labels",
       "cell_type_labels",
       "key"
-    ]
+    ],
+    "param_hints": {
+      "input": {
+        "zh": "输入表达矩阵/文件路径。",
+        "en": "Input expression matrix/file path."
+      },
+      "output": {
+        "zh": "输出文件路径。",
+        "en": "Output file path."
+      },
+      "threads": {
+        "zh": "CPU线程数。",
+        "en": "Number of CPU threads."
+      },
+      "sc_dat": {
+        "zh": "参数 sc_dat 的说明。",
+        "en": "Description for parameter 'sc_dat'."
+      },
+      "cell_state_labels": {
+        "zh": "参数 cell_state_labels 的说明。",
+        "en": "Description for parameter 'cell_state_labels'."
+      },
+      "cell_type_labels": {
+        "zh": "参数 cell_type_labels 的说明。",
+        "en": "Description for parameter 'cell_type_labels'."
+      },
+      "key": {
+        "zh": "参数 key 的说明。",
+        "en": "Description for parameter 'key'."
+      }
+    }
   },
   "ai": {
     "required": [
@@ -486,6 +1128,24 @@
       "ollama_host",
       "chat_model",
       "embed_model"
-    ]
+    ],
+    "param_hints": {
+      "logdir": {
+        "zh": "参数 logdir 的说明。",
+        "en": "Description for parameter 'logdir'."
+      },
+      "ollama_host": {
+        "zh": "参数 ollama_host 的说明。",
+        "en": "Description for parameter 'ollama_host'."
+      },
+      "chat_model": {
+        "zh": "参数 chat_model 的说明。",
+        "en": "Description for parameter 'chat_model'."
+      },
+      "embed_model": {
+        "zh": "参数 embed_model 的说明。",
+        "en": "Description for parameter 'embed_model'."
+      }
+    }
   }
 }

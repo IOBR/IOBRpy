@@ -249,6 +249,7 @@ def load_rules() -> Dict[str, Any]:
         req_one = v.get("required_one_of", [])
         notes = v.get("notes", {})
         intent_keywords = v.get("intent_keywords", [])
+        param_hints = v.get("param_hints", {})
         if not isinstance(req, list): req = []
         if not isinstance(conf, list): conf = []
         if not isinstance(opt, list): opt = []
@@ -256,9 +257,10 @@ def load_rules() -> Dict[str, Any]:
         if not isinstance(req_one, list): req_one = []
         if not isinstance(notes, dict): notes = {}
         if not isinstance(intent_keywords, list): intent_keywords = []
+        if not isinstance(param_hints, dict): param_hints = {}
         if (not intent_keywords) and k in DEFAULT_INTENT_KEYWORDS:
             intent_keywords = list(DEFAULT_INTENT_KEYWORDS[k])
-        out[k] = {"required": req, "confirm": conf, "optional": opt, "choices": choices, "required_one_of": req_one, "notes": notes, "intent_keywords": intent_keywords}
+        out[k] = {"required": req, "confirm": conf, "optional": opt, "choices": choices, "required_one_of": req_one, "notes": notes, "intent_keywords": intent_keywords, "param_hints": param_hints}
     return out or DEFAULT_RULES
 
 def allowed_keys_for(subcommand: str, rules: Dict[str, Any]) -> List[str]:
@@ -762,32 +764,22 @@ def compute_needs(subcommand: str, rules: Dict[str, Any], params: Dict[str, Any]
 
 
 
-def load_param_hints() -> Dict[str, Any]:
-    raw = _read_json(REQUIRED_FILE, {})
-    if isinstance(raw, dict):
-        ph = raw.get("_param_hints", {})
-        if isinstance(ph, dict):
-            return ph
-    return {}
-
-
-def _param_hint_text(key: str, note: Any, prefer_chinese: bool, param_hints: Dict[str, Any]) -> str:
+def _param_hint_text(key: str, note: Any, prefer_chinese: bool, rule: Dict[str, Any]) -> str:
     if isinstance(note, str) and note.strip():
         base = note
         return _translate_to_chinese(base) if prefer_chinese else base
 
+    param_hints = rule.get("param_hints", {}) if isinstance(rule, dict) else {}
     if isinstance(param_hints, dict):
         hv = param_hints.get(key)
         if isinstance(hv, dict):
             base = hv.get("zh") if prefer_chinese else hv.get("en")
             if isinstance(base, str) and base.strip():
                 return base.strip()
-        elif isinstance(hv, str) and hv.strip():
-            return hv.strip()
 
     return (f"参数 {key} 的值。" if prefer_chinese else f"Value for parameter '{key}'.")
 
-def _format_param_detail(subcommand: str, key: str, rule: Dict[str, Any], prefer_chinese: bool, param_hints: Dict[str, Any]) -> str:
+def _format_param_detail(subcommand: str, key: str, rule: Dict[str, Any], prefer_chinese: bool) -> str:
     notes = rule.get("notes", {}) if isinstance(rule.get("notes", {}), dict) else {}
     choices = rule.get("choices", {}) if isinstance(rule.get("choices", {}), dict) else {}
     note = notes.get(key)
@@ -795,7 +787,7 @@ def _format_param_detail(subcommand: str, key: str, rule: Dict[str, Any], prefer
     if key in choices and isinstance(choices.get(key), list) and choices.get(key):
         choice_txt = ", ".join([str(x) for x in choices.get(key)])
 
-    hint = _param_hint_text(key, note, prefer_chinese, param_hints)
+    hint = _param_hint_text(key, note, prefer_chinese, rule)
     if prefer_chinese:
         parts = [f"- {key}（必填）", f"说明: {hint}"]
         if choice_txt:
@@ -808,7 +800,7 @@ def _format_param_detail(subcommand: str, key: str, rule: Dict[str, Any], prefer
     return "; ".join(parts)
 
 
-def _format_optional_details(rule: Dict[str, Any], prefer_chinese: bool, param_hints: Dict[str, Any]) -> List[str]:
+def _format_optional_details(rule: Dict[str, Any], prefer_chinese: bool) -> List[str]:
     opt = rule.get("optional", []) if isinstance(rule.get("optional", []), list) else []
     choices = rule.get("choices", {}) if isinstance(rule.get("choices", {}), dict) else {}
     notes = rule.get("notes", {}) if isinstance(rule.get("notes", {}), dict) else {}
@@ -818,7 +810,7 @@ def _format_optional_details(rule: Dict[str, Any], prefer_chinese: bool, param_h
         if k in choices and isinstance(choices.get(k), list) and choices.get(k):
             choice_txt = ", ".join([str(x) for x in choices.get(k)])
         note = notes.get(k)
-        hint = _param_hint_text(k, note, prefer_chinese, param_hints)
+        hint = _param_hint_text(k, note, prefer_chinese, rule)
         if prefer_chinese:
             seg = [f"- {k}", f"说明: {hint}"]
             if choice_txt:
@@ -834,7 +826,6 @@ def _format_optional_details(rule: Dict[str, Any], prefer_chinese: bool, param_h
 def compose_questions(subcommand: str, missing: List[str], need_confirm: List[str], params: Dict[str, Any], rules: Dict[str, Any], prefer_chinese: bool = False) -> str:
     lines: List[str] = []
     rule = rules.get(subcommand, {}) if isinstance(rules.get(subcommand, {}), dict) else {}
-    param_hints = load_param_hints()
 
     lines.append((f"当前将执行: iobrpy {subcommand}") if prefer_chinese else (f"Current target command: iobrpy {subcommand}"))
 
@@ -865,14 +856,14 @@ def compose_questions(subcommand: str, missing: List[str], need_confirm: List[st
                 lines.append((_translate_to_chinese(msg) if prefer_chinese else msg) if isinstance(msg, str) and msg.strip() else ("请提供一种有效输入模式。" if prefer_chinese else "Please provide one valid input mode."))
             continue
 
-        lines.append(_format_param_detail(subcommand, m, rule, prefer_chinese, param_hints))
+        lines.append(_format_param_detail(subcommand, m, rule, prefer_chinese))
 
     for k in need_confirm:
         v = params.get(k)
         if v not in (None, "", []):
             lines.append((f"请确认参数: {k}={v}（回复: confirm {k}）") if prefer_chinese else (f"Please confirm parameter: {k}={v} (reply: confirm {k})"))
 
-    optional_lines = _format_optional_details(rule, prefer_chinese, param_hints)
+    optional_lines = _format_optional_details(rule, prefer_chinese)
     if optional_lines:
         lines.append("可选参数（按需提供）:" if prefer_chinese else "Optional parameters (provide if needed):")
         lines.extend(optional_lines[:8])
