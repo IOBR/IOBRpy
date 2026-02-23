@@ -214,6 +214,16 @@ def validate_command_options(subcommand: str, argv: List[str]) -> Dict[str, Any]
     unknown = [a for a in used if a not in opts]
     return {"unknown_options": unknown, "help_unavailable": False, "help_excerpt": help_text[-1200:]}
 
+
+# Backfill for older packaged rules that may not yet include intent_keywords.
+DEFAULT_INTENT_KEYWORDS: Dict[str, List[str]] = {
+    "runall": ["fastq", "workflow", "pipeline", "from fastq to tme", "bulk workflow"],
+    "trust4": ["tcr", "bcr", "vdj", "repertoire", "clonotype", "immune receptor"],
+    "spechla": ["hla", "typing"],
+    "extract_hla_read": ["hla", "extract hla read"],
+    "hla_typing": ["hla", "typing", "hla analysis"],
+}
+
 DEFAULT_RULES = {
   "runall": {
     "required": ["fastq", "outdir", "mode", "index", "threads", "batch_size", "project"],
@@ -244,6 +254,8 @@ def load_rules() -> Dict[str, Any]:
         if not isinstance(req_one, list): req_one = []
         if not isinstance(notes, dict): notes = {}
         if not isinstance(intent_keywords, list): intent_keywords = []
+        if (not intent_keywords) and k in DEFAULT_INTENT_KEYWORDS:
+            intent_keywords = list(DEFAULT_INTENT_KEYWORDS[k])
         out[k] = {"required": req, "confirm": conf, "optional": opt, "choices": choices, "required_one_of": req_one, "notes": notes, "intent_keywords": intent_keywords}
     return out or DEFAULT_RULES
 
