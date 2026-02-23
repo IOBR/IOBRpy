@@ -536,7 +536,8 @@ def _tool_profile_overlap(task_tokens: set, profile_text: str) -> int:
     return len(task_tokens & profile_tokens)
 
 
-def _intent_keyword_score(task_l: str, rule: Dict[str, Any]) -> int:
+def _intent_keyword_score(task_l: str, task_tokens: set, rule: Dict[str, Any]) -> int:
+    """Score intent keywords using token-level matching to avoid CJK word-boundary pitfalls."""
     kws = rule.get("intent_keywords", []) if isinstance(rule, dict) else []
     if not isinstance(kws, list):
         return 0
@@ -549,11 +550,12 @@ def _intent_keyword_score(task_l: str, rule: Dict[str, Any]) -> int:
         if not k:
             continue
         if " " in k:
-            if k in text:
+            # phrase match after normalization
+            if _normalize_text(k) in _normalize_text(text):
                 score += 2
-        else:
-            if re.search(r"\b" + re.escape(k) + r"\b", text):
-                score += 1
+            continue
+        if k in task_tokens:
+            score += 1
     return score
 
 
@@ -583,7 +585,7 @@ def choose_subcommand(task: str, rules: Dict[str, Any]) -> str:
         required_keys = rules.get(t, {}).get("required", []) if isinstance(rules.get(t, {}), dict) else []
         req_tokens = set(re.findall(r"[a-z][a-z0-9]*", " ".join([str(x).replace("_", " ") for x in required_keys]).lower()))
         dir_bonus = 1 if has_abs_path and any(str(k).endswith("_dir") for k in required_keys) else 0
-        intent_kw_bonus = _intent_keyword_score(tl, rules.get(t, {}))
+        intent_kw_bonus = _intent_keyword_score(tl, bag, rules.get(t, {}))
         score = (
             votes.get(t, 0),
             intent_kw_bonus,
