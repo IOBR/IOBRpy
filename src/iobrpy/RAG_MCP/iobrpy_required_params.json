@@ -104,6 +104,16 @@
         "zh": "参数 remove_version 的说明。",
         "en": "Description for parameter 'remove_version'."
       }
+    },
+    "intent_keywords": {
+      "zh": [
+        "prepare_salmon",
+        "相关分析"
+      ],
+      "en": [
+        "prepare_salmon",
+        "analysis"
+      ]
     }
   },
   "count2tpm": {
@@ -167,6 +177,16 @@
         "zh": "参数 remove_version 的说明。",
         "en": "Description for parameter 'remove_version'."
       }
+    },
+    "intent_keywords": {
+      "zh": [
+        "count2tpm",
+        "相关分析"
+      ],
+      "en": [
+        "count2tpm",
+        "analysis"
+      ]
     }
   },
   "anno_eset": {
@@ -220,6 +240,16 @@
         "zh": "参数 remove_version 的说明。",
         "en": "Description for parameter 'remove_version'."
       }
+    },
+    "intent_keywords": {
+      "zh": [
+        "anno_eset",
+        "相关分析"
+      ],
+      "en": [
+        "anno_eset",
+        "analysis"
+      ]
     }
   },
   "calculate_sig_score": {
@@ -268,6 +298,16 @@
         "zh": "参数 id_type 的说明。",
         "en": "Description for parameter 'id_type'."
       }
+    },
+    "intent_keywords": {
+      "zh": [
+        "calculate_sig_score",
+        "相关分析"
+      ],
+      "en": [
+        "calculate_sig_score",
+        "analysis"
+      ]
     }
   },
   "cibersort": {
@@ -690,6 +730,16 @@
         "zh": "参数 random_state 的说明。",
         "en": "Description for parameter 'random_state'."
       }
+    },
+    "intent_keywords": {
+      "zh": [
+        "tme_cluster",
+        "相关分析"
+      ],
+      "en": [
+        "tme_cluster",
+        "analysis"
+      ]
     }
   },
   "LR_cal": {
@@ -728,6 +778,16 @@
         "zh": "参数 fdr 的说明。",
         "en": "Description for parameter 'fdr'."
       }
+    },
+    "intent_keywords": {
+      "zh": [
+        "LR_cal",
+        "相关分析"
+      ],
+      "en": [
+        "LR_cal",
+        "analysis"
+      ]
     }
   },
   "nmf": {
@@ -771,6 +831,16 @@
         "zh": "参数 method 的说明。",
         "en": "Description for parameter 'method'."
       }
+    },
+    "intent_keywords": {
+      "zh": [
+        "nmf",
+        "相关分析"
+      ],
+      "en": [
+        "nmf",
+        "analysis"
+      ]
     }
   },
   "mouse2human_eset": {
@@ -794,6 +864,16 @@
         "zh": "参数 method 的说明。",
         "en": "Description for parameter 'method'."
       }
+    },
+    "intent_keywords": {
+      "zh": [
+        "mouse2human_eset",
+        "相关分析"
+      ],
+      "en": [
+        "mouse2human_eset",
+        "analysis"
+      ]
     }
   },
   "batch_salmon": {
@@ -837,6 +917,16 @@
         "zh": "参数 gtf 的说明。",
         "en": "Description for parameter 'gtf'."
       }
+    },
+    "intent_keywords": {
+      "zh": [
+        "batch_salmon",
+        "相关分析"
+      ],
+      "en": [
+        "batch_salmon",
+        "analysis"
+      ]
     }
   },
   "merge_salmon": {
@@ -860,6 +950,16 @@
         "zh": "参数 num_processes 的说明。",
         "en": "Description for parameter 'num_processes'."
       }
+    },
+    "intent_keywords": {
+      "zh": [
+        "merge_salmon",
+        "相关分析"
+      ],
+      "en": [
+        "merge_salmon",
+        "analysis"
+      ]
     }
   },
   "merge_star_count": {
@@ -876,6 +976,16 @@
         "zh": "参数 project 的说明。",
         "en": "Description for parameter 'project'."
       }
+    },
+    "intent_keywords": {
+      "zh": [
+        "merge_star_count",
+        "相关分析"
+      ],
+      "en": [
+        "merge_star_count",
+        "analysis"
+      ]
     }
   },
   "batch_star_count": {
@@ -914,6 +1024,16 @@
         "zh": "参数 num_threads 的说明。",
         "en": "Description for parameter 'num_threads'."
       }
+    },
+    "intent_keywords": {
+      "zh": [
+        "batch_star_count",
+        "相关分析"
+      ],
+      "en": [
+        "batch_star_count",
+        "analysis"
+      ]
     }
   },
   "fastq_qc": {
@@ -957,6 +1077,16 @@
         "zh": "参数 length_required 的说明。",
         "en": "Description for parameter 'length_required'."
       }
+    },
+    "intent_keywords": {
+      "zh": [
+        "fastq_qc",
+        "相关分析"
+      ],
+      "en": [
+        "fastq_qc",
+        "analysis"
+      ]
     }
   },
   "log2_eset": {
@@ -973,6 +1103,16 @@
         "zh": "输出文件路径。",
         "en": "Output file path."
       }
+    },
+    "intent_keywords": {
+      "zh": [
+        "log2_eset",
+        "相关分析"
+      ],
+      "en": [
+        "log2_eset",
+        "analysis"
+      ]
     }
   },
   "trust4": {
@@ -1333,6 +1473,16 @@
         "zh": "参数 embed_model 的说明。",
         "en": "Description for parameter 'embed_model'."
       }
+    },
+    "intent_keywords": {
+      "zh": [
+        "ai",
+        "相关分析"
+      ],
+      "en": [
+        "ai",
+        "analysis"
+      ]
     }
   }
 }
