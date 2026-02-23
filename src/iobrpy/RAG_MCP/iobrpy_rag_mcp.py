@@ -575,6 +575,73 @@ def _intent_keyword_score(task_l: str, task_tokens: set, rule: Dict[str, Any]) -
     return score
 
 
+
+
+def _is_function_discovery_query(text: str) -> bool:
+    t = _normalize_text(text).lower()
+    patterns = [
+        r"有哪些\s*(function|functions|命令|功能)",
+        r"有什么\s*(function|functions|命令|功能)",
+        r"which\s+(function|functions|command|commands)",
+        r"what\s+can\s+i\s+use",
+        r"how\s+to\s+choose\s+(function|command)",
+    ]
+    return any(re.search(p, t) for p in patterns)
+
+
+def _rank_subcommands(task: str, rules: Dict[str, Any], top_n: int = 5) -> List[Tuple[str, Tuple[int, int, int, int, int, int]]]:
+    tl = _normalize_text(task).lower()
+    tools = list(rules.keys())
+    bag = _intent_tokenize(tl)
+
+    q_en = _translate_to_english(task)
+    query_for_rag = q_en if isinstance(q_en, str) and q_en.strip() else task
+    try:
+        ctx = rag_search(query_for_rag, top_k=10)
+    except Exception:
+        ctx = []
+
+    votes = _rag_command_votes(ctx, tools)
+    has_abs_path = re.search(r"/[A-Za-z0-9._/-]+", _normalize_text(task)) is not None
+
+    ranked: List[Tuple[Tuple[int, int, int, int, int, int], str]] = []
+    for t in tools:
+        profile = _tool_profile_text(t, rules)
+        name_tokens = set(re.findall(r"[a-z][a-z0-9]*", t.lower().replace('_', ' ')))
+        required_keys = rules.get(t, {}).get("required", []) if isinstance(rules.get(t, {}), dict) else []
+        req_tokens = set(re.findall(r"[a-z][a-z0-9]*", " ".join([str(x).replace("_", " ") for x in required_keys]).lower()))
+        dir_bonus = 1 if has_abs_path and any(str(k).endswith("_dir") for k in required_keys) else 0
+        intent_kw_bonus = _intent_keyword_score(tl, bag, rules.get(t, {}))
+        score = (
+            intent_kw_bonus,
+            votes.get(t, 0),
+            len(bag & req_tokens),
+            len(bag & name_tokens),
+            _tool_profile_overlap(bag, profile),
+            dir_bonus,
+        )
+        ranked.append((score, t))
+
+    ranked_sorted = sorted(ranked, key=lambda x: x[0], reverse=True)
+    return [(t, sc) for sc, t in ranked_sorted[: max(1, top_n)]]
+
+
+def _compose_function_suggestions(task: str, rules: Dict[str, Any], prefer_chinese: bool) -> str:
+    ranked = _rank_subcommands(task, rules, top_n=5)
+    if prefer_chinese:
+        lines = ["你这个需求可以先从这些 function 里选（按相关度排序）："]
+    else:
+        lines = ["You can choose from these functions first (ranked by relevance):"]
+
+    for i, (cmd, _score) in enumerate(ranked, 1):
+        r = rules.get(cmd, {}) if isinstance(rules.get(cmd, {}), dict) else {}
+        required = r.get("required", []) if isinstance(r.get("required", []), list) else []
+        req_show = ", ".join(required[:4]) + (" ..." if len(required) > 4 else "")
+        lines.append((f"{i}) {cmd}  (关键参数: {req_show or '无'})") if prefer_chinese else (f"{i}) {cmd}  (key params: {req_show or 'none'})"))
+
+    lines.append(("请回复 function 名称（例如：cibersort 或 quantiseq），我再继续补全参数。") if prefer_chinese else ("Reply with a function name (e.g., cibersort or quantiseq), and I will continue parameter completion."))
+    return "\n".join(lines)
+
 def choose_subcommand(task: str, rules: Dict[str, Any]) -> str:
     tl = _normalize_text(task).lower()
     tools = list(rules.keys())
@@ -941,6 +1008,12 @@ def tool_iobrpy_assistant(session_id: str, task: Optional[str] = None, answer_te
     if task:
         parse_task = task_en or task
         state.task = parse_task
+        if _is_function_discovery_query(task):
+            q = _compose_function_suggestions(task, rules, state.prefer_chinese)
+            state.subcommand = None
+            state.params = {}
+            state.confirmed = set()
+            return {"status": "need_info", "question": q, "needs": ["choose_function"]}
         # Route with the original user text to avoid translation-induced intent drift.
         state.subcommand = choose_subcommand(task, rules)
         state.params = {}
@@ -965,6 +1038,9 @@ def tool_iobrpy_assistant(session_id: str, task: Optional[str] = None, answer_te
         if not state.subcommand:
             parse_answer = answer_text_en or answer_text
             state.task = parse_answer
+            if _is_function_discovery_query(answer_text):
+                q = _compose_function_suggestions(answer_text, rules, state.prefer_chinese)
+                return {"status": "need_info", "question": q, "needs": ["choose_function"]}
             # Route with original answer text; translation is only auxiliary for slot extraction.
             state.subcommand = choose_subcommand(answer_text, rules)
             state.params = {}
