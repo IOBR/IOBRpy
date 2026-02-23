@@ -820,7 +820,8 @@ def tool_iobrpy_assistant(session_id: str, task: Optional[str] = None, answer_te
     if task:
         parse_task = task_en or task
         state.task = parse_task
-        state.subcommand = choose_subcommand(parse_task, rules)
+        # Route with the original user text to avoid translation-induced intent drift.
+        state.subcommand = choose_subcommand(task, rules)
         state.params = {}
         state.confirmed = set()
 
@@ -843,7 +844,8 @@ def tool_iobrpy_assistant(session_id: str, task: Optional[str] = None, answer_te
         if not state.subcommand:
             parse_answer = answer_text_en or answer_text
             state.task = parse_answer
-            state.subcommand = choose_subcommand(parse_answer, rules)
+            # Route with original answer text; translation is only auxiliary for slot extraction.
+            state.subcommand = choose_subcommand(answer_text, rules)
             state.params = {}
             state.confirmed = set()
 
