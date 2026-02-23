@@ -757,6 +757,59 @@ def compute_needs(subcommand: str, rules: Dict[str, Any], params: Dict[str, Any]
 
 
 
+
+
+
+DEFAULT_PARAM_HINTS_ZH: Dict[str, str] = {
+    "input": "输入表达矩阵/文件路径。",
+    "output": "输出文件路径。",
+    "outdir": "输出目录路径。",
+    "fastq": "FASTQ目录路径。",
+    "index": "参考索引路径/目录。",
+    "threads": "CPU线程数。",
+    "batch_size": "并行处理样本数。",
+    "perm": "置换次数（越大越稳定但更慢）。",
+    "QN": "是否启用分位数归一化（通常芯片TRUE，RNA-seq FALSE）。",
+    "t": "该命令的线程数。",
+    "o": "输出前缀或输出文件名基名。",
+    "od": "输出目录路径。",
+    "bam": "输入BAM文件路径或BAM目录。",
+    "r1": "Read1 FASTQ文件路径。",
+    "r2": "Read2 FASTQ文件路径。",
+    "ru": "单端FASTQ文件路径。",
+    "fqdir": "批量处理FASTQ目录。",
+}
+
+DEFAULT_PARAM_HINTS: Dict[str, str] = {
+    "input": "Input expression matrix/file path.",
+    "output": "Output file path.",
+    "outdir": "Output directory path.",
+    "fastq": "FASTQ directory path.",
+    "index": "Reference index path/directory.",
+    "threads": "Number of CPU threads.",
+    "batch_size": "Number of samples to process in parallel.",
+    "perm": "Number of permutations (larger gives more stable p-values but slower runtime).",
+    "QN": "Quantile normalization switch (typically TRUE for microarray, FALSE for RNA-seq).",
+    "t": "Number of CPU threads for this command.",
+    "o": "Output prefix or output file basename.",
+    "od": "Output directory path.",
+    "bam": "Input BAM file path or BAM directory.",
+    "r1": "Read1 FASTQ file path.",
+    "r2": "Read2 FASTQ file path.",
+    "ru": "Single-end FASTQ file path.",
+    "fqdir": "FASTQ directory for batch processing.",
+}
+
+
+def _param_hint_text(key: str, note: Any, prefer_chinese: bool) -> str:
+    if isinstance(note, str) and note.strip():
+        base = note
+    else:
+        base = (DEFAULT_PARAM_HINTS_ZH.get(key, "") if prefer_chinese else DEFAULT_PARAM_HINTS.get(key, ""))
+    if not base:
+        base = (f"参数 {key} 的值。" if prefer_chinese else f"Value for parameter '{key}'.")
+    return _translate_to_chinese(base) if (prefer_chinese and isinstance(note, str) and note.strip()) else base
+
 def _format_param_detail(subcommand: str, key: str, rule: Dict[str, Any], prefer_chinese: bool) -> str:
     notes = rule.get("notes", {}) if isinstance(rule.get("notes", {}), dict) else {}
     choices = rule.get("choices", {}) if isinstance(rule.get("choices", {}), dict) else {}
@@ -765,19 +818,16 @@ def _format_param_detail(subcommand: str, key: str, rule: Dict[str, Any], prefer
     if key in choices and isinstance(choices.get(key), list) and choices.get(key):
         choice_txt = ", ".join([str(x) for x in choices.get(key)])
 
+    hint = _param_hint_text(key, note, prefer_chinese)
     if prefer_chinese:
-        parts = [f"- {key}（必填）"]
+        parts = [f"- {key}（必填）", f"说明: {hint}"]
         if choice_txt:
             parts.append(f"可选值: {choice_txt}")
-        if isinstance(note, str) and note.strip():
-            parts.append(f"说明: {_translate_to_chinese(note)}")
         return "；".join(parts)
 
-    parts = [f"- {key} (required)"]
+    parts = [f"- {key} (required)", f"note: {hint}"]
     if choice_txt:
         parts.append(f"choices: {choice_txt}")
-    if isinstance(note, str) and note.strip():
-        parts.append(f"note: {note}")
     return "; ".join(parts)
 
 
@@ -791,19 +841,16 @@ def _format_optional_details(rule: Dict[str, Any], prefer_chinese: bool) -> List
         if k in choices and isinstance(choices.get(k), list) and choices.get(k):
             choice_txt = ", ".join([str(x) for x in choices.get(k)])
         note = notes.get(k)
+        hint = _param_hint_text(k, note, prefer_chinese)
         if prefer_chinese:
-            seg = [f"- {k}"]
+            seg = [f"- {k}", f"说明: {hint}"]
             if choice_txt:
                 seg.append(f"可选值: {choice_txt}")
-            if isinstance(note, str) and note.strip():
-                seg.append(f"说明: {_translate_to_chinese(note)}")
             lines.append("；".join(seg))
         else:
-            seg = [f"- {k}"]
+            seg = [f"- {k}", f"note: {hint}"]
             if choice_txt:
                 seg.append(f"choices: {choice_txt}")
-            if isinstance(note, str) and note.strip():
-                seg.append(f"note: {note}")
             lines.append("; ".join(seg))
     return lines
 
@@ -852,30 +899,33 @@ def compose_questions(subcommand: str, missing: List[str], need_confirm: List[st
         lines.append("可选参数（按需提供）:" if prefer_chinese else "Optional parameters (provide if needed):")
         lines.extend(optional_lines[:8])
 
-    if prefer_chinese:
-        lines.append("你可以这样回复（示例）:")
-        if subcommand == "trust4":
-            lines.append("- -b /path/sample.bam")
-            lines.append("- -1 /path/R1.fastq.gz")
-            lines.append("- -2 /path/R2.fastq.gz")
-            lines.append("- -t 8")
-            lines.append("- -o sample_prefix")
-        else:
-            lines.append("- outdir /path/output")
-            lines.append("- threads 8")
-            lines.append("- confirm threads")
+    lines.append("你可以这样回复（示例）:" if prefer_chinese else "You can reply like:")
+    if subcommand == "trust4":
+        lines.append("- -b /path/sample.bam")
+        lines.append("- -1 /path/R1.fastq.gz")
+        lines.append("- -2 /path/R2.fastq.gz")
+        lines.append("- -t 8")
+        lines.append("- -o sample_prefix")
     else:
-        lines.append("You can reply like:")
-        if subcommand == "trust4":
-            lines.append("- -b /path/sample.bam")
-            lines.append("- -1 /path/R1.fastq.gz")
-            lines.append("- -2 /path/R2.fastq.gz")
-            lines.append("- -t 8")
-            lines.append("- -o sample_prefix")
-        else:
-            lines.append("- outdir /path/output")
-            lines.append("- threads 8")
-            lines.append("- confirm threads")
+        # Build examples from missing/optional keys for this subcommand.
+        ex_keys = [k for k in missing if k != "__one_of_group"]
+        if not ex_keys:
+            ex_keys = (rule.get("required", []) if isinstance(rule.get("required", []), list) else [])[:2]
+        for k in ex_keys[:2]:
+            if k in PATH_KEYS or k in {"input", "output", "outdir", "index"}:
+                lines.append(f"- {k} /path/{k}")
+            elif k in INT_KEYS or k in {"threads", "perm", "batch_size", "t"}:
+                lines.append(f"- {k} 8")
+            else:
+                lines.append(f"- {k} <value>")
+        # add one optional example if useful
+        opt = rule.get("optional", []) if isinstance(rule.get("optional", []), list) else []
+        for ok in opt:
+            if ok in {"threads", "t", "perm", "QN"}:
+                lines.append(f"- {ok} {'FALSE' if ok=='QN' else '8'}")
+                break
+        for k in need_confirm[:1]:
+            lines.append(f"- confirm {k}")
 
     return "\n".join(lines) if lines else ("请补充缺失参数。" if prefer_chinese else "Please provide the missing parameters.")
 
