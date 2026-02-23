@@ -256,7 +256,7 @@ def load_rules() -> Dict[str, Any]:
         if not isinstance(choices, dict): choices = {}
         if not isinstance(req_one, list): req_one = []
         if not isinstance(notes, dict): notes = {}
-        if not isinstance(intent_keywords, list): intent_keywords = []
+        if not isinstance(intent_keywords, (list, dict)): intent_keywords = []
         if not isinstance(param_hints, dict): param_hints = {}
         if (not intent_keywords) and k in DEFAULT_INTENT_KEYWORDS:
             intent_keywords = list(DEFAULT_INTENT_KEYWORDS[k])
@@ -552,10 +552,24 @@ def _tool_profile_overlap(task_tokens: set, profile_text: str) -> int:
     return len(task_tokens & profile_tokens)
 
 
+def _intent_keywords_list(rule: Dict[str, Any]) -> List[str]:
+    kws = rule.get("intent_keywords", []) if isinstance(rule, dict) else []
+    if isinstance(kws, list):
+        return [str(x).strip().lower() for x in kws if isinstance(x, str) and str(x).strip()]
+    if isinstance(kws, dict):
+        out: List[str] = []
+        for lang in ("zh", "en"):
+            arr = kws.get(lang, [])
+            if isinstance(arr, list):
+                out.extend([str(x).strip().lower() for x in arr if isinstance(x, str) and str(x).strip()])
+        return out
+    return []
+
+
 def _intent_keyword_score(task_l: str, task_tokens: set, rule: Dict[str, Any]) -> int:
     """Score intent keywords using token-level matching to avoid CJK word-boundary pitfalls."""
-    kws = rule.get("intent_keywords", []) if isinstance(rule, dict) else []
-    if not isinstance(kws, list):
+    kws = _intent_keywords_list(rule)
+    if not kws:
         return 0
     text = task_l.replace("_", " ")
     score = 0
@@ -570,7 +584,11 @@ def _intent_keyword_score(task_l: str, task_tokens: set, rule: Dict[str, Any]) -
             if _normalize_text(k) in _normalize_text(text):
                 score += 2
             continue
-        if k in task_tokens:
+        # For CJK keywords, use substring matching; for Latin keywords, use token matching.
+        if re.search(r"[一-鿿]", k):
+            if k in text:
+                score += 2
+        elif k in task_tokens:
             score += 1
     return score
 
@@ -626,8 +644,22 @@ def _rank_subcommands(task: str, rules: Dict[str, Any], top_n: int = 5) -> List[
     return [(t, sc) for sc, t in ranked_sorted[: max(1, top_n)]]
 
 
+def _render_intent_keywords(rule: Dict[str, Any], prefer_chinese: bool) -> str:
+    kws = rule.get("intent_keywords", []) if isinstance(rule, dict) else []
+    if isinstance(kws, dict):
+        arr = kws.get("zh" if prefer_chinese else "en", [])
+        if isinstance(arr, list) and arr:
+            return ", ".join([str(x) for x in arr[:4]])
+        arr2 = kws.get("en", []) if prefer_chinese else kws.get("zh", [])
+        if isinstance(arr2, list) and arr2:
+            return ", ".join([str(x) for x in arr2[:4]])
+    if isinstance(kws, list) and kws:
+        return ", ".join([str(x) for x in kws[:4]])
+    return ""
+
+
 def _compose_function_suggestions(task: str, rules: Dict[str, Any], prefer_chinese: bool) -> str:
-    ranked = _rank_subcommands(task, rules, top_n=5)
+    ranked = _rank_subcommands(task, rules, top_n=10)
     if prefer_chinese:
         lines = ["你这个需求可以先从这些 function 里选（按相关度排序）："]
     else:
@@ -637,7 +669,11 @@ def _compose_function_suggestions(task: str, rules: Dict[str, Any], prefer_chine
         r = rules.get(cmd, {}) if isinstance(rules.get(cmd, {}), dict) else {}
         required = r.get("required", []) if isinstance(r.get("required", []), list) else []
         req_show = ", ".join(required[:4]) + (" ..." if len(required) > 4 else "")
-        lines.append((f"{i}) {cmd}  (关键参数: {req_show or '无'})") if prefer_chinese else (f"{i}) {cmd}  (key params: {req_show or 'none'})"))
+        kws_show = _render_intent_keywords(r, prefer_chinese)
+        if prefer_chinese:
+            lines.append(f"{i}) {cmd}  (关键参数: {req_show or '无'}; 关键词: {kws_show or '未配置'})")
+        else:
+            lines.append(f"{i}) {cmd}  (key params: {req_show or 'none'}; keywords: {kws_show or 'not configured'})")
 
     lines.append(("请回复 function 名称（例如：cibersort 或 quantiseq），我再继续补全参数。") if prefer_chinese else ("Reply with a function name (e.g., cibersort or quantiseq), and I will continue parameter completion."))
     return "\n".join(lines)

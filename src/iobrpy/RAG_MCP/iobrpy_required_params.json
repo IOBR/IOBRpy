@@ -30,13 +30,19 @@
       "fastq": "Please provide FASTQ directory path.",
       "outdir": "Please provide output directory path."
     },
-    "intent_keywords": [
-      "fastq",
-      "workflow",
-      "pipeline",
-      "from fastq to tme",
-      "bulk workflow"
-    ],
+    "intent_keywords": {
+      "zh": [
+        "全流程",
+        "从fastq到tme",
+        "批处理流程"
+      ],
+      "en": [
+        "workflow",
+        "pipeline",
+        "from fastq to tme",
+        "bulk workflow"
+      ]
+    },
     "param_hints": {
       "fastq": {
         "zh": "FASTQ目录路径。",
@@ -294,6 +300,18 @@
         "zh": "CPU线程数。",
         "en": "Number of CPU threads."
       }
+    },
+    "intent_keywords": {
+      "zh": [
+        "免疫反卷积",
+        "细胞比例",
+        "肿瘤微环境"
+      ],
+      "en": [
+        "immune deconvolution",
+        "cell fraction",
+        "cibersort"
+      ]
     }
   },
   "IPS": {
@@ -310,6 +328,17 @@
         "zh": "输出文件路径。",
         "en": "Output file path."
       }
+    },
+    "intent_keywords": {
+      "zh": [
+        "免疫评分",
+        "ips评分"
+      ],
+      "en": [
+        "immunophenoscore",
+        "ips",
+        "immune score"
+      ]
     }
   },
   "estimate": {
@@ -333,6 +362,18 @@
         "zh": "参数 platform 的说明。",
         "en": "Description for parameter 'platform'."
       }
+    },
+    "intent_keywords": {
+      "zh": [
+        "肿瘤纯度",
+        "免疫基质评分"
+      ],
+      "en": [
+        "estimate",
+        "tumor purity",
+        "immune score",
+        "stromal score"
+      ]
     }
   },
   "mcpcounter": {
@@ -354,6 +395,18 @@
         "zh": "输出文件路径。",
         "en": "Output file path."
       }
+    },
+    "intent_keywords": {
+      "zh": [
+        "免疫细胞计数",
+        "mcpcounter",
+        "反卷积"
+      ],
+      "en": [
+        "mcpcounter",
+        "cell abundance",
+        "deconvolution"
+      ]
     }
   },
   "quantiseq": {
@@ -402,6 +455,18 @@
         "zh": "参数 rmgenes 的说明。",
         "en": "Description for parameter 'rmgenes'."
       }
+    },
+    "intent_keywords": {
+      "zh": [
+        "免疫反卷积",
+        "quantiseq",
+        "细胞比例"
+      ],
+      "en": [
+        "quantiseq",
+        "immune deconvolution",
+        "cell fraction"
+      ]
     }
   },
   "epic": {
@@ -425,6 +490,18 @@
         "zh": "参数 reference 的说明。",
         "en": "Description for parameter 'reference'."
       }
+    },
+    "intent_keywords": {
+      "zh": [
+        "免疫反卷积",
+        "epic",
+        "细胞比例"
+      ],
+      "en": [
+        "epic",
+        "immune deconvolution",
+        "cell fraction"
+      ]
     }
   },
   "deside": {
@@ -498,6 +575,18 @@
         "zh": "参数 result_dir 的说明。",
         "en": "Description for parameter 'result_dir'."
       }
+    },
+    "intent_keywords": {
+      "zh": [
+        "反卷积",
+        "deside",
+        "细胞组成"
+      ],
+      "en": [
+        "deside",
+        "deconvolution",
+        "cell composition"
+      ]
     }
   },
   "tme_cluster": {
@@ -878,14 +967,21 @@
         "fqdir"
       ]
     ],
-    "intent_keywords": [
-      "tcr",
-      "bcr",
-      "vdj",
-      "repertoire",
-      "clonotype",
-      "immune receptor"
-    ],
+    "intent_keywords": {
+      "zh": [
+        "tcr",
+        "bcr",
+        "免疫受体",
+        "克隆型分析"
+      ],
+      "en": [
+        "tcr",
+        "bcr",
+        "vdj",
+        "repertoire",
+        "clonotype"
+      ]
+    },
     "param_hints": {
       "bam": {
         "zh": "输入BAM文件路径或BAM目录。",
@@ -932,10 +1028,16 @@
       "threads",
       "use_exon"
     ],
-    "intent_keywords": [
-      "hla",
-      "typing"
-    ],
+    "intent_keywords": {
+      "zh": [
+        "hla",
+        "分型"
+      ],
+      "en": [
+        "hla",
+        "typing"
+      ]
+    },
     "param_hints": {
       "name": {
         "zh": "参数 name 的说明。",
@@ -979,10 +1081,16 @@
         "hg19"
       ]
     },
-    "intent_keywords": [
-      "hla",
-      "extract hla read"
-    ],
+    "intent_keywords": {
+      "zh": [
+        "hla",
+        "提取hla reads"
+      ],
+      "en": [
+        "hla",
+        "extract hla read"
+      ]
+    },
     "param_hints": {
       "sample": {
         "zh": "参数 sample 的说明。",
@@ -1026,11 +1134,18 @@
         1
       ]
     },
-    "intent_keywords": [
-      "hla",
-      "typing",
-      "hla analysis"
-    ],
+    "intent_keywords": {
+      "zh": [
+        "hla",
+        "hla分析",
+        "hla分型"
+      ],
+      "en": [
+        "hla",
+        "typing",
+        "hla analysis"
+      ]
+    },
     "param_hints": {
       "bam_dir": {
         "zh": "参数 bam_dir 的说明。",
@@ -1075,6 +1190,18 @@
         "zh": "CPU线程数。",
         "en": "Number of CPU threads."
       }
+    },
+    "intent_keywords": {
+      "zh": [
+        "肿瘤微环境",
+        "tme画像",
+        "免疫浸润"
+      ],
+      "en": [
+        "tme profile",
+        "microenvironment",
+        "immune infiltration"
+      ]
     }
   },
   "bayesprism": {
@@ -1118,6 +1245,18 @@
         "zh": "参数 key 的说明。",
         "en": "Description for parameter 'key'."
       }
+    },
+    "intent_keywords": {
+      "zh": [
+        "反卷积",
+        "bayesprism",
+        "细胞比例"
+      ],
+      "en": [
+        "bayesprism",
+        "deconvolution",
+        "cell fraction"
+      ]
     }
   },
   "ai": {
