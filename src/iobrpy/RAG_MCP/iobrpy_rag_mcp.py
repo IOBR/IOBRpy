@@ -250,6 +250,7 @@ def load_rules() -> Dict[str, Any]:
         notes = v.get("notes", {})
         intent_keywords = v.get("intent_keywords", [])
         param_hints = v.get("param_hints", {})
+        function_summary = v.get("function_summary", {})
         if not isinstance(req, list): req = []
         if not isinstance(conf, list): conf = []
         if not isinstance(opt, list): opt = []
@@ -258,9 +259,10 @@ def load_rules() -> Dict[str, Any]:
         if not isinstance(notes, dict): notes = {}
         if not isinstance(intent_keywords, (list, dict)): intent_keywords = []
         if not isinstance(param_hints, dict): param_hints = {}
+        if not isinstance(function_summary, (dict, str)): function_summary = {}
         if (not intent_keywords) and k in DEFAULT_INTENT_KEYWORDS:
             intent_keywords = list(DEFAULT_INTENT_KEYWORDS[k])
-        out[k] = {"required": req, "confirm": conf, "optional": opt, "choices": choices, "required_one_of": req_one, "notes": notes, "intent_keywords": intent_keywords, "param_hints": param_hints}
+        out[k] = {"required": req, "confirm": conf, "optional": opt, "choices": choices, "required_one_of": req_one, "notes": notes, "intent_keywords": intent_keywords, "param_hints": param_hints, "function_summary": function_summary}
     return out or DEFAULT_RULES
 
 def allowed_keys_for(subcommand: str, rules: Dict[str, Any]) -> List[str]:
@@ -607,7 +609,7 @@ def _is_function_discovery_query(text: str) -> bool:
     return any(re.search(p, t) for p in patterns)
 
 
-def _rank_subcommands(task: str, rules: Dict[str, Any], top_n: int = 5) -> List[Tuple[str, Tuple[int, int, int, int, int, int]]]:
+def _rank_subcommands(task: str, rules: Dict[str, Any], top_n: int = 6) -> List[Tuple[str, Tuple[int, int, int, int, int, int]]]:
     tl = _normalize_text(task).lower()
     tools = list(rules.keys())
     bag = _intent_tokenize(tl)
@@ -641,7 +643,11 @@ def _rank_subcommands(task: str, rules: Dict[str, Any], top_n: int = 5) -> List[
         ranked.append((score, t))
 
     ranked_sorted = sorted(ranked, key=lambda x: x[0], reverse=True)
-    return [(t, sc) for sc, t in ranked_sorted[: max(1, top_n)]]
+    # Keep only relevant candidates in discovery mode (intent/rag evidence exists).
+    filtered = [(t, sc) for sc, t in ranked_sorted if (sc[0] > 0 or sc[1] > 0)]
+    if not filtered:
+        filtered = [(t, sc) for sc, t in ranked_sorted[:3]]
+    return filtered[: max(1, top_n)]
 
 
 def _render_intent_keywords(rule: Dict[str, Any], prefer_chinese: bool) -> str:
@@ -658,8 +664,23 @@ def _render_intent_keywords(rule: Dict[str, Any], prefer_chinese: bool) -> str:
     return ""
 
 
+
+
+def _function_summary(rule: Dict[str, Any], prefer_chinese: bool) -> str:
+    summary = rule.get("function_summary") if isinstance(rule, dict) else None
+    if isinstance(summary, dict):
+        txt = summary.get("zh" if prefer_chinese else "en")
+        if isinstance(txt, str) and txt.strip():
+            return txt.strip()
+    if isinstance(summary, str) and summary.strip():
+        return summary.strip()
+    req = rule.get("required", []) if isinstance(rule.get("required", []), list) else []
+    if prefer_chinese:
+        return f"需要参数: {', '.join(req[:4]) if req else '无'}。"
+    return f"Requires: {', '.join(req[:4]) if req else 'none'}."
+
 def _compose_function_suggestions(task: str, rules: Dict[str, Any], prefer_chinese: bool) -> str:
-    ranked = _rank_subcommands(task, rules, top_n=10)
+    ranked = _rank_subcommands(task, rules, top_n=6)
     if prefer_chinese:
         lines = ["你这个需求可以先从这些 function 里选（按相关度排序）："]
     else:
@@ -669,11 +690,11 @@ def _compose_function_suggestions(task: str, rules: Dict[str, Any], prefer_chine
         r = rules.get(cmd, {}) if isinstance(rules.get(cmd, {}), dict) else {}
         required = r.get("required", []) if isinstance(r.get("required", []), list) else []
         req_show = ", ".join(required[:4]) + (" ..." if len(required) > 4 else "")
-        kws_show = _render_intent_keywords(r, prefer_chinese)
+        desc = _function_summary(r, prefer_chinese)
         if prefer_chinese:
-            lines.append(f"{i}) {cmd}  (关键参数: {req_show or '无'}; 关键词: {kws_show or '未配置'})")
+            lines.append(f"{i}) {cmd}：{desc}")
         else:
-            lines.append(f"{i}) {cmd}  (key params: {req_show or 'none'}; keywords: {kws_show or 'not configured'})")
+            lines.append(f"{i}) {cmd}: {desc}")
 
     lines.append(("请回复 function 名称（例如：cibersort 或 quantiseq），我再继续补全参数。") if prefer_chinese else ("Reply with a function name (e.g., cibersort or quantiseq), and I will continue parameter completion."))
     return "\n".join(lines)

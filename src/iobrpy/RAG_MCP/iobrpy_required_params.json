@@ -72,6 +72,10 @@
         "zh": "参数 project 的说明。",
         "en": "Description for parameter 'project'."
       }
+    },
+    "function_summary": {
+      "zh": "执行从FASTQ到下游分析的一体化流程。",
+      "en": "Run end-to-end workflow from FASTQ to downstream analyses."
     }
   },
   "prepare_salmon": {
@@ -312,6 +316,10 @@
         "cell fraction",
         "cibersort"
       ]
+    },
+    "function_summary": {
+      "zh": "基于表达矩阵估计免疫细胞比例，输出各细胞类型丰度表。",
+      "en": "Estimate immune cell fractions from expression data and output cell-type abundance table."
     }
   },
   "IPS": {
@@ -339,6 +347,10 @@
         "ips",
         "immune score"
       ]
+    },
+    "function_summary": {
+      "zh": "计算免疫表型评分（IPS），输出样本免疫评分表。",
+      "en": "Calculate Immunophenoscore (IPS) and output per-sample immune scores."
     }
   },
   "estimate": {
@@ -374,6 +386,10 @@
         "immune score",
         "stromal score"
       ]
+    },
+    "function_summary": {
+      "zh": "计算肿瘤纯度及免疫/基质评分，输出ESTIMATE结果。",
+      "en": "Compute tumor purity and immune/stromal scores, output ESTIMATE metrics."
     }
   },
   "mcpcounter": {
@@ -407,6 +423,10 @@
         "cell abundance",
         "deconvolution"
       ]
+    },
+    "function_summary": {
+      "zh": "计算免疫与基质细胞丰度分数，输出各细胞分值矩阵。",
+      "en": "Compute immune/stromal abundance scores and output per-cell-type score matrix."
     }
   },
   "quantiseq": {
@@ -467,6 +487,10 @@
         "immune deconvolution",
         "cell fraction"
       ]
+    },
+    "function_summary": {
+      "zh": "估计肿瘤样本中免疫细胞组成，输出细胞比例结果。",
+      "en": "Estimate immune-cell composition in tumor samples and output cell-fraction results."
     }
   },
   "epic": {
@@ -502,6 +526,10 @@
         "immune deconvolution",
         "cell fraction"
       ]
+    },
+    "function_summary": {
+      "zh": "进行免疫/基质细胞反卷积，输出细胞群体比例。",
+      "en": "Perform immune/stromal deconvolution and output cell-population fractions."
     }
   },
   "deside": {
@@ -587,6 +615,10 @@
         "deconvolution",
         "cell composition"
       ]
+    },
+    "function_summary": {
+      "zh": "使用预训练模型做细胞组成反卷积，输出细胞类型占比。",
+      "en": "Use pretrained model for cell-composition deconvolution and output cell-type proportions."
     }
   },
   "tme_cluster": {
@@ -1257,6 +1289,10 @@
         "deconvolution",
         "cell fraction"
       ]
+    },
+    "function_summary": {
+      "zh": "贝叶斯反卷积估计细胞组成，输出细胞比例与相关结果。",
+      "en": "Run Bayesian deconvolution to estimate cell composition and output cell-fraction results."
     }
   },
   "ai": {
