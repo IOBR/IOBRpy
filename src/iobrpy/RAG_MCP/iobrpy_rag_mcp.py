@@ -644,7 +644,10 @@ def _rank_subcommands(task: str, rules: Dict[str, Any], top_n: Optional[int] = N
 
     ranked_sorted = sorted(ranked, key=lambda x: x[0], reverse=True)
     # Keep only relevant candidates in discovery mode (intent/rag evidence exists).
-    filtered = [(t, sc) for sc, t in ranked_sorted if (sc[0] > 0 or sc[1] > 0)]
+    # Stricter relevance gate for discovery:
+    # - always keep intent-keyword hits;
+    # - only keep RAG-vote-only hits when there is also lexical evidence.
+    filtered = [(t, sc) for sc, t in ranked_sorted if (sc[0] > 0 or (sc[1] > 0 and (sc[2] > 0 or sc[3] > 0 or sc[4] > 0)))]
     if filtered:
         return filtered if top_n is None else filtered[: max(1, top_n)]
     # If no evidence at all, provide a small fallback list.
