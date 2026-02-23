@@ -755,18 +755,70 @@ def compute_needs(subcommand: str, rules: Dict[str, Any], params: Dict[str, Any]
     need_confirm = [k for k in confirm if k not in confirmed]
     return missing, need_confirm
 
+
+
+def _format_param_detail(subcommand: str, key: str, rule: Dict[str, Any], prefer_chinese: bool) -> str:
+    notes = rule.get("notes", {}) if isinstance(rule.get("notes", {}), dict) else {}
+    choices = rule.get("choices", {}) if isinstance(rule.get("choices", {}), dict) else {}
+    note = notes.get(key)
+    choice_txt = None
+    if key in choices and isinstance(choices.get(key), list) and choices.get(key):
+        choice_txt = ", ".join([str(x) for x in choices.get(key)])
+
+    if prefer_chinese:
+        parts = [f"- {key}（必填）"]
+        if choice_txt:
+            parts.append(f"可选值: {choice_txt}")
+        if isinstance(note, str) and note.strip():
+            parts.append(f"说明: {_translate_to_chinese(note)}")
+        return "；".join(parts)
+
+    parts = [f"- {key} (required)"]
+    if choice_txt:
+        parts.append(f"choices: {choice_txt}")
+    if isinstance(note, str) and note.strip():
+        parts.append(f"note: {note}")
+    return "; ".join(parts)
+
+
+def _format_optional_details(rule: Dict[str, Any], prefer_chinese: bool) -> List[str]:
+    opt = rule.get("optional", []) if isinstance(rule.get("optional", []), list) else []
+    choices = rule.get("choices", {}) if isinstance(rule.get("choices", {}), dict) else {}
+    notes = rule.get("notes", {}) if isinstance(rule.get("notes", {}), dict) else {}
+    lines: List[str] = []
+    for k in opt:
+        choice_txt = None
+        if k in choices and isinstance(choices.get(k), list) and choices.get(k):
+            choice_txt = ", ".join([str(x) for x in choices.get(k)])
+        note = notes.get(k)
+        if prefer_chinese:
+            seg = [f"- {k}"]
+            if choice_txt:
+                seg.append(f"可选值: {choice_txt}")
+            if isinstance(note, str) and note.strip():
+                seg.append(f"说明: {_translate_to_chinese(note)}")
+            lines.append("；".join(seg))
+        else:
+            seg = [f"- {k}"]
+            if choice_txt:
+                seg.append(f"choices: {choice_txt}")
+            if isinstance(note, str) and note.strip():
+                seg.append(f"note: {note}")
+            lines.append("; ".join(seg))
+    return lines
+
 def compose_questions(subcommand: str, missing: List[str], need_confirm: List[str], params: Dict[str, Any], rules: Dict[str, Any], prefer_chinese: bool = False) -> str:
-    lines = []
-    rule = rules.get(subcommand, {})
-    notes = rule.get("notes", {}) if isinstance(rule, dict) else {}
+    lines: List[str] = []
+    rule = rules.get(subcommand, {}) if isinstance(rules.get(subcommand, {}), dict) else {}
+
+    lines.append((f"当前将执行: iobrpy {subcommand}") if prefer_chinese else (f"Current target command: iobrpy {subcommand}"))
 
     for m in missing:
         if m == "__one_of_group":
-            # trust4 has conditional input modes; provide a detailed deterministic hint.
             if subcommand == "trust4":
                 if prefer_chinese:
                     lines.append(
-                        "trust4 需要先确定一种输入模式（四选一）：\n"
+                        "缺少输入模式（四选一）:\n"
                         "1) BAM/目录模式：-b <BAM文件或BAM目录>\n"
                         "2) 双端FASTQ模式：-1 <read1.fastq.gz> -2 <read2.fastq.gz>\n"
                         "3) 单端FASTQ模式：-u <single.fastq.gz>\n"
@@ -775,27 +827,42 @@ def compose_questions(subcommand: str, missing: List[str], need_confirm: List[st
                     )
                 else:
                     lines.append(
-                        "trust4 requires one input mode (choose one):\n"
+                        "Missing input mode (choose one):\n"
                         "1) BAM/file-or-dir mode: -b <BAM file or BAM directory>\n"
                         "2) Paired FASTQ mode: -1 <read1.fastq.gz> -2 <read2.fastq.gz>\n"
                         "3) Single-end FASTQ mode: -u <single.fastq.gz>\n"
                         "4) Batch FASTQ dir mode: --fqdir <FASTQ directory>\n"
                         "Example: iobrpy trust4 -b /path/sample.bam -o sample_prefix"
                     )
-                continue
-            msg = notes.get("required_one_of") or notes.get("input_mode")
-            lines.append((_translate_to_chinese(msg) if prefer_chinese else msg) if isinstance(msg, str) and msg.strip() else ("请提供一种有效输入模式。" if prefer_chinese else "Please provide one valid input mode."))
+            else:
+                notes = rule.get("notes", {}) if isinstance(rule.get("notes", {}), dict) else {}
+                msg = notes.get("required_one_of") or notes.get("input_mode")
+                lines.append((_translate_to_chinese(msg) if prefer_chinese else msg) if isinstance(msg, str) and msg.strip() else ("请提供一种有效输入模式。" if prefer_chinese else "Please provide one valid input mode."))
             continue
-        msg = notes.get(m) if isinstance(notes, dict) else None
-        if isinstance(msg, str) and msg.strip():
-            lines.append(_translate_to_chinese(msg) if prefer_chinese else msg)
-        else:
-            lines.append((f"请提供 {m}。") if prefer_chinese else (f"Please provide {m}."))
+
+        lines.append(_format_param_detail(subcommand, m, rule, prefer_chinese))
 
     for k in need_confirm:
         v = params.get(k)
         if v not in (None, "", []):
-            lines.append((f"请确认 {k}={v}。可回复：confirm {k}") if prefer_chinese else (f"Please confirm {k}={v}. Reply like: confirm {k}"))
+            lines.append((f"请确认参数: {k}={v}（回复: confirm {k}）") if prefer_chinese else (f"Please confirm parameter: {k}={v} (reply: confirm {k})"))
+
+    optional_lines = _format_optional_details(rule, prefer_chinese)
+    if optional_lines:
+        lines.append("可选参数（按需提供）:" if prefer_chinese else "Optional parameters (provide if needed):")
+        lines.extend(optional_lines[:8])
+
+    if prefer_chinese:
+        lines.append("你可以这样回复（示例）:")
+        lines.append("- outdir /path/output")
+        lines.append("- threads 8")
+        lines.append("- confirm threads")
+    else:
+        lines.append("You can reply like:")
+        lines.append("- outdir /path/output")
+        lines.append("- threads 8")
+        lines.append("- confirm threads")
+
     return "\n".join(lines) if lines else ("请补充缺失参数。" if prefer_chinese else "Please provide the missing parameters.")
 
 def merge_defaults(params: Dict[str, Any], subcommand: str, rules: Dict[str, Any]) -> Dict[str, Any]:
