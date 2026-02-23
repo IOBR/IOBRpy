@@ -762,6 +762,27 @@ def compose_questions(subcommand: str, missing: List[str], need_confirm: List[st
 
     for m in missing:
         if m == "__one_of_group":
+            # trust4 has conditional input modes; provide a detailed deterministic hint.
+            if subcommand == "trust4":
+                if prefer_chinese:
+                    lines.append(
+                        "trust4 需要先确定一种输入模式（四选一）：\n"
+                        "1) BAM/目录模式：-b <BAM文件或BAM目录>\n"
+                        "2) 双端FASTQ模式：-1 <read1.fastq.gz> -2 <read2.fastq.gz>\n"
+                        "3) 单端FASTQ模式：-u <single.fastq.gz>\n"
+                        "4) 批量FASTQ目录模式：--fqdir <FASTQ目录>\n"
+                        "示例：iobrpy trust4 -b /path/sample.bam -o sample_prefix"
+                    )
+                else:
+                    lines.append(
+                        "trust4 requires one input mode (choose one):\n"
+                        "1) BAM/file-or-dir mode: -b <BAM file or BAM directory>\n"
+                        "2) Paired FASTQ mode: -1 <read1.fastq.gz> -2 <read2.fastq.gz>\n"
+                        "3) Single-end FASTQ mode: -u <single.fastq.gz>\n"
+                        "4) Batch FASTQ dir mode: --fqdir <FASTQ directory>\n"
+                        "Example: iobrpy trust4 -b /path/sample.bam -o sample_prefix"
+                    )
+                continue
             msg = notes.get("required_one_of") or notes.get("input_mode")
             lines.append((_translate_to_chinese(msg) if prefer_chinese else msg) if isinstance(msg, str) and msg.strip() else ("请提供一种有效输入模式。" if prefer_chinese else "Please provide one valid input mode."))
             continue
