@@ -238,6 +238,8 @@ def load_rules() -> Dict[str, Any]:
         return DEFAULT_RULES
     out = {}
     for k, v in rules.items():
+        if isinstance(k, str) and k.startswith("_"):
+            continue
         if not isinstance(v, dict):
             continue
         req = v.get("required", [])
@@ -760,57 +762,32 @@ def compute_needs(subcommand: str, rules: Dict[str, Any], params: Dict[str, Any]
 
 
 
-DEFAULT_PARAM_HINTS_ZH: Dict[str, str] = {
-    "input": "输入表达矩阵/文件路径。",
-    "output": "输出文件路径。",
-    "outdir": "输出目录路径。",
-    "fastq": "FASTQ目录路径。",
-    "index": "参考索引路径/目录。",
-    "threads": "CPU线程数。",
-    "batch_size": "并行处理样本数。",
-    "perm": "置换次数（越大越稳定但更慢）。",
-    "QN": "是否启用分位数归一化（通常芯片TRUE，RNA-seq FALSE）。",
-    "t": "该命令的线程数。",
-    "o": "输出前缀或输出文件名基名。",
-    "od": "输出目录路径。",
-    "bam": "输入BAM文件路径或BAM目录。",
-    "r1": "Read1 FASTQ文件路径。",
-    "r2": "Read2 FASTQ文件路径。",
-    "ru": "单端FASTQ文件路径。",
-    "fqdir": "批量处理FASTQ目录。",
-}
-
-DEFAULT_PARAM_HINTS: Dict[str, str] = {
-    "input": "Input expression matrix/file path.",
-    "output": "Output file path.",
-    "outdir": "Output directory path.",
-    "fastq": "FASTQ directory path.",
-    "index": "Reference index path/directory.",
-    "threads": "Number of CPU threads.",
-    "batch_size": "Number of samples to process in parallel.",
-    "perm": "Number of permutations (larger gives more stable p-values but slower runtime).",
-    "QN": "Quantile normalization switch (typically TRUE for microarray, FALSE for RNA-seq).",
-    "t": "Number of CPU threads for this command.",
-    "o": "Output prefix or output file basename.",
-    "od": "Output directory path.",
-    "bam": "Input BAM file path or BAM directory.",
-    "r1": "Read1 FASTQ file path.",
-    "r2": "Read2 FASTQ file path.",
-    "ru": "Single-end FASTQ file path.",
-    "fqdir": "FASTQ directory for batch processing.",
-}
+def load_param_hints() -> Dict[str, Any]:
+    raw = _read_json(REQUIRED_FILE, {})
+    if isinstance(raw, dict):
+        ph = raw.get("_param_hints", {})
+        if isinstance(ph, dict):
+            return ph
+    return {}
 
 
-def _param_hint_text(key: str, note: Any, prefer_chinese: bool) -> str:
+def _param_hint_text(key: str, note: Any, prefer_chinese: bool, param_hints: Dict[str, Any]) -> str:
     if isinstance(note, str) and note.strip():
         base = note
-    else:
-        base = (DEFAULT_PARAM_HINTS_ZH.get(key, "") if prefer_chinese else DEFAULT_PARAM_HINTS.get(key, ""))
-    if not base:
-        base = (f"参数 {key} 的值。" if prefer_chinese else f"Value for parameter '{key}'.")
-    return _translate_to_chinese(base) if (prefer_chinese and isinstance(note, str) and note.strip()) else base
+        return _translate_to_chinese(base) if prefer_chinese else base
 
-def _format_param_detail(subcommand: str, key: str, rule: Dict[str, Any], prefer_chinese: bool) -> str:
+    if isinstance(param_hints, dict):
+        hv = param_hints.get(key)
+        if isinstance(hv, dict):
+            base = hv.get("zh") if prefer_chinese else hv.get("en")
+            if isinstance(base, str) and base.strip():
+                return base.strip()
+        elif isinstance(hv, str) and hv.strip():
+            return hv.strip()
+
+    return (f"参数 {key} 的值。" if prefer_chinese else f"Value for parameter '{key}'.")
+
+def _format_param_detail(subcommand: str, key: str, rule: Dict[str, Any], prefer_chinese: bool, param_hints: Dict[str, Any]) -> str:
     notes = rule.get("notes", {}) if isinstance(rule.get("notes", {}), dict) else {}
     choices = rule.get("choices", {}) if isinstance(rule.get("choices", {}), dict) else {}
     note = notes.get(key)
@@ -818,7 +795,7 @@ def _format_param_detail(subcommand: str, key: str, rule: Dict[str, Any], prefer
     if key in choices and isinstance(choices.get(key), list) and choices.get(key):
         choice_txt = ", ".join([str(x) for x in choices.get(key)])
 
-    hint = _param_hint_text(key, note, prefer_chinese)
+    hint = _param_hint_text(key, note, prefer_chinese, param_hints)
     if prefer_chinese:
         parts = [f"- {key}（必填）", f"说明: {hint}"]
         if choice_txt:
@@ -831,7 +808,7 @@ def _format_param_detail(subcommand: str, key: str, rule: Dict[str, Any], prefer
     return "; ".join(parts)
 
 
-def _format_optional_details(rule: Dict[str, Any], prefer_chinese: bool) -> List[str]:
+def _format_optional_details(rule: Dict[str, Any], prefer_chinese: bool, param_hints: Dict[str, Any]) -> List[str]:
     opt = rule.get("optional", []) if isinstance(rule.get("optional", []), list) else []
     choices = rule.get("choices", {}) if isinstance(rule.get("choices", {}), dict) else {}
     notes = rule.get("notes", {}) if isinstance(rule.get("notes", {}), dict) else {}
@@ -841,7 +818,7 @@ def _format_optional_details(rule: Dict[str, Any], prefer_chinese: bool) -> List
         if k in choices and isinstance(choices.get(k), list) and choices.get(k):
             choice_txt = ", ".join([str(x) for x in choices.get(k)])
         note = notes.get(k)
-        hint = _param_hint_text(k, note, prefer_chinese)
+        hint = _param_hint_text(k, note, prefer_chinese, param_hints)
         if prefer_chinese:
             seg = [f"- {k}", f"说明: {hint}"]
             if choice_txt:
@@ -857,6 +834,7 @@ def _format_optional_details(rule: Dict[str, Any], prefer_chinese: bool) -> List
 def compose_questions(subcommand: str, missing: List[str], need_confirm: List[str], params: Dict[str, Any], rules: Dict[str, Any], prefer_chinese: bool = False) -> str:
     lines: List[str] = []
     rule = rules.get(subcommand, {}) if isinstance(rules.get(subcommand, {}), dict) else {}
+    param_hints = load_param_hints()
 
     lines.append((f"当前将执行: iobrpy {subcommand}") if prefer_chinese else (f"Current target command: iobrpy {subcommand}"))
 
@@ -887,14 +865,14 @@ def compose_questions(subcommand: str, missing: List[str], need_confirm: List[st
                 lines.append((_translate_to_chinese(msg) if prefer_chinese else msg) if isinstance(msg, str) and msg.strip() else ("请提供一种有效输入模式。" if prefer_chinese else "Please provide one valid input mode."))
             continue
 
-        lines.append(_format_param_detail(subcommand, m, rule, prefer_chinese))
+        lines.append(_format_param_detail(subcommand, m, rule, prefer_chinese, param_hints))
 
     for k in need_confirm:
         v = params.get(k)
         if v not in (None, "", []):
             lines.append((f"请确认参数: {k}={v}（回复: confirm {k}）") if prefer_chinese else (f"Please confirm parameter: {k}={v} (reply: confirm {k})"))
 
-    optional_lines = _format_optional_details(rule, prefer_chinese)
+    optional_lines = _format_optional_details(rule, prefer_chinese, param_hints)
     if optional_lines:
         lines.append("可选参数（按需提供）:" if prefer_chinese else "Optional parameters (provide if needed):")
         lines.extend(optional_lines[:8])

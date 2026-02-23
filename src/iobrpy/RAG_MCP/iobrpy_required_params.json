@@ -1,4 +1,74 @@
 {
+  "_param_hints": {
+    "input": {
+      "zh": "输入表达矩阵/文件路径。",
+      "en": "Input expression matrix/file path."
+    },
+    "output": {
+      "zh": "输出文件路径。",
+      "en": "Output file path."
+    },
+    "outdir": {
+      "zh": "输出目录路径。",
+      "en": "Output directory path."
+    },
+    "fastq": {
+      "zh": "FASTQ目录路径。",
+      "en": "FASTQ directory path."
+    },
+    "index": {
+      "zh": "参考索引路径/目录。",
+      "en": "Reference index path/directory."
+    },
+    "threads": {
+      "zh": "CPU线程数。",
+      "en": "Number of CPU threads."
+    },
+    "batch_size": {
+      "zh": "并行处理样本数。",
+      "en": "Number of samples processed in parallel."
+    },
+    "perm": {
+      "zh": "置换次数（越大越稳定但更慢）。",
+      "en": "Number of permutations (more stable p-values but slower)."
+    },
+    "QN": {
+      "zh": "是否启用分位数归一化（芯片常为TRUE，RNA-seq常为FALSE）。",
+      "en": "Quantile normalization switch (often TRUE for microarray, FALSE for RNA-seq)."
+    },
+    "bam": {
+      "zh": "输入BAM文件路径或BAM目录。",
+      "en": "Input BAM file path or BAM directory."
+    },
+    "r1": {
+      "zh": "Read1 FASTQ文件路径。",
+      "en": "Read1 FASTQ file path."
+    },
+    "r2": {
+      "zh": "Read2 FASTQ文件路径。",
+      "en": "Read2 FASTQ file path."
+    },
+    "ru": {
+      "zh": "单端FASTQ文件路径。",
+      "en": "Single-end FASTQ file path."
+    },
+    "fqdir": {
+      "zh": "批量FASTQ目录路径。",
+      "en": "FASTQ directory for batch processing."
+    },
+    "o": {
+      "zh": "输出前缀或输出文件名基名。",
+      "en": "Output prefix or output basename."
+    },
+    "od": {
+      "zh": "输出目录路径。",
+      "en": "Output directory path."
+    },
+    "t": {
+      "zh": "该命令的线程数。",
+      "en": "Thread count for this command."
+    }
+  },
   "runall": {
     "required": [
       "fastq",
