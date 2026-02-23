@@ -595,6 +595,7 @@ def choose_subcommand(task: str, rules: Dict[str, Any]) -> str:
         ranked.append((score, t))
 
     ranked_sorted = sorted(ranked, key=lambda x: x[0], reverse=True)
+    score_map = {t: sc for sc, t in ranked_sorted}
     candidate_tools = [t for _, t in ranked_sorted[: min(5, len(ranked_sorted))]]
     fallback_sub = candidate_tools[0] if candidate_tools else tools[0]
 
@@ -649,6 +650,14 @@ Return JSON only: {{"subcommand": "<one of candidate list>", "reason": "<short>"
 
     sub = j.get("subcommand") if isinstance(j, dict) else None
     if isinstance(sub, str) and sub in candidate_tools:
+        # Accept LLM decision only if it is not clearly worse than top deterministic candidate.
+        top_score = score_map.get(fallback_sub)
+        sub_score = score_map.get(sub)
+        if top_score is not None and sub_score is not None:
+            # score tuple = (rag_votes, intent_kw_bonus, req_overlap, name_overlap, profile_overlap, dir_bonus)
+            # If LLM-picked command has weaker retrieval+intent evidence than top, keep deterministic top.
+            if (sub_score[0], sub_score[1], sub_score[2]) < (top_score[0], top_score[1], top_score[2]):
+                return fallback_sub
         return sub
 
     return fallback_sub
@@ -792,6 +801,7 @@ def tool_iobrpy_assistant(session_id: str, task: Optional[str] = None, answer_te
             state.params = {}
             state.confirmed = set()
             state.prefer_chinese = False
+            return {"status": "need_info", "question": "Please describe what you want to do (natural language).", "needs": ["task"]}
 
     if task:
         parse_task = task_en or task
