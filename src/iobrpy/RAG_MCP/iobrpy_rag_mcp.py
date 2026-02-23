@@ -609,7 +609,7 @@ def _is_function_discovery_query(text: str) -> bool:
     return any(re.search(p, t) for p in patterns)
 
 
-def _rank_subcommands(task: str, rules: Dict[str, Any], top_n: int = 6) -> List[Tuple[str, Tuple[int, int, int, int, int, int]]]:
+def _rank_subcommands(task: str, rules: Dict[str, Any], top_n: Optional[int] = None) -> List[Tuple[str, Tuple[int, int, int, int, int, int]]]:
     tl = _normalize_text(task).lower()
     tools = list(rules.keys())
     bag = _intent_tokenize(tl)
@@ -645,9 +645,11 @@ def _rank_subcommands(task: str, rules: Dict[str, Any], top_n: int = 6) -> List[
     ranked_sorted = sorted(ranked, key=lambda x: x[0], reverse=True)
     # Keep only relevant candidates in discovery mode (intent/rag evidence exists).
     filtered = [(t, sc) for sc, t in ranked_sorted if (sc[0] > 0 or sc[1] > 0)]
-    if not filtered:
-        filtered = [(t, sc) for sc, t in ranked_sorted[:3]]
-    return filtered[: max(1, top_n)]
+    if filtered:
+        return filtered if top_n is None else filtered[: max(1, top_n)]
+    # If no evidence at all, provide a small fallback list.
+    fallback = [(t, sc) for sc, t in ranked_sorted[:3]]
+    return fallback if top_n is None else fallback[: max(1, top_n)]
 
 
 def _render_intent_keywords(rule: Dict[str, Any], prefer_chinese: bool) -> str:
@@ -680,7 +682,7 @@ def _function_summary(rule: Dict[str, Any], prefer_chinese: bool) -> str:
     return f"Requires: {', '.join(req[:4]) if req else 'none'}."
 
 def _compose_function_suggestions(task: str, rules: Dict[str, Any], prefer_chinese: bool) -> str:
-    ranked = _rank_subcommands(task, rules, top_n=6)
+    ranked = _rank_subcommands(task, rules, top_n=None)
     if prefer_chinese:
         lines = ["你这个需求可以先从这些 function 里选（按相关度排序）："]
     else:
