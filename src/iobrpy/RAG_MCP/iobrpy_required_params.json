@@ -1,9 +1,25 @@
 {
   "runall": {
-    "required": ["fastq", "outdir", "mode", "index", "threads", "batch_size", "project"],
-    "confirm": ["mode", "threads", "batch_size", "project"],
+    "required": [
+      "fastq",
+      "outdir",
+      "mode",
+      "index",
+      "threads",
+      "batch_size",
+      "project"
+    ],
+    "confirm": [
+      "mode",
+      "threads",
+      "batch_size",
+      "project"
+    ],
     "choices": {
-      "mode": ["salmon", "star"]
+      "mode": [
+        "salmon",
+        "star"
+      ]
     },
     "notes": {
       "index": "Path to Salmon index (mode=salmon) or STAR genome index directory (mode=star).",
@@ -13,128 +29,413 @@
       "project": "Please provide project identifier.",
       "fastq": "Please provide FASTQ directory path.",
       "outdir": "Please provide output directory path."
-    }
+    },
+    "intent_keywords": [
+      "fastq",
+      "workflow",
+      "pipeline",
+      "from fastq to tme",
+      "bulk workflow"
+    ]
   },
   "prepare_salmon": {
-    "required": ["input", "output"],
-    "optional": ["return_feature", "remove_version"]
+    "required": [
+      "input",
+      "output"
+    ],
+    "optional": [
+      "return_feature",
+      "remove_version"
+    ]
   },
   "count2tpm": {
-    "required": ["input", "output"],
-    "optional": ["effLength_csv", "idtype", "org", "source", "id", "length", "gene_symbol", "check_data", "remove_version"]
+    "required": [
+      "input",
+      "output"
+    ],
+    "optional": [
+      "effLength_csv",
+      "idtype",
+      "org",
+      "source",
+      "id",
+      "length",
+      "gene_symbol",
+      "check_data",
+      "remove_version"
+    ]
   },
   "anno_eset": {
-    "required": ["input", "output", "annotation"],
-    "optional": ["annotation_file", "annotation_key", "symbol", "probe", "method", "remove_version"]
+    "required": [
+      "input",
+      "output",
+      "annotation"
+    ],
+    "optional": [
+      "annotation_file",
+      "annotation_key",
+      "symbol",
+      "probe",
+      "method",
+      "remove_version"
+    ]
   },
   "calculate_sig_score": {
-    "required": ["input", "output", "signature"],
-    "optional": ["method", "parallel", "parallel_size", "ssgsea_norm", "id_type"]
+    "required": [
+      "input",
+      "output",
+      "signature"
+    ],
+    "optional": [
+      "method",
+      "parallel",
+      "parallel_size",
+      "ssgsea_norm",
+      "id_type"
+    ]
   },
   "cibersort": {
-    "required": ["input", "output"],
-    "confirm": ["threads"],
-    "optional": ["perm", "QN", "threads"]
+    "required": [
+      "input",
+      "output"
+    ],
+    "confirm": [
+      "threads"
+    ],
+    "optional": [
+      "perm",
+      "QN",
+      "threads"
+    ]
   },
   "IPS": {
-    "required": ["input", "output"]
+    "required": [
+      "input",
+      "output"
+    ]
   },
   "estimate": {
-    "required": ["input", "output"],
-    "optional": ["platform"]
+    "required": [
+      "input",
+      "output"
+    ],
+    "optional": [
+      "platform"
+    ]
   },
   "mcpcounter": {
-    "required": ["input", "features", "output"]
+    "required": [
+      "input",
+      "features",
+      "output"
+    ]
   },
   "quantiseq": {
-    "required": ["input", "output"],
-    "optional": ["arrays", "signame", "tumor", "scale_mrna", "method", "rmgenes"]
+    "required": [
+      "input",
+      "output"
+    ],
+    "optional": [
+      "arrays",
+      "signame",
+      "tumor",
+      "scale_mrna",
+      "method",
+      "rmgenes"
+    ]
   },
   "epic": {
-    "required": ["input", "output"],
-    "optional": ["reference"]
+    "required": [
+      "input",
+      "output"
+    ],
+    "optional": [
+      "reference"
+    ]
   },
   "deside": {
-    "required": ["model_dir", "input", "output"],
-    "optional": ["exp_type", "gmt", "print_info", "add_cell_type", "scaling_by_constant", "scaling_by_sample", "one_minus_alpha", "method_adding_pathway", "transpose", "result_dir"]
+    "required": [
+      "model_dir",
+      "input",
+      "output"
+    ],
+    "optional": [
+      "exp_type",
+      "gmt",
+      "print_info",
+      "add_cell_type",
+      "scaling_by_constant",
+      "scaling_by_sample",
+      "one_minus_alpha",
+      "method_adding_pathway",
+      "transpose",
+      "result_dir"
+    ]
   },
   "tme_cluster": {
-    "required": ["input", "output"],
-    "optional": ["features", "pattern", "id", "scale", "min_nc", "max_nc", "max_iter", "tol", "random_state"]
+    "required": [
+      "input",
+      "output"
+    ],
+    "optional": [
+      "features",
+      "pattern",
+      "id",
+      "scale",
+      "min_nc",
+      "max_nc",
+      "max_iter",
+      "tol",
+      "random_state"
+    ]
   },
   "LR_cal": {
-    "required": ["input", "output"],
-    "optional": ["database", "group", "min_expr", "fdr"]
+    "required": [
+      "input",
+      "output"
+    ],
+    "optional": [
+      "database",
+      "group",
+      "min_expr",
+      "fdr"
+    ]
   },
   "nmf": {
-    "required": ["input", "output"],
-    "optional": ["ranks", "nrun", "seed", "max_iter", "method"]
+    "required": [
+      "input",
+      "output"
+    ],
+    "optional": [
+      "ranks",
+      "nrun",
+      "seed",
+      "max_iter",
+      "method"
+    ]
   },
   "mouse2human_eset": {
-    "required": ["input", "output"],
-    "optional": ["method"]
+    "required": [
+      "input",
+      "output"
+    ],
+    "optional": [
+      "method"
+    ]
   },
   "batch_salmon": {
-    "required": ["index", "path_fq", "path_out"],
-    "optional": ["suffix1", "batch_size", "num_threads", "gtf"]
+    "required": [
+      "index",
+      "path_fq",
+      "path_out"
+    ],
+    "optional": [
+      "suffix1",
+      "batch_size",
+      "num_threads",
+      "gtf"
+    ]
   },
   "merge_salmon": {
-    "required": ["path_salmon", "project"],
-    "optional": ["num_processes"]
+    "required": [
+      "path_salmon",
+      "project"
+    ],
+    "optional": [
+      "num_processes"
+    ]
   },
   "merge_star_count": {
-    "required": ["path", "project"]
+    "required": [
+      "path",
+      "project"
+    ]
   },
   "batch_star_count": {
-    "required": ["index", "path_fq", "path_out"],
-    "optional": ["suffix1", "batch_size", "num_threads"]
+    "required": [
+      "index",
+      "path_fq",
+      "path_out"
+    ],
+    "optional": [
+      "suffix1",
+      "batch_size",
+      "num_threads"
+    ]
   },
   "fastq_qc": {
-    "required": ["path1_fastq", "path2_fastp"],
-    "optional": ["num_threads", "suffix1", "batch_size", "se", "length_required"]
+    "required": [
+      "path1_fastq",
+      "path2_fastp"
+    ],
+    "optional": [
+      "num_threads",
+      "suffix1",
+      "batch_size",
+      "se",
+      "length_required"
+    ]
   },
   "log2_eset": {
-    "required": ["input", "output"]
+    "required": [
+      "input",
+      "output"
+    ]
   },
   "trust4": {
     "required": [],
-    "optional": ["r1", "outputReadAssignment", "mateIdSuffixLen", "f", "barcodeLevel", "bam", "o", "abnormalUnmapFlag", "assembleWithRef", "UMI", "barcodeTranslate", "ref", "minHitLen", "t", "skipMateExtension", "barcode", "readFormat", "r2", "od", "k", "repseq", "fqdir", "barcodeWhitelist", "ru", "contigMinCov", "stage", "clean", "noExtraction"],
+    "optional": [
+      "r1",
+      "outputReadAssignment",
+      "mateIdSuffixLen",
+      "f",
+      "barcodeLevel",
+      "bam",
+      "o",
+      "abnormalUnmapFlag",
+      "assembleWithRef",
+      "UMI",
+      "barcodeTranslate",
+      "ref",
+      "minHitLen",
+      "t",
+      "skipMateExtension",
+      "barcode",
+      "readFormat",
+      "r2",
+      "od",
+      "k",
+      "repseq",
+      "fqdir",
+      "barcodeWhitelist",
+      "ru",
+      "contigMinCov",
+      "stage",
+      "clean",
+      "noExtraction"
+    ],
     "notes": {
       "input_mode": "trust4 requires one of: -b <bam|bam_dir> OR -1/-2 OR -u OR --fqdir; this is conditional and cannot be represented by a flat required list.",
       "o": "-o is required in batch modes (--fqdir or -b <DIR>) but optional in single-run mode.",
       "required_one_of": "For trust4, provide one input mode: -b <BAM|DIR> OR -1/-2 OR -u OR --fqdir."
     },
-    "required_one_of": [["bam"], ["r1", "r2"], ["ru"], ["fqdir"]]
+    "required_one_of": [
+      [
+        "bam"
+      ],
+      [
+        "r1",
+        "r2"
+      ],
+      [
+        "ru"
+      ],
+      [
+        "fqdir"
+      ]
+    ],
+    "intent_keywords": [
+      "tcr",
+      "bcr",
+      "vdj",
+      "repertoire",
+      "clonotype",
+      "immune receptor"
+    ]
   },
   "spechla": {
-    "required": ["name", "read1", "read2", "outdir"],
-    "optional": ["threads", "use_exon"]
+    "required": [
+      "name",
+      "read1",
+      "read2",
+      "outdir"
+    ],
+    "optional": [
+      "threads",
+      "use_exon"
+    ],
+    "intent_keywords": [
+      "hla",
+      "typing"
+    ]
   },
   "extract_hla_read": {
-    "required": ["sample", "bam", "ref", "outdir"],
-    "optional": ["no_auto_install"],
+    "required": [
+      "sample",
+      "bam",
+      "ref",
+      "outdir"
+    ],
+    "optional": [
+      "no_auto_install"
+    ],
     "choices": {
-      "ref": ["hg38", "hg19"]
-    }
+      "ref": [
+        "hg38",
+        "hg19"
+      ]
+    },
+    "intent_keywords": [
+      "hla",
+      "extract hla read"
+    ]
   },
   "hla_typing": {
-    "required": ["bam_dir", "ref", "outdir"],
-    "optional": ["threads", "use_exon"],
+    "required": [
+      "bam_dir",
+      "ref",
+      "outdir"
+    ],
+    "optional": [
+      "threads",
+      "use_exon"
+    ],
     "choices": {
-      "ref": ["hg19", "hg38"],
-      "use_exon": [0, 1]
-    }
+      "ref": [
+        "hg19",
+        "hg38"
+      ],
+      "use_exon": [
+        0,
+        1
+      ]
+    },
+    "intent_keywords": [
+      "hla",
+      "typing",
+      "hla analysis"
+    ]
   },
   "tme_profile": {
-    "required": ["input", "output"],
-    "optional": ["threads"]
+    "required": [
+      "input",
+      "output"
+    ],
+    "optional": [
+      "threads"
+    ]
   },
   "bayesprism": {
-    "required": ["input", "output"],
-    "optional": ["threads", "sc_dat", "cell_state_labels", "cell_type_labels", "key"]
+    "required": [
+      "input",
+      "output"
+    ],
+    "optional": [
+      "threads",
+      "sc_dat",
+      "cell_state_labels",
+      "cell_type_labels",
+      "key"
+    ]
   },
   "ai": {
-    "required": ["logdir"],
-    "optional": ["ollama_host", "chat_model", "embed_model"]
+    "required": [
+      "logdir"
+    ],
+    "optional": [
+      "ollama_host",
+      "chat_model",
+      "embed_model"
+    ]
   }
 }

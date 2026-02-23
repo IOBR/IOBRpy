@@ -236,13 +236,15 @@ def load_rules() -> Dict[str, Any]:
         choices = v.get("choices", {})
         req_one = v.get("required_one_of", [])
         notes = v.get("notes", {})
+        intent_keywords = v.get("intent_keywords", [])
         if not isinstance(req, list): req = []
         if not isinstance(conf, list): conf = []
         if not isinstance(opt, list): opt = []
         if not isinstance(choices, dict): choices = {}
         if not isinstance(req_one, list): req_one = []
         if not isinstance(notes, dict): notes = {}
-        out[k] = {"required": req, "confirm": conf, "optional": opt, "choices": choices, "required_one_of": req_one, "notes": notes}
+        if not isinstance(intent_keywords, list): intent_keywords = []
+        out[k] = {"required": req, "confirm": conf, "optional": opt, "choices": choices, "required_one_of": req_one, "notes": notes, "intent_keywords": intent_keywords}
     return out or DEFAULT_RULES
 
 def allowed_keys_for(subcommand: str, rules: Dict[str, Any]) -> List[str]:
@@ -503,28 +505,6 @@ def _intent_tokenize(text: str) -> set:
     return set(tokens)
 
 
-INTENT_HINTS: Dict[str, List[str]] = {
-    "trust4": ["tcr", "bcr", "vdj", "repertoire", "clonotype", "immune repertoire"],
-    "hla_typing": ["hla", "hla typing", "hla analysis"],
-    "spechla": ["spechla", "hla"],
-    "extract_hla_read": ["extract hla", "hla read"],
-}
-
-def _intent_hint_score(task_l: str, tool: str) -> int:
-    hints = INTENT_HINTS.get(tool, [])
-    if not hints:
-        return 0
-    txt = task_l.replace('_', ' ')
-    score = 0
-    for h in hints:
-        hh = h.lower().strip()
-        if not hh:
-            continue
-        if re.search(r"\b" + re.escape(hh) + r"\b", txt):
-            score += 1
-    return score
-
-
 def _rag_command_votes(ctx: List[Dict[str, Any]], tools: List[str]) -> Dict[str, int]:
     """Count direct tool-name mentions in retrieved snippets as a lightweight reranking signal."""
     votes = {t: 0 for t in tools}
@@ -537,23 +517,51 @@ def _rag_command_votes(ctx: List[Dict[str, Any]], tools: List[str]) -> Dict[str,
     return votes
 
 
+def _tool_profile_text(tool: str, rules: Dict[str, Any]) -> str:
+    r = rules.get(tool, {}) if isinstance(rules.get(tool, {}), dict) else {}
+    fields = [
+        tool,
+        " ".join(r.get("required", []) if isinstance(r.get("required", []), list) else []),
+        " ".join(r.get("optional", []) if isinstance(r.get("optional", []), list) else []),
+        json.dumps(r.get("required_one_of", []), ensure_ascii=False),
+        json.dumps(r.get("choices", {}), ensure_ascii=False),
+        " ".join(r.get("intent_keywords", []) if isinstance(r.get("intent_keywords", []), list) else []),
+        json.dumps(r.get("notes", {}), ensure_ascii=False),
+    ]
+    return _normalize_text(" ".join(fields)).lower().replace("_", " ")
+
+
+def _tool_profile_overlap(task_tokens: set, profile_text: str) -> int:
+    profile_tokens = set(re.findall(r"[a-z][a-z0-9]*", profile_text))
+    return len(task_tokens & profile_tokens)
+
+
+def _intent_keyword_score(task_l: str, rule: Dict[str, Any]) -> int:
+    kws = rule.get("intent_keywords", []) if isinstance(rule, dict) else []
+    if not isinstance(kws, list):
+        return 0
+    text = task_l.replace("_", " ")
+    score = 0
+    for kw in kws:
+        if not isinstance(kw, str):
+            continue
+        k = kw.strip().lower()
+        if not k:
+            continue
+        if " " in k:
+            if k in text:
+                score += 2
+        else:
+            if re.search(r"\b" + re.escape(k) + r"\b", text):
+                score += 1
+    return score
+
+
 def choose_subcommand(task: str, rules: Dict[str, Any]) -> str:
     tl = _normalize_text(task).lower()
     tools = list(rules.keys())
     bag = _intent_tokenize(tl)
 
-    # Build tool profile from rule metadata so the model can reason even when RAG is weak.
-    tool_profiles = []
-    for t in tools:
-        r = rules.get(t, {}) if isinstance(rules.get(t, {}), dict) else {}
-        tool_profiles.append({
-            "name": t,
-            "required": r.get("required", []),
-            "required_one_of": r.get("required_one_of", []),
-            "notes": r.get("notes", {}),
-        })
-
-    # Use both original query and English translation to improve retrieval/selection quality.
     q_en = _translate_to_english(task)
     query_for_rag = q_en if isinstance(q_en, str) and q_en.strip() else task
 
@@ -562,6 +570,49 @@ def choose_subcommand(task: str, rules: Dict[str, Any]) -> str:
     except Exception:
         ctx = []
 
+    votes = _rag_command_votes(ctx, tools)
+    has_abs_path = re.search(r"/[A-Za-z0-9._/-]+", _normalize_text(task)) is not None
+
+    # Stage-1: deterministic coarse ranking from generic rule metadata + RAG vote.
+    ranked: List[Tuple[Tuple[int, int, int, int], str]] = []
+    profile_map: Dict[str, str] = {}
+    for t in tools:
+        profile = _tool_profile_text(t, rules)
+        profile_map[t] = profile
+        name_tokens = set(re.findall(r"[a-z][a-z0-9]*", t.lower().replace('_', ' ')))
+        required_keys = rules.get(t, {}).get("required", []) if isinstance(rules.get(t, {}), dict) else []
+        req_tokens = set(re.findall(r"[a-z][a-z0-9]*", " ".join([str(x).replace("_", " ") for x in required_keys]).lower()))
+        dir_bonus = 1 if has_abs_path and any(str(k).endswith("_dir") for k in required_keys) else 0
+        intent_kw_bonus = _intent_keyword_score(tl, rules.get(t, {}))
+        score = (
+            votes.get(t, 0),
+            intent_kw_bonus,
+            len(bag & req_tokens),
+            len(bag & name_tokens),
+            _tool_profile_overlap(bag, profile),
+            dir_bonus,
+        )
+        ranked.append((score, t))
+
+    ranked_sorted = sorted(ranked, key=lambda x: x[0], reverse=True)
+    candidate_tools = [t for _, t in ranked_sorted[: min(5, len(ranked_sorted))]]
+    fallback_sub = candidate_tools[0] if candidate_tools else tools[0]
+
+    # Stage-2: let LLM decide ONLY within top candidates to reduce off-target picks.
+    tool_profiles = []
+    for t in candidate_tools:
+        r = rules.get(t, {}) if isinstance(rules.get(t, {}), dict) else {}
+        tool_profiles.append({
+            "name": t,
+            "required": r.get("required", []),
+            "optional": r.get("optional", []),
+            "required_one_of": r.get("required_one_of", []),
+            "notes": r.get("notes", {}),
+            "intent_keywords": r.get("intent_keywords", []),
+            "rag_vote": votes.get(t, 0),
+            "lexical_overlap": _tool_profile_overlap(bag, profile_map.get(t, "")),
+        })
+
     ctx_text = "\n\n".join([
         f"[{i}] {c.get('path')}:{c.get('start')}-{c.get('end')}\n{c.get('text','')[:700]}"
         for i, c in enumerate(ctx)
@@ -569,9 +620,9 @@ def choose_subcommand(task: str, rules: Dict[str, Any]) -> str:
 
     prompt = f"""
 You are selecting the best iobrpy subcommand for the user intent.
-Pick exactly ONE subcommand name from this list: {tools}
+Pick exactly ONE subcommand name from this candidate list: {candidate_tools}
 
-Tool profiles (from machine rules):
+Candidate tool profiles (from machine rules + retrieval signals):
 {json.dumps(tool_profiles, ensure_ascii=False)}
 
 User request (original):
@@ -583,12 +634,12 @@ User request (english translation for intent matching):
 Helpful retrieved docs/snippets:
 {ctx_text}
 
-Important:
-- If user asks for HLA typing/analysis, prioritize HLA-related commands (hla_typing/spechla/extract_hla_read), not runall.
-- If user asks for TCR/BCR repertoire analysis, prioritize trust4.
-- Do not be biased by path fragments like '/.../star_2sample' when inferring intent.
+Rules:
+- Select the command whose purpose and required inputs best match the user intent.
+- Do not be biased by incidental path fragments like '/.../star_2sample'.
+- Prefer specialized commands over generic workflows when the intent is specific.
 
-Return JSON only: {{"subcommand": "<one of the list>", "reason": "<short>"}}
+Return JSON only: {{"subcommand": "<one of candidate list>", "reason": "<short>"}}
 """.strip()
 
     try:
@@ -596,36 +647,8 @@ Return JSON only: {{"subcommand": "<one of the list>", "reason": "<short>"}}
     except Exception:
         j = {}
 
-    # RAG evidence + lexical fallback reranking
-    votes = _rag_command_votes(ctx, tools)
-    has_abs_path = re.search(r"/[A-Za-z0-9._/-]+", _normalize_text(task)) is not None
-    has_hla_intent = ("hla" in bag) or ("hla" in tl)
-    has_tcr_intent = any(k in tl for k in ["tcr", "bcr", "vdj", "repertoire"])
-
-    scored: List[Tuple[Tuple[int, int, int, int, int], str]] = []
-    for t in tools:
-        r = rules.get(t, {}) if isinstance(rules.get(t, {}), dict) else {}
-        name_tokens = set(re.findall(r"[a-z][a-z0-9]*", t.lower().replace('_', ' ')))
-        txt = " ".join([
-            " ".join(r.get("required", []) if isinstance(r.get("required", []), list) else []),
-            json.dumps(r.get("notes", {}), ensure_ascii=False),
-        ]).lower()
-        cand = set(re.findall(r"[a-z][a-z0-9]*", txt.replace('_', ' ')))
-        required_keys = r.get("required", []) if isinstance(r.get("required", []), list) else []
-        dir_bonus = 1 if has_abs_path and any(str(k).endswith("_dir") for k in required_keys) else 0
-        hla_bonus = 1 if has_hla_intent and ("hla" in name_tokens or "hla" in cand) else 0
-        tcr_bonus = 1 if has_tcr_intent and t == "trust4" else 0
-        hint_bonus = _intent_hint_score(tl, t)
-        score = (max(hla_bonus, tcr_bonus), hint_bonus, len(bag & name_tokens), votes.get(t, 0), len(bag & (cand | name_tokens)) + dir_bonus)
-        scored.append((score, t))
-
-    fallback_sub = sorted(scored, key=lambda x: x[0], reverse=True)[0][1] if scored else tools[0]
-
     sub = j.get("subcommand") if isinstance(j, dict) else None
-    if isinstance(sub, str) and sub in tools:
-        # Guardrail: explicit HLA/TCR intent should not route to generic runall.
-        if (has_hla_intent or has_tcr_intent) and sub == "runall":
-            return fallback_sub
+    if isinstance(sub, str) and sub in candidate_tools:
         return sub
 
     return fallback_sub
