@@ -854,14 +854,28 @@ def compose_questions(subcommand: str, missing: List[str], need_confirm: List[st
 
     if prefer_chinese:
         lines.append("你可以这样回复（示例）:")
-        lines.append("- outdir /path/output")
-        lines.append("- threads 8")
-        lines.append("- confirm threads")
+        if subcommand == "trust4":
+            lines.append("- -b /path/sample.bam")
+            lines.append("- -1 /path/R1.fastq.gz")
+            lines.append("- -2 /path/R2.fastq.gz")
+            lines.append("- -t 8")
+            lines.append("- -o sample_prefix")
+        else:
+            lines.append("- outdir /path/output")
+            lines.append("- threads 8")
+            lines.append("- confirm threads")
     else:
         lines.append("You can reply like:")
-        lines.append("- outdir /path/output")
-        lines.append("- threads 8")
-        lines.append("- confirm threads")
+        if subcommand == "trust4":
+            lines.append("- -b /path/sample.bam")
+            lines.append("- -1 /path/R1.fastq.gz")
+            lines.append("- -2 /path/R2.fastq.gz")
+            lines.append("- -t 8")
+            lines.append("- -o sample_prefix")
+        else:
+            lines.append("- outdir /path/output")
+            lines.append("- threads 8")
+            lines.append("- confirm threads")
 
     return "\n".join(lines) if lines else ("请补充缺失参数。" if prefer_chinese else "Please provide the missing parameters.")
 
