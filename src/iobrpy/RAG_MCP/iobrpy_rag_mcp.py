@@ -503,6 +503,28 @@ def _intent_tokenize(text: str) -> set:
     return set(tokens)
 
 
+INTENT_HINTS: Dict[str, List[str]] = {
+    "trust4": ["tcr", "bcr", "vdj", "repertoire", "clonotype", "immune repertoire"],
+    "hla_typing": ["hla", "hla typing", "hla analysis"],
+    "spechla": ["spechla", "hla"],
+    "extract_hla_read": ["extract hla", "hla read"],
+}
+
+def _intent_hint_score(task_l: str, tool: str) -> int:
+    hints = INTENT_HINTS.get(tool, [])
+    if not hints:
+        return 0
+    txt = task_l.replace('_', ' ')
+    score = 0
+    for h in hints:
+        hh = h.lower().strip()
+        if not hh:
+            continue
+        if re.search(r"\b" + re.escape(hh) + r"\b", txt):
+            score += 1
+    return score
+
+
 def _rag_command_votes(ctx: List[Dict[str, Any]], tools: List[str]) -> Dict[str, int]:
     """Count direct tool-name mentions in retrieved snippets as a lightweight reranking signal."""
     votes = {t: 0 for t in tools}
@@ -563,6 +585,7 @@ Helpful retrieved docs/snippets:
 
 Important:
 - If user asks for HLA typing/analysis, prioritize HLA-related commands (hla_typing/spechla/extract_hla_read), not runall.
+- If user asks for TCR/BCR repertoire analysis, prioritize trust4.
 - Do not be biased by path fragments like '/.../star_2sample' when inferring intent.
 
 Return JSON only: {{"subcommand": "<one of the list>", "reason": "<short>"}}
@@ -577,8 +600,9 @@ Return JSON only: {{"subcommand": "<one of the list>", "reason": "<short>"}}
     votes = _rag_command_votes(ctx, tools)
     has_abs_path = re.search(r"/[A-Za-z0-9._/-]+", _normalize_text(task)) is not None
     has_hla_intent = ("hla" in bag) or ("hla" in tl)
+    has_tcr_intent = any(k in tl for k in ["tcr", "bcr", "vdj", "repertoire"])
 
-    scored: List[Tuple[Tuple[int, int, int, int], str]] = []
+    scored: List[Tuple[Tuple[int, int, int, int, int], str]] = []
     for t in tools:
         r = rules.get(t, {}) if isinstance(rules.get(t, {}), dict) else {}
         name_tokens = set(re.findall(r"[a-z][a-z0-9]*", t.lower().replace('_', ' ')))
@@ -590,15 +614,17 @@ Return JSON only: {{"subcommand": "<one of the list>", "reason": "<short>"}}
         required_keys = r.get("required", []) if isinstance(r.get("required", []), list) else []
         dir_bonus = 1 if has_abs_path and any(str(k).endswith("_dir") for k in required_keys) else 0
         hla_bonus = 1 if has_hla_intent and ("hla" in name_tokens or "hla" in cand) else 0
-        score = (hla_bonus, len(bag & name_tokens), votes.get(t, 0), len(bag & (cand | name_tokens)) + dir_bonus)
+        tcr_bonus = 1 if has_tcr_intent and t == "trust4" else 0
+        hint_bonus = _intent_hint_score(tl, t)
+        score = (max(hla_bonus, tcr_bonus), hint_bonus, len(bag & name_tokens), votes.get(t, 0), len(bag & (cand | name_tokens)) + dir_bonus)
         scored.append((score, t))
 
     fallback_sub = sorted(scored, key=lambda x: x[0], reverse=True)[0][1] if scored else tools[0]
 
     sub = j.get("subcommand") if isinstance(j, dict) else None
     if isinstance(sub, str) and sub in tools:
-        # Guardrail: explicit HLA intent should not route to generic runall.
-        if has_hla_intent and sub == "runall":
+        # Guardrail: explicit HLA/TCR intent should not route to generic runall.
+        if (has_hla_intent or has_tcr_intent) and sub == "runall":
             return fallback_sub
         return sub
 
