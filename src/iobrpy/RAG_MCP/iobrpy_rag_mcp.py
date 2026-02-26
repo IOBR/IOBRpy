@@ -1055,9 +1055,15 @@ def compose_questions(subcommand: str, missing: List[str], need_confirm: List[st
 
 def merge_defaults(params: Dict[str, Any], subcommand: str, rules: Dict[str, Any]) -> Dict[str, Any]:
     d = load_defaults()
+    rule = rules.get(subcommand, {}) if isinstance(rules.get(subcommand, {}), dict) else {}
+    rule_defaults = rule.get("optional_defaults", {}) if isinstance(rule.get("optional_defaults", {}), dict) else {}
     allowed_set = set([k for k in allowed_keys_for(subcommand, rules) if k != "confirm"])
     out = {}
     for k in allowed_set:
+        if k in rule_defaults and rule_defaults[k] not in (None, "", []):
+            out[k] = rule_defaults[k]
+        elif k in BUILTIN_OPTIONAL_DEFAULTS and BUILTIN_OPTIONAL_DEFAULTS[k] not in (None, "", []):
+            out[k] = BUILTIN_OPTIONAL_DEFAULTS[k]
         if k in d and d[k] not in (None, "", []):
             out[k] = d[k]
     for k, v in params.items():
@@ -1069,6 +1075,15 @@ def apply_confirmations(state: SessionState, extracted: Dict[str, Any]):
     conf = extracted.get("confirm")
     if isinstance(conf, list):
         for k in conf:
+            state.confirmed.add(str(k).strip())
+
+def auto_confirm_filled_values(state: SessionState, extracted: Dict[str, Any], rules: Dict[str, Any]):
+    """Auto-confirm fields that require confirmation once user explicitly provides a concrete value."""
+    if not state.subcommand:
+        return
+    rule = rules.get(state.subcommand, {}) if isinstance(rules.get(state.subcommand, {}), dict) else {}
+    for k in rule.get("confirm", []) if isinstance(rule.get("confirm", []), list) else []:
+        if k in extracted and extracted.get(k) not in (None, "", []):
             state.confirmed.add(str(k).strip())
 
 def tool_iobrpy_assistant(session_id: str, task: Optional[str] = None, answer_text: Optional[str] = None, run: bool = False) -> Dict[str, Any]:
@@ -1110,6 +1125,7 @@ def tool_iobrpy_assistant(session_id: str, task: Optional[str] = None, answer_te
         allowed = allowed_keys_for(state.subcommand, rules)
         extracted = extract_slots(parse_task, allowed)
         apply_confirmations(state, extracted)
+        auto_confirm_filled_values(state, extracted, rules)
         # Apply reset/unset requests
         resets = extracted.get("_reset")
         if isinstance(resets, list):
@@ -1138,6 +1154,7 @@ def tool_iobrpy_assistant(session_id: str, task: Optional[str] = None, answer_te
         parse_answer = answer_text_en or answer_text
         extracted = extract_slots(parse_answer, allowed)
         apply_confirmations(state, extracted)
+        auto_confirm_filled_values(state, extracted, rules)
 
         # Apply reset/unset requests (natural language): 'reset fastq', 'clear index', 'unset threads'
         resets = extracted.get("_reset")

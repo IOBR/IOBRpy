@@ -114,6 +114,10 @@
         "prepare_salmon",
         "analysis"
       ]
+    },
+    "optional_defaults": {
+      "return_feature": "symbol",
+      "remove_version": false
     }
   },
   "count2tpm": {
@@ -187,6 +191,17 @@
         "count2tpm",
         "analysis"
       ]
+    },
+    "optional_defaults": {
+      "effLength_csv": null,
+      "idtype": "ensembl",
+      "org": "hsa",
+      "source": "local",
+      "id": "id",
+      "length": "eff_length",
+      "gene_symbol": "symbol",
+      "check_data": false,
+      "remove_version": false
     }
   },
   "anno_eset": {
@@ -250,6 +265,14 @@
         "anno_eset",
         "analysis"
       ]
+    },
+    "optional_defaults": {
+      "annotation_file": null,
+      "annotation_key": null,
+      "symbol": "symbol",
+      "probe": "id",
+      "method": "mean",
+      "remove_version": false
     }
   },
   "calculate_sig_score": {
@@ -308,6 +331,13 @@
         "calculate_sig_score",
         "analysis"
       ]
+    },
+    "optional_defaults": {
+      "method": "pca",
+      "parallel": false,
+      "parallel_size": 1,
+      "ssgsea_norm": true,
+      "id_type": "symbol"
     }
   },
   "cibersort": {
@@ -363,8 +393,8 @@
     },
     "optional_defaults": {
       "perm": 100,
-      "QN": "FALSE",
-      "threads": 8
+      "QN": "TRUE",
+      "threads": 1
     }
   },
   "IPS": {
@@ -439,6 +469,9 @@
     "function_summary": {
       "zh": "计算肿瘤纯度及免疫/基质评分，输出ESTIMATE结果。",
       "en": "Compute tumor purity and immune/stromal scores, output ESTIMATE metrics."
+    },
+    "optional_defaults": {
+      "platform": "affymetrix"
     }
   },
   "mcpcounter": {
@@ -540,6 +573,14 @@
     "function_summary": {
       "zh": "估计肿瘤样本中免疫细胞组成，输出细胞比例结果。",
       "en": "Estimate immune-cell composition in tumor samples and output cell-fraction results."
+    },
+    "optional_defaults": {
+      "arrays": false,
+      "signame": "TIL10",
+      "tumor": false,
+      "scale_mrna": false,
+      "method": "lsei",
+      "rmgenes": "unassigned"
     }
   },
   "epic": {
@@ -579,6 +620,9 @@
     "function_summary": {
       "zh": "进行免疫/基质细胞反卷积，输出细胞群体比例。",
       "en": "Perform immune/stromal deconvolution and output cell-population fractions."
+    },
+    "optional_defaults": {
+      "reference": "TRef"
     }
   },
   "tme_cluster": {
@@ -652,6 +696,17 @@
         "tme_cluster",
         "analysis"
       ]
+    },
+    "optional_defaults": {
+      "features": null,
+      "pattern": null,
+      "id": null,
+      "scale": true,
+      "min_nc": 2,
+      "max_nc": 6,
+      "max_iter": 10,
+      "tol": 0.0001,
+      "random_state": 42
     }
   },
   "LR_cal": {
@@ -700,6 +755,12 @@
         "LR_cal",
         "analysis"
       ]
+    },
+    "optional_defaults": {
+      "database": "CellChatDB_human",
+      "group": "normal-vs-cancer",
+      "min_expr": 0.1,
+      "fdr": 0.1
     }
   },
   "nmf": {
@@ -753,6 +814,13 @@
         "nmf",
         "analysis"
       ]
+    },
+    "optional_defaults": {
+      "ranks": "2-6",
+      "nrun": 10,
+      "seed": 1234,
+      "max_iter": 1000,
+      "method": "brunet"
     }
   },
   "mouse2human_eset": {
@@ -786,6 +854,9 @@
         "mouse2human_eset",
         "analysis"
       ]
+    },
+    "optional_defaults": {
+      "method": "replace"
     }
   },
   "batch_salmon": {
@@ -839,6 +910,12 @@
         "batch_salmon",
         "analysis"
       ]
+    },
+    "optional_defaults": {
+      "suffix1": "_1.fastq.gz",
+      "batch_size": 1,
+      "num_threads": 8,
+      "gtf": null
     }
   },
   "merge_salmon": {
@@ -872,6 +949,9 @@
         "merge_salmon",
         "analysis"
       ]
+    },
+    "optional_defaults": {
+      "num_processes": null
     }
   },
   "merge_star_count": {
@@ -946,6 +1026,11 @@
         "batch_star_count",
         "analysis"
       ]
+    },
+    "optional_defaults": {
+      "suffix1": "_1.fastq.gz",
+      "batch_size": 1,
+      "num_threads": 8
     }
   },
   "fastq_qc": {
@@ -999,6 +1084,13 @@
         "fastq_qc",
         "analysis"
       ]
+    },
+    "optional_defaults": {
+      "num_threads": 8,
+      "suffix1": "_1.fastq.gz",
+      "batch_size": 1,
+      "se": false,
+      "length_required": 50
     }
   },
   "log2_eset": {
@@ -1107,6 +1199,16 @@
         "zh": "该命令的线程数。",
         "en": "Thread count for this command."
       }
+    },
+    "optional_defaults": {
+      "bam": null,
+      "r1": null,
+      "r2": null,
+      "ru": null,
+      "fqdir": null,
+      "o": null,
+      "od": null,
+      "t": null
     }
   },
   "spechla": {
@@ -1155,6 +1257,10 @@
         "zh": "参数 use_exon 的说明。",
         "en": "Description for parameter 'use_exon'."
       }
+    },
+    "optional_defaults": {
+      "threads": 1,
+      "use_exon": 1
     }
   },
   "extract_hla_read": {
@@ -1204,6 +1310,9 @@
         "zh": "参数 no_auto_install 的说明。",
         "en": "Description for parameter 'no_auto_install'."
       }
+    },
+    "optional_defaults": {
+      "no_auto_install": false
     }
   },
   "hla_typing": {
@@ -1259,6 +1368,10 @@
         "zh": "参数 use_exon 的说明。",
         "en": "Description for parameter 'use_exon'."
       }
+    },
+    "optional_defaults": {
+      "threads": 1,
+      "use_exon": 1
     }
   },
   "tme_profile": {
@@ -1293,6 +1406,9 @@
         "microenvironment profiling",
         "immune infiltration assessment"
       ]
+    },
+    "optional_defaults": {
+      "threads": 1
     }
   },
   "bayesprism": {
@@ -1352,6 +1468,13 @@
     "function_summary": {
       "zh": "贝叶斯反卷积估计细胞组成，输出细胞比例与相关结果。",
       "en": "Run Bayesian deconvolution to estimate cell composition and output cell-fraction results."
+    },
+    "optional_defaults": {
+      "threads": 8,
+      "sc_dat": null,
+      "cell_state_labels": null,
+      "cell_type_labels": null,
+      "key": null
     }
   }
 }
