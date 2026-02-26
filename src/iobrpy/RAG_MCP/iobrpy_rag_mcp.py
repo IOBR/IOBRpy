@@ -293,6 +293,13 @@ def set_defaults(new_defaults: Dict[str, Any], rules: Dict[str, Any]) -> Dict[st
 PATH_KEYS = {"fastq", "outdir", "index", "input", "output", "bam", "r1", "r2", "ru", "fqdir", "o", "od"}
 INT_KEYS = {"threads", "batch_size", "t", "k", "stage", "clean", "use_exon"}
 
+BUILTIN_OPTIONAL_DEFAULTS: Dict[str, Any] = {
+    "threads": 8,
+    "t": 8,
+    "perm": 100,
+    "QN": "FALSE",
+}
+
 def _sanitize_path(p: str) -> str:
     if not p:
         return p
@@ -307,7 +314,7 @@ def _recover_full_path(short_path: str, text: str) -> str:
     if not short_path or not short_path.startswith('/'):
         return short_path
     # collect absolute-path-like tokens from the original text
-    cands = re.findall(r"(/[^ \t;,]+)", text)
+    cands = re.findall(r"(/[^ \t;,，；。]+)", text)
     cands = [_sanitize_path(c) for c in cands]
     # prefer the longest candidate that endswith the short_path
     best = short_path
@@ -336,7 +343,7 @@ def _regex_extract_slots(text: str, allowed: List[str]) -> Dict[str, Any]:
             out["mode"] = "star"
 
     if "index" in allowed:
-        mi = re.search(r"\bindex\b\s*(?:is|=|:)?\s*(/[^ \t;,]+)", t, flags=re.I)
+        mi = re.search(r"\bindex\b\s*(?:is|=|:)?\s*(/[^ \t;,，；。]+)", t, flags=re.I)
         if mi:
             out["index"] = _sanitize_path(mi.group(1))
 
@@ -350,20 +357,20 @@ def _regex_extract_slots(text: str, allowed: List[str]) -> Dict[str, Any]:
                 out["threads"] = int(mt_cn.group(1))
 
     if "input" in allowed:
-        mi = re.search(r"\binput\b\s*(?:is|=|:)?\s*(/[^ \t;,]+)", t, flags=re.I)
+        mi = re.search(r"\binput\b\s*(?:is|=|:)?\s*(/[^ \t;,，；。]+)", t, flags=re.I)
         if mi:
             out["input"] = _sanitize_path(mi.group(1))
         else:
-            mi_cn = re.search(r"(?:输入|輸入)(?:是|为|為|=|:)?\s*(/[^ \t;,]+)", t)
+            mi_cn = re.search(r"(?:输入|輸入)(?:是|为|為|=|:)?\s*(/[^ \t;,，；。]+)", t)
             if mi_cn:
                 out["input"] = _sanitize_path(mi_cn.group(1))
 
     if "output" in allowed:
-        mo = re.search(r"\boutput\b\s*(?:is|=|:)?\s*(/[^ \t;,]+)", t, flags=re.I)
+        mo = re.search(r"\boutput\b\s*(?:is|=|:)?\s*(/[^ \t;,，；。]+)", t, flags=re.I)
         if mo:
             out["output"] = _sanitize_path(mo.group(1))
         else:
-            mo_cn = re.search(r"(?:输出|輸出)(?:在|到|是|为|為|=|:)?\s*(/[^ \t;,]+)", t)
+            mo_cn = re.search(r"(?:输出|輸出)(?:在|到|是|为|為|=|:)?\s*(/[^ \t;,，；。]+)", t)
             if mo_cn:
                 out["output"] = _sanitize_path(mo_cn.group(1))
 
@@ -382,7 +389,7 @@ def _regex_extract_slots(text: str, allowed: List[str]) -> Dict[str, Any]:
     if "fastq" in allowed:
         # Accept: "FASTQ files located at /path", "fastq at /path", "fastq /path"
         mfq = re.search(
-            r"\bfastq\b(?:\s+files?)?(?:\s+(?:located\s+at|located\s+in|at|in))?\s+(/[^ \t;,]+)",
+            r"\bfastq\b(?:\s+files?)?(?:\s+(?:located\s+at|located\s+in|at|in))?\s+(/[^ \t;,，；。]+)",
             t,
             flags=re.I,
         )
@@ -392,7 +399,7 @@ def _regex_extract_slots(text: str, allowed: List[str]) -> Dict[str, Any]:
     if "outdir" in allowed:
         # Accept: "outdir /path", "outputs in /path", "put outputs in /path", "to /path"
         mout = re.search(
-            r"\b(outdir|output\s*dir(?:ectory)?|outputs?\s*in|put\s*outputs?\s*in|to)\b\s*(?:is|=|:|to|in)?\s*(/[^ \t;,]+)",
+            r"\b(outdir|output\s*dir(?:ectory)?|outputs?\s*in|put\s*outputs?\s*in|to)\b\s*(?:is|=|:|to|in)?\s*(/[^ \t;,，；。]+)",
             t,
             flags=re.I,
         )
@@ -400,27 +407,27 @@ def _regex_extract_slots(text: str, allowed: List[str]) -> Dict[str, Any]:
             out["outdir"] = _sanitize_path(mout.group(2))
 
     if "bam" in allowed:
-        mb = re.search(r"(?:\b-b\b|\bbam\b)\s*(?:is|=|:)?\s*(/[^ \t;,]+)", t, flags=re.I)
+        mb = re.search(r"(?:\b-b\b|\bbam\b)\s*(?:is|=|:)?\s*(/[^ \t;,，；。]+)", t, flags=re.I)
         if mb:
             out["bam"] = _sanitize_path(mb.group(1))
 
     if "fqdir" in allowed:
-        mf = re.search(r"(?:\b--fqdir\b|\bfqdir\b|\bfastq\s*dir(?:ectory)?\b)\s*(?:is|=|:)?\s*(/[^ \t;,]+)", t, flags=re.I)
+        mf = re.search(r"(?:\b--fqdir\b|\bfqdir\b|\bfastq\s*dir(?:ectory)?\b)\s*(?:is|=|:)?\s*(/[^ \t;,，；。]+)", t, flags=re.I)
         if mf:
             out["fqdir"] = _sanitize_path(mf.group(1))
 
     if "ru" in allowed:
-        mu = re.search(r"(?:\b-u\b|\bsingle(?:-end)?\b|\bru\b)\s*(?:is|=|:)?\s*(/[^ \t;,]+)", t, flags=re.I)
+        mu = re.search(r"(?:\b-u\b|\bsingle(?:-end)?\b|\bru\b)\s*(?:is|=|:)?\s*(/[^ \t;,，；。]+)", t, flags=re.I)
         if mu:
             out["ru"] = _sanitize_path(mu.group(1))
 
     if "r1" in allowed:
-        m1 = re.search(r"(?:\b-1\b|\bread1\b|\br1\b)\s*(?:is|=|:)?\s*(/[^ \t;,]+)", t, flags=re.I)
+        m1 = re.search(r"(?:\b-1\b|\bread1\b|\br1\b)\s*(?:is|=|:)?\s*(/[^ \t;,，；。]+)", t, flags=re.I)
         if m1:
             out["r1"] = _sanitize_path(m1.group(1))
 
     if "r2" in allowed:
-        m2 = re.search(r"(?:\b-2\b|\bread2\b|\br2\b)\s*(?:is|=|:)?\s*(/[^ \t;,]+)", t, flags=re.I)
+        m2 = re.search(r"(?:\b-2\b|\bread2\b|\br2\b)\s*(?:is|=|:)?\s*(/[^ \t;,，；。]+)", t, flags=re.I)
         if m2:
             out["r2"] = _sanitize_path(m2.group(1))
 
@@ -968,7 +975,9 @@ def _optional_default_text(rule: Dict[str, Any], key: str, prefer_chinese: bool)
     if val in (None, "", []):
         val = load_defaults().get(key)
     if val in (None, "", []):
-        return "程序默认值" if prefer_chinese else "tool default"
+        val = BUILTIN_OPTIONAL_DEFAULTS.get(key)
+    if val in (None, "", []):
+        return "未配置" if prefer_chinese else "not configured"
     return str(val)
 
 

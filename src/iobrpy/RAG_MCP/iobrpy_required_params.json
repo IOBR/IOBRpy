@@ -360,6 +360,11 @@
     "function_summary": {
       "zh": "基于表达矩阵估计免疫细胞比例，输出各细胞类型丰度表。",
       "en": "Estimate immune cell fractions from expression data and output cell-type abundance table."
+    },
+    "optional_defaults": {
+      "perm": 100,
+      "QN": "FALSE",
+      "threads": 8
     }
   },
   "IPS": {
