@@ -529,6 +529,21 @@ def extract_slots(text: str, allowed: List[str]) -> Dict[str, Any]:
             r["confirm"] = llm2["confirm"]
     return r
 
+
+def extract_slots_multisource(raw_text: str, translated_text: Optional[str], allowed: List[str]) -> Dict[str, Any]:
+    """Extract slots from raw user text first, then backfill from translated text if needed."""
+    primary = extract_slots(raw_text, allowed)
+    t = translated_text or ""
+    if not t.strip() or t == raw_text:
+        return primary
+
+    secondary = extract_slots(t, allowed)
+    merged = dict(primary)
+    for k, v in secondary.items():
+        if k not in merged and v not in (None, "", [], {}):
+            merged[k] = v
+    return merged
+
 class SessionState:
     def __init__(self):
         self.task = ""
@@ -1123,7 +1138,7 @@ def tool_iobrpy_assistant(session_id: str, task: Optional[str] = None, answer_te
         state.confirmed = set()
 
         allowed = allowed_keys_for(state.subcommand, rules)
-        extracted = extract_slots(parse_task, allowed)
+        extracted = extract_slots_multisource(task, parse_task, allowed)
         apply_confirmations(state, extracted)
         auto_confirm_filled_values(state, extracted, rules)
         # Apply reset/unset requests
@@ -1152,7 +1167,7 @@ def tool_iobrpy_assistant(session_id: str, task: Optional[str] = None, answer_te
 
         allowed = allowed_keys_for(state.subcommand, rules)
         parse_answer = answer_text_en or answer_text
-        extracted = extract_slots(parse_answer, allowed)
+        extracted = extract_slots_multisource(answer_text, parse_answer, allowed)
         apply_confirmations(state, extracted)
         auto_confirm_filled_values(state, extracted, rules)
 
