@@ -607,7 +607,15 @@ def _is_function_discovery_query(text: str) -> bool:
         r"what\s+can\s+i\s+use",
         r"how\s+to\s+choose\s+(function|command)",
     ]
-    return any(re.search(p, t) for p in patterns)
+    if any(re.search(p, t) for p in patterns):
+        return True
+
+    # Broad intent + help phrasing should enter discovery instead of directly locking one function.
+    broad_intents = ["免疫反卷积", "deconvolution", "immune deconvolution", "tumor microenvironment", "肿瘤微环境"]
+    ask_help = ["怎么做", "如何做", "how to", "what should i do", "怎么办"]
+    has_broad = any(x in t for x in broad_intents)
+    has_help = any(x in t for x in ask_help)
+    return has_broad and has_help
 
 
 def _rank_subcommands(task: str, rules: Dict[str, Any], top_n: Optional[int] = None) -> List[Tuple[str, Tuple[int, int, int, int, int, int]]]:
