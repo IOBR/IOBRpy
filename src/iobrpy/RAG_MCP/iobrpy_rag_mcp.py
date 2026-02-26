@@ -248,6 +248,7 @@ def load_rules() -> Dict[str, Any]:
         choices = v.get("choices", {})
         req_one = v.get("required_one_of", [])
         notes = v.get("notes", {})
+        optional_defaults = v.get("optional_defaults", {})
         intent_keywords = v.get("intent_keywords", [])
         param_hints = v.get("param_hints", {})
         function_summary = v.get("function_summary", {})
@@ -257,12 +258,13 @@ def load_rules() -> Dict[str, Any]:
         if not isinstance(choices, dict): choices = {}
         if not isinstance(req_one, list): req_one = []
         if not isinstance(notes, dict): notes = {}
+        if not isinstance(optional_defaults, dict): optional_defaults = {}
         if not isinstance(intent_keywords, (list, dict)): intent_keywords = []
         if not isinstance(param_hints, dict): param_hints = {}
         if not isinstance(function_summary, (dict, str)): function_summary = {}
         if (not intent_keywords) and k in DEFAULT_INTENT_KEYWORDS:
             intent_keywords = list(DEFAULT_INTENT_KEYWORDS[k])
-        out[k] = {"required": req, "confirm": conf, "optional": opt, "choices": choices, "required_one_of": req_one, "notes": notes, "intent_keywords": intent_keywords, "param_hints": param_hints, "function_summary": function_summary}
+        out[k] = {"required": req, "confirm": conf, "optional": opt, "choices": choices, "required_one_of": req_one, "notes": notes, "optional_defaults": optional_defaults, "intent_keywords": intent_keywords, "param_hints": param_hints, "function_summary": function_summary}
     return out or DEFAULT_RULES
 
 def allowed_keys_for(subcommand: str, rules: Dict[str, Any]) -> List[str]:
@@ -342,6 +344,28 @@ def _regex_extract_slots(text: str, allowed: List[str]) -> Dict[str, Any]:
         mt = re.search(r"\bthreads?\b\s*(?:is|=|:)?\s*(\d+)\b", tl)
         if mt:
             out["threads"] = int(mt.group(1))
+        else:
+            mt_cn = re.search(r"(?:线程|執行緒)\s*(?:数|數)?\s*(?:是|为|為|=|:)?\s*(\d+)\b", t)
+            if mt_cn:
+                out["threads"] = int(mt_cn.group(1))
+
+    if "input" in allowed:
+        mi = re.search(r"\binput\b\s*(?:is|=|:)?\s*(/[^ \t;,]+)", t, flags=re.I)
+        if mi:
+            out["input"] = _sanitize_path(mi.group(1))
+        else:
+            mi_cn = re.search(r"(?:输入|輸入)(?:是|为|為|=|:)?\s*(/[^ \t;,]+)", t)
+            if mi_cn:
+                out["input"] = _sanitize_path(mi_cn.group(1))
+
+    if "output" in allowed:
+        mo = re.search(r"\boutput\b\s*(?:is|=|:)?\s*(/[^ \t;,]+)", t, flags=re.I)
+        if mo:
+            out["output"] = _sanitize_path(mo.group(1))
+        else:
+            mo_cn = re.search(r"(?:输出|輸出)(?:在|到|是|为|為|=|:)?\s*(/[^ \t;,]+)", t)
+            if mo_cn:
+                out["output"] = _sanitize_path(mo_cn.group(1))
 
     if "batch_size" in allowed:
         mb = re.search(r"\b(batch[_\s]?size|batchsize|parallel(?:\s*samples?)?)\b\s*(?:is|=|:)?\s*(\d+)\b", tl)
@@ -938,6 +962,16 @@ def _format_param_detail(subcommand: str, key: str, rule: Dict[str, Any], prefer
     return "; ".join(parts)
 
 
+def _optional_default_text(rule: Dict[str, Any], key: str, prefer_chinese: bool) -> str:
+    optional_defaults = rule.get("optional_defaults", {}) if isinstance(rule.get("optional_defaults", {}), dict) else {}
+    val = optional_defaults.get(key)
+    if val in (None, "", []):
+        val = load_defaults().get(key)
+    if val in (None, "", []):
+        return "程序默认值" if prefer_chinese else "tool default"
+    return str(val)
+
+
 def _format_optional_details(rule: Dict[str, Any], prefer_chinese: bool) -> List[str]:
     opt = rule.get("optional", []) if isinstance(rule.get("optional", []), list) else []
     choices = rule.get("choices", {}) if isinstance(rule.get("choices", {}), dict) else {}
@@ -949,13 +983,14 @@ def _format_optional_details(rule: Dict[str, Any], prefer_chinese: bool) -> List
             choice_txt = ", ".join([str(x) for x in choices.get(k)])
         note = notes.get(k)
         hint = _param_hint_text(k, note, prefer_chinese, rule)
+        default_txt = _optional_default_text(rule, k, prefer_chinese)
         if prefer_chinese:
-            seg = [f"- {k}", f"说明: {hint}"]
+            seg = [f"- {k}", f"说明: {hint}", f"默认值: {default_txt}"]
             if choice_txt:
                 seg.append(f"可选值: {choice_txt}")
             lines.append("；".join(seg))
         else:
-            seg = [f"- {k}", f"note: {hint}"]
+            seg = [f"- {k}", f"note: {hint}", f"default: {default_txt}"]
             if choice_txt:
                 seg.append(f"choices: {choice_txt}")
             lines.append("; ".join(seg))
@@ -1003,36 +1038,9 @@ def compose_questions(subcommand: str, missing: List[str], need_confirm: List[st
 
     optional_lines = _format_optional_details(rule, prefer_chinese)
     if optional_lines:
-        lines.append("可选参数（按需提供）:" if prefer_chinese else "Optional parameters (provide if needed):")
+        lines.append("可选参数（按需修改默认值）:" if prefer_chinese else "Optional parameters (modify defaults only if needed):")
+        lines.append("若你未提供某个可选参数，将使用默认值。" if prefer_chinese else "If an optional parameter is omitted, its default value will be used.")
         lines.extend(optional_lines[:8])
-
-    lines.append("你可以这样回复（示例）:" if prefer_chinese else "You can reply like:")
-    if subcommand == "trust4":
-        lines.append("- -b /path/sample.bam")
-        lines.append("- -1 /path/R1.fastq.gz")
-        lines.append("- -2 /path/R2.fastq.gz")
-        lines.append("- -t 8")
-        lines.append("- -o sample_prefix")
-    else:
-        # Build examples from missing/optional keys for this subcommand.
-        ex_keys = [k for k in missing if k != "__one_of_group"]
-        if not ex_keys:
-            ex_keys = (rule.get("required", []) if isinstance(rule.get("required", []), list) else [])[:2]
-        for k in ex_keys[:2]:
-            if k in PATH_KEYS or k in {"input", "output", "outdir", "index"}:
-                lines.append(f"- {k} /path/{k}")
-            elif k in INT_KEYS or k in {"threads", "perm", "batch_size", "t"}:
-                lines.append(f"- {k} 8")
-            else:
-                lines.append(f"- {k} <value>")
-        # add one optional example if useful
-        opt = rule.get("optional", []) if isinstance(rule.get("optional", []), list) else []
-        for ok in opt:
-            if ok in {"threads", "t", "perm", "QN"}:
-                lines.append(f"- {ok} {'FALSE' if ok=='QN' else '8'}")
-                break
-        for k in need_confirm[:1]:
-            lines.append(f"- confirm {k}")
 
     return "\n".join(lines) if lines else ("请补充缺失参数。" if prefer_chinese else "Please provide the missing parameters.")
 
