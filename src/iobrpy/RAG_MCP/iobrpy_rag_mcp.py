@@ -588,7 +588,8 @@ def _intent_keyword_score(task_l: str, task_tokens: set, rule: Dict[str, Any]) -
             continue
         # For CJK keywords, use substring matching; for Latin keywords, use token matching.
         if re.search(r"[一-鿿]", k):
-            if k in text:
+            # CJK intent phrase: allow both exact inclusion and broader-query match.
+            if k in text or text in k:
                 score += 2
         elif k in task_tokens:
             score += 1

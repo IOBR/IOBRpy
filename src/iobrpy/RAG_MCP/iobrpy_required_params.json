@@ -379,17 +379,15 @@
     },
     "intent_keywords": {
       "zh": [
+        "免疫反卷积",
         "免疫评分",
-        "ips评分",
-        "免疫反卷积相关评分",
-        "免疫浸润评估"
+        "ips评分"
       ],
       "en": [
+        "immune deconvolution",
         "immunophenoscore",
         "ips",
-        "immune score",
-        "immune deconvolution related",
-        "immune infiltration assessment"
+        "immune score"
       ]
     },
     "function_summary": {
@@ -421,18 +419,16 @@
     },
     "intent_keywords": {
       "zh": [
+        "免疫反卷积",
         "肿瘤纯度",
-        "免疫基质评分",
-        "免疫反卷积相关评分",
-        "免疫浸润评估"
+        "免疫基质评分"
       ],
       "en": [
+        "immune deconvolution",
         "estimate",
         "tumor purity",
         "immune score",
-        "stromal score",
-        "immune deconvolution related",
-        "immune infiltration assessment"
+        "stromal score"
       ]
     },
     "function_summary": {
@@ -1284,17 +1280,12 @@
     },
     "intent_keywords": {
       "zh": [
-        "肿瘤微环境",
-        "tme画像",
-        "免疫浸润",
-        "免疫反卷积",
+        "肿瘤微环境画像",
         "免疫浸润评估"
       ],
       "en": [
         "tme profile",
-        "microenvironment",
-        "immune infiltration",
-        "immune deconvolution related",
+        "microenvironment profiling",
         "immune infiltration assessment"
       ]
     }
