@@ -214,6 +214,16 @@ def validate_command_options(subcommand: str, argv: List[str]) -> Dict[str, Any]
     unknown = [a for a in used if a not in opts]
     return {"unknown_options": unknown, "help_unavailable": False, "help_excerpt": help_text[-1200:]}
 
+
+# Backfill for older packaged rules that may not yet include intent_keywords.
+DEFAULT_INTENT_KEYWORDS: Dict[str, List[str]] = {
+    "runall": ["fastq", "workflow", "pipeline", "from fastq to tme", "bulk workflow"],
+    "trust4": ["tcr", "bcr", "vdj", "repertoire", "clonotype", "immune receptor"],
+    "spechla": ["hla", "typing"],
+    "extract_hla_read": ["hla", "extract hla read"],
+    "hla_typing": ["hla", "typing", "hla analysis"],
+}
+
 DEFAULT_RULES = {
   "runall": {
     "required": ["fastq", "outdir", "mode", "index", "threads", "batch_size", "project"],
@@ -228,6 +238,8 @@ def load_rules() -> Dict[str, Any]:
         return DEFAULT_RULES
     out = {}
     for k, v in rules.items():
+        if isinstance(k, str) and k.startswith("_"):
+            continue
         if not isinstance(v, dict):
             continue
         req = v.get("required", [])
@@ -236,13 +248,23 @@ def load_rules() -> Dict[str, Any]:
         choices = v.get("choices", {})
         req_one = v.get("required_one_of", [])
         notes = v.get("notes", {})
+        optional_defaults = v.get("optional_defaults", {})
+        intent_keywords = v.get("intent_keywords", [])
+        param_hints = v.get("param_hints", {})
+        function_summary = v.get("function_summary", {})
         if not isinstance(req, list): req = []
         if not isinstance(conf, list): conf = []
         if not isinstance(opt, list): opt = []
         if not isinstance(choices, dict): choices = {}
         if not isinstance(req_one, list): req_one = []
         if not isinstance(notes, dict): notes = {}
-        out[k] = {"required": req, "confirm": conf, "optional": opt, "choices": choices, "required_one_of": req_one, "notes": notes}
+        if not isinstance(optional_defaults, dict): optional_defaults = {}
+        if not isinstance(intent_keywords, (list, dict)): intent_keywords = []
+        if not isinstance(param_hints, dict): param_hints = {}
+        if not isinstance(function_summary, (dict, str)): function_summary = {}
+        if (not intent_keywords) and k in DEFAULT_INTENT_KEYWORDS:
+            intent_keywords = list(DEFAULT_INTENT_KEYWORDS[k])
+        out[k] = {"required": req, "confirm": conf, "optional": opt, "choices": choices, "required_one_of": req_one, "notes": notes, "optional_defaults": optional_defaults, "intent_keywords": intent_keywords, "param_hints": param_hints, "function_summary": function_summary}
     return out or DEFAULT_RULES
 
 def allowed_keys_for(subcommand: str, rules: Dict[str, Any]) -> List[str]:
@@ -271,6 +293,13 @@ def set_defaults(new_defaults: Dict[str, Any], rules: Dict[str, Any]) -> Dict[st
 PATH_KEYS = {"fastq", "outdir", "index", "input", "output", "bam", "r1", "r2", "ru", "fqdir", "o", "od"}
 INT_KEYS = {"threads", "batch_size", "t", "k", "stage", "clean", "use_exon"}
 
+BUILTIN_OPTIONAL_DEFAULTS: Dict[str, Any] = {
+    "threads": 8,
+    "t": 8,
+    "perm": 100,
+    "QN": "FALSE",
+}
+
 def _sanitize_path(p: str) -> str:
     if not p:
         return p
@@ -285,7 +314,7 @@ def _recover_full_path(short_path: str, text: str) -> str:
     if not short_path or not short_path.startswith('/'):
         return short_path
     # collect absolute-path-like tokens from the original text
-    cands = re.findall(r"(/[^ \t;,]+)", text)
+    cands = re.findall(r"(/[^ \t;,，；。]+)", text)
     cands = [_sanitize_path(c) for c in cands]
     # prefer the longest candidate that endswith the short_path
     best = short_path
@@ -314,7 +343,7 @@ def _regex_extract_slots(text: str, allowed: List[str]) -> Dict[str, Any]:
             out["mode"] = "star"
 
     if "index" in allowed:
-        mi = re.search(r"\bindex\b\s*(?:is|=|:)?\s*(/[^ \t;,]+)", t, flags=re.I)
+        mi = re.search(r"\bindex\b\s*(?:is|=|:)?\s*(/[^ \t;,，；。]+)", t, flags=re.I)
         if mi:
             out["index"] = _sanitize_path(mi.group(1))
 
@@ -322,6 +351,28 @@ def _regex_extract_slots(text: str, allowed: List[str]) -> Dict[str, Any]:
         mt = re.search(r"\bthreads?\b\s*(?:is|=|:)?\s*(\d+)\b", tl)
         if mt:
             out["threads"] = int(mt.group(1))
+        else:
+            mt_cn = re.search(r"(?:线程|執行緒)\s*(?:数|數)?\s*(?:是|为|為|=|:)?\s*(\d+)\b", t)
+            if mt_cn:
+                out["threads"] = int(mt_cn.group(1))
+
+    if "input" in allowed:
+        mi = re.search(r"\binput\b\s*(?:is|=|:)?\s*(/[^ \t;,，；。]+)", t, flags=re.I)
+        if mi:
+            out["input"] = _sanitize_path(mi.group(1))
+        else:
+            mi_cn = re.search(r"(?:输入|輸入)(?:是|为|為|=|:)?\s*(/[^ \t;,，；。]+)", t)
+            if mi_cn:
+                out["input"] = _sanitize_path(mi_cn.group(1))
+
+    if "output" in allowed:
+        mo = re.search(r"\boutput\b\s*(?:is|=|:)?\s*(/[^ \t;,，；。]+)", t, flags=re.I)
+        if mo:
+            out["output"] = _sanitize_path(mo.group(1))
+        else:
+            mo_cn = re.search(r"(?:输出|輸出)(?:在|到|是|为|為|=|:)?\s*(/[^ \t;,，；。]+)", t)
+            if mo_cn:
+                out["output"] = _sanitize_path(mo_cn.group(1))
 
     if "batch_size" in allowed:
         mb = re.search(r"\b(batch[_\s]?size|batchsize|parallel(?:\s*samples?)?)\b\s*(?:is|=|:)?\s*(\d+)\b", tl)
@@ -338,7 +389,7 @@ def _regex_extract_slots(text: str, allowed: List[str]) -> Dict[str, Any]:
     if "fastq" in allowed:
         # Accept: "FASTQ files located at /path", "fastq at /path", "fastq /path"
         mfq = re.search(
-            r"\bfastq\b(?:\s+files?)?(?:\s+(?:located\s+at|located\s+in|at|in))?\s+(/[^ \t;,]+)",
+            r"\bfastq\b(?:\s+files?)?(?:\s+(?:located\s+at|located\s+in|at|in))?\s+(/[^ \t;,，；。]+)",
             t,
             flags=re.I,
         )
@@ -348,7 +399,7 @@ def _regex_extract_slots(text: str, allowed: List[str]) -> Dict[str, Any]:
     if "outdir" in allowed:
         # Accept: "outdir /path", "outputs in /path", "put outputs in /path", "to /path"
         mout = re.search(
-            r"\b(outdir|output\s*dir(?:ectory)?|outputs?\s*in|put\s*outputs?\s*in|to)\b\s*(?:is|=|:|to|in)?\s*(/[^ \t;,]+)",
+            r"\b(outdir|output\s*dir(?:ectory)?|outputs?\s*in|put\s*outputs?\s*in|to)\b\s*(?:is|=|:|to|in)?\s*(/[^ \t;,，；。]+)",
             t,
             flags=re.I,
         )
@@ -356,27 +407,27 @@ def _regex_extract_slots(text: str, allowed: List[str]) -> Dict[str, Any]:
             out["outdir"] = _sanitize_path(mout.group(2))
 
     if "bam" in allowed:
-        mb = re.search(r"(?:\b-b\b|\bbam\b)\s*(?:is|=|:)?\s*(/[^ \t;,]+)", t, flags=re.I)
+        mb = re.search(r"(?:\b-b\b|\bbam\b)\s*(?:is|=|:)?\s*(/[^ \t;,，；。]+)", t, flags=re.I)
         if mb:
             out["bam"] = _sanitize_path(mb.group(1))
 
     if "fqdir" in allowed:
-        mf = re.search(r"(?:\b--fqdir\b|\bfqdir\b|\bfastq\s*dir(?:ectory)?\b)\s*(?:is|=|:)?\s*(/[^ \t;,]+)", t, flags=re.I)
+        mf = re.search(r"(?:\b--fqdir\b|\bfqdir\b|\bfastq\s*dir(?:ectory)?\b)\s*(?:is|=|:)?\s*(/[^ \t;,，；。]+)", t, flags=re.I)
         if mf:
             out["fqdir"] = _sanitize_path(mf.group(1))
 
     if "ru" in allowed:
-        mu = re.search(r"(?:\b-u\b|\bsingle(?:-end)?\b|\bru\b)\s*(?:is|=|:)?\s*(/[^ \t;,]+)", t, flags=re.I)
+        mu = re.search(r"(?:\b-u\b|\bsingle(?:-end)?\b|\bru\b)\s*(?:is|=|:)?\s*(/[^ \t;,，；。]+)", t, flags=re.I)
         if mu:
             out["ru"] = _sanitize_path(mu.group(1))
 
     if "r1" in allowed:
-        m1 = re.search(r"(?:\b-1\b|\bread1\b|\br1\b)\s*(?:is|=|:)?\s*(/[^ \t;,]+)", t, flags=re.I)
+        m1 = re.search(r"(?:\b-1\b|\bread1\b|\br1\b)\s*(?:is|=|:)?\s*(/[^ \t;,，；。]+)", t, flags=re.I)
         if m1:
             out["r1"] = _sanitize_path(m1.group(1))
 
     if "r2" in allowed:
-        m2 = re.search(r"(?:\b-2\b|\bread2\b|\br2\b)\s*(?:is|=|:)?\s*(/[^ \t;,]+)", t, flags=re.I)
+        m2 = re.search(r"(?:\b-2\b|\bread2\b|\br2\b)\s*(?:is|=|:)?\s*(/[^ \t;,，；。]+)", t, flags=re.I)
         if m2:
             out["r2"] = _sanitize_path(m2.group(1))
 
@@ -478,6 +529,21 @@ def extract_slots(text: str, allowed: List[str]) -> Dict[str, Any]:
             r["confirm"] = llm2["confirm"]
     return r
 
+
+def extract_slots_multisource(raw_text: str, translated_text: Optional[str], allowed: List[str]) -> Dict[str, Any]:
+    """Extract slots from raw user text first, then backfill from translated text if needed."""
+    primary = extract_slots(raw_text, allowed)
+    t = translated_text or ""
+    if not t.strip() or t == raw_text:
+        return primary
+
+    secondary = extract_slots(t, allowed)
+    merged = dict(primary)
+    for k, v in secondary.items():
+        if k not in merged and v not in (None, "", [], {}):
+            merged[k] = v
+    return merged
+
 class SessionState:
     def __init__(self):
         self.task = ""
@@ -493,29 +559,262 @@ def get_session(session_id: str) -> SessionState:
         SESSIONS[session_id] = SessionState()
     return SESSIONS[session_id]
 
+def _intent_tokenize(text: str) -> set:
+    """Tokenize user intent while avoiding noisy path fragments (e.g., '/.../star_2sample')."""
+    if not text:
+        return set()
+    t = _normalize_text(text).lower()
+    t = re.sub(r"/[A-Za-z0-9._/-]+", " ", t)
+    tokens = re.findall(r"[a-z][a-z0-9]*", t.replace('_', ' '))
+    return set(tokens)
+
+
+def _rag_command_votes(ctx: List[Dict[str, Any]], tools: List[str]) -> Dict[str, int]:
+    """Count direct tool-name mentions in retrieved snippets as a lightweight reranking signal."""
+    votes = {t: 0 for t in tools}
+    for c in (ctx or []):
+        snippet = _normalize_text(str(c.get("text", ""))).lower().replace("_", " ")
+        for t in tools:
+            pat = r"\b" + re.escape(t.lower().replace("_", " ")) + r"\b"
+            if re.search(pat, snippet):
+                votes[t] += 1
+    return votes
+
+
+def _tool_profile_text(tool: str, rules: Dict[str, Any]) -> str:
+    r = rules.get(tool, {}) if isinstance(rules.get(tool, {}), dict) else {}
+    fields = [
+        tool,
+        " ".join(r.get("required", []) if isinstance(r.get("required", []), list) else []),
+        " ".join(r.get("optional", []) if isinstance(r.get("optional", []), list) else []),
+        json.dumps(r.get("required_one_of", []), ensure_ascii=False),
+        json.dumps(r.get("choices", {}), ensure_ascii=False),
+        " ".join(r.get("intent_keywords", []) if isinstance(r.get("intent_keywords", []), list) else []),
+        json.dumps(r.get("notes", {}), ensure_ascii=False),
+    ]
+    return _normalize_text(" ".join(fields)).lower().replace("_", " ")
+
+
+def _tool_profile_overlap(task_tokens: set, profile_text: str) -> int:
+    profile_tokens = set(re.findall(r"[a-z][a-z0-9]*", profile_text))
+    return len(task_tokens & profile_tokens)
+
+
+def _intent_keywords_list(rule: Dict[str, Any]) -> List[str]:
+    kws = rule.get("intent_keywords", []) if isinstance(rule, dict) else []
+    if isinstance(kws, list):
+        return [str(x).strip().lower() for x in kws if isinstance(x, str) and str(x).strip()]
+    if isinstance(kws, dict):
+        out: List[str] = []
+        for lang in ("zh", "en"):
+            arr = kws.get(lang, [])
+            if isinstance(arr, list):
+                out.extend([str(x).strip().lower() for x in arr if isinstance(x, str) and str(x).strip()])
+        return out
+    return []
+
+
+def _intent_keyword_score(task_l: str, task_tokens: set, rule: Dict[str, Any]) -> int:
+    """Score intent keywords using token-level matching to avoid CJK word-boundary pitfalls."""
+    kws = _intent_keywords_list(rule)
+    if not kws:
+        return 0
+    text = task_l.replace("_", " ")
+    score = 0
+    for kw in kws:
+        if not isinstance(kw, str):
+            continue
+        k = kw.strip().lower()
+        if not k:
+            continue
+        if " " in k:
+            # phrase match after normalization
+            if _normalize_text(k) in _normalize_text(text):
+                score += 2
+            continue
+        # For CJK keywords, use substring matching; for Latin keywords, use token matching.
+        if re.search(r"[一-鿿]", k):
+            # CJK intent phrase: allow both exact inclusion and broader-query match.
+            if k in text or text in k:
+                score += 2
+        elif k in task_tokens:
+            score += 1
+    return score
+
+
+
+
+def _is_function_discovery_query(text: str) -> bool:
+    t = _normalize_text(text).lower()
+    patterns = [
+        r"有哪些\s*(function|functions|命令|功能)",
+        r"有什么\s*(function|functions|命令|功能)",
+        r"which\s+(function|functions|command|commands)",
+        r"what\s+can\s+i\s+use",
+        r"how\s+to\s+choose\s+(function|command)",
+    ]
+    if any(re.search(p, t) for p in patterns):
+        return True
+
+    # Broad intent + help phrasing should enter discovery instead of directly locking one function.
+    broad_intents = ["免疫反卷积", "deconvolution", "immune deconvolution", "tumor microenvironment", "肿瘤微环境"]
+    ask_help = ["怎么做", "如何做", "how to", "what should i do", "怎么办"]
+    has_broad = any(x in t for x in broad_intents)
+    has_help = any(x in t for x in ask_help)
+    return has_broad and has_help
+
+
+def _rank_subcommands(task: str, rules: Dict[str, Any], top_n: Optional[int] = None) -> List[Tuple[str, Tuple[int, int, int, int, int, int]]]:
+    tl = _normalize_text(task).lower()
+    tools = list(rules.keys())
+    bag = _intent_tokenize(tl)
+
+    q_en = _translate_to_english(task)
+    query_for_rag = q_en if isinstance(q_en, str) and q_en.strip() else task
+    try:
+        ctx = rag_search(query_for_rag, top_k=10)
+    except Exception:
+        ctx = []
+
+    votes = _rag_command_votes(ctx, tools)
+    has_abs_path = re.search(r"/[A-Za-z0-9._/-]+", _normalize_text(task)) is not None
+
+    ranked: List[Tuple[Tuple[int, int, int, int, int, int], str]] = []
+    for t in tools:
+        profile = _tool_profile_text(t, rules)
+        name_tokens = set(re.findall(r"[a-z][a-z0-9]*", t.lower().replace('_', ' ')))
+        required_keys = rules.get(t, {}).get("required", []) if isinstance(rules.get(t, {}), dict) else []
+        req_tokens = set(re.findall(r"[a-z][a-z0-9]*", " ".join([str(x).replace("_", " ") for x in required_keys]).lower()))
+        dir_bonus = 1 if has_abs_path and any(str(k).endswith("_dir") for k in required_keys) else 0
+        intent_kw_bonus = _intent_keyword_score(tl, bag, rules.get(t, {}))
+        score = (
+            intent_kw_bonus,
+            votes.get(t, 0),
+            len(bag & req_tokens),
+            len(bag & name_tokens),
+            _tool_profile_overlap(bag, profile),
+            dir_bonus,
+        )
+        ranked.append((score, t))
+
+    ranked_sorted = sorted(ranked, key=lambda x: x[0], reverse=True)
+    # Keep only relevant candidates in discovery mode (intent/rag evidence exists).
+    # Stricter relevance gate for discovery:
+    # - always keep intent-keyword hits;
+    # - only keep RAG-vote-only hits when there is also lexical evidence.
+    filtered = [(t, sc) for sc, t in ranked_sorted if (sc[0] > 0 or (sc[1] > 0 and (sc[2] > 0 or sc[3] > 0 or sc[4] > 0)))]
+    if filtered:
+        return filtered if top_n is None else filtered[: max(1, top_n)]
+    # If no evidence at all, provide a small fallback list.
+    fallback = [(t, sc) for sc, t in ranked_sorted[:3]]
+    return fallback if top_n is None else fallback[: max(1, top_n)]
+
+
+def _render_intent_keywords(rule: Dict[str, Any], prefer_chinese: bool) -> str:
+    kws = rule.get("intent_keywords", []) if isinstance(rule, dict) else []
+    if isinstance(kws, dict):
+        arr = kws.get("zh" if prefer_chinese else "en", [])
+        if isinstance(arr, list) and arr:
+            return ", ".join([str(x) for x in arr[:4]])
+        arr2 = kws.get("en", []) if prefer_chinese else kws.get("zh", [])
+        if isinstance(arr2, list) and arr2:
+            return ", ".join([str(x) for x in arr2[:4]])
+    if isinstance(kws, list) and kws:
+        return ", ".join([str(x) for x in kws[:4]])
+    return ""
+
+
+
+
+def _function_summary(rule: Dict[str, Any], prefer_chinese: bool) -> str:
+    summary = rule.get("function_summary") if isinstance(rule, dict) else None
+    if isinstance(summary, dict):
+        txt = summary.get("zh" if prefer_chinese else "en")
+        if isinstance(txt, str) and txt.strip():
+            return txt.strip()
+    if isinstance(summary, str) and summary.strip():
+        return summary.strip()
+    req = rule.get("required", []) if isinstance(rule.get("required", []), list) else []
+    if prefer_chinese:
+        return f"需要参数: {', '.join(req[:4]) if req else '无'}。"
+    return f"Requires: {', '.join(req[:4]) if req else 'none'}."
+
+def _compose_function_suggestions(task: str, rules: Dict[str, Any], prefer_chinese: bool) -> str:
+    ranked = _rank_subcommands(task, rules, top_n=None)
+    if prefer_chinese:
+        lines = ["你这个需求可以先从这些 function 里选（按相关度排序）："]
+    else:
+        lines = ["You can choose from these functions first (ranked by relevance):"]
+
+    for i, (cmd, _score) in enumerate(ranked, 1):
+        r = rules.get(cmd, {}) if isinstance(rules.get(cmd, {}), dict) else {}
+        required = r.get("required", []) if isinstance(r.get("required", []), list) else []
+        req_show = ", ".join(required[:4]) + (" ..." if len(required) > 4 else "")
+        desc = _function_summary(r, prefer_chinese)
+        if prefer_chinese:
+            lines.append(f"{i}) {cmd}：{desc}")
+        else:
+            lines.append(f"{i}) {cmd}: {desc}")
+
+    lines.append(("请回复 function 名称（例如：cibersort 或 quantiseq），我再继续补全参数。") if prefer_chinese else ("Reply with a function name (e.g., cibersort or quantiseq), and I will continue parameter completion."))
+    return "\n".join(lines)
+
 def choose_subcommand(task: str, rules: Dict[str, Any]) -> str:
     tl = _normalize_text(task).lower()
     tools = list(rules.keys())
+    bag = _intent_tokenize(tl)
 
-    # Build tool profile from rule metadata so the model can reason even when RAG is weak.
-    tool_profiles = []
-    for t in tools:
-        r = rules.get(t, {}) if isinstance(rules.get(t, {}), dict) else {}
-        tool_profiles.append({
-            "name": t,
-            "required": r.get("required", []),
-            "required_one_of": r.get("required_one_of", []),
-            "notes": r.get("notes", {}),
-        })
-
-    # Use both original query and English translation to improve retrieval/selection quality.
     q_en = _translate_to_english(task)
     query_for_rag = q_en if isinstance(q_en, str) and q_en.strip() else task
 
     try:
-        ctx = rag_search(query_for_rag, top_k=12)
+        ctx = rag_search(query_for_rag, top_k=10)
     except Exception:
         ctx = []
+
+    votes = _rag_command_votes(ctx, tools)
+    has_abs_path = re.search(r"/[A-Za-z0-9._/-]+", _normalize_text(task)) is not None
+
+    # Stage-1: deterministic coarse ranking from generic rule metadata + RAG vote.
+    ranked: List[Tuple[Tuple[int, int, int, int], str]] = []
+    profile_map: Dict[str, str] = {}
+    for t in tools:
+        profile = _tool_profile_text(t, rules)
+        profile_map[t] = profile
+        name_tokens = set(re.findall(r"[a-z][a-z0-9]*", t.lower().replace('_', ' ')))
+        required_keys = rules.get(t, {}).get("required", []) if isinstance(rules.get(t, {}), dict) else []
+        req_tokens = set(re.findall(r"[a-z][a-z0-9]*", " ".join([str(x).replace("_", " ") for x in required_keys]).lower()))
+        dir_bonus = 1 if has_abs_path and any(str(k).endswith("_dir") for k in required_keys) else 0
+        intent_kw_bonus = _intent_keyword_score(tl, bag, rules.get(t, {}))
+        score = (
+            intent_kw_bonus,
+            votes.get(t, 0),
+            len(bag & req_tokens),
+            len(bag & name_tokens),
+            _tool_profile_overlap(bag, profile),
+            dir_bonus,
+        )
+        ranked.append((score, t))
+
+    ranked_sorted = sorted(ranked, key=lambda x: x[0], reverse=True)
+    score_map = {t: sc for sc, t in ranked_sorted}
+    candidate_tools = [t for _, t in ranked_sorted[: min(5, len(ranked_sorted))]]
+    fallback_sub = candidate_tools[0] if candidate_tools else tools[0]
+
+    # Stage-2: let LLM decide ONLY within top candidates to reduce off-target picks.
+    tool_profiles = []
+    for t in candidate_tools:
+        r = rules.get(t, {}) if isinstance(rules.get(t, {}), dict) else {}
+        tool_profiles.append({
+            "name": t,
+            "required": r.get("required", []),
+            "optional": r.get("optional", []),
+            "required_one_of": r.get("required_one_of", []),
+            "notes": r.get("notes", {}),
+            "intent_keywords": r.get("intent_keywords", []),
+            "rag_vote": votes.get(t, 0),
+            "lexical_overlap": _tool_profile_overlap(bag, profile_map.get(t, "")),
+        })
 
     ctx_text = "\n\n".join([
         f"[{i}] {c.get('path')}:{c.get('start')}-{c.get('end')}\n{c.get('text','')[:700]}"
@@ -524,9 +823,9 @@ def choose_subcommand(task: str, rules: Dict[str, Any]) -> str:
 
     prompt = f"""
 You are selecting the best iobrpy subcommand for the user intent.
-Pick exactly ONE subcommand name from this list: {tools}
+Pick exactly ONE subcommand name from this candidate list: {candidate_tools}
 
-Tool profiles (from machine rules):
+Candidate tool profiles (from machine rules + retrieval signals):
 {json.dumps(tool_profiles, ensure_ascii=False)}
 
 User request (original):
@@ -538,7 +837,12 @@ User request (english translation for intent matching):
 Helpful retrieved docs/snippets:
 {ctx_text}
 
-Return JSON only: {{"subcommand": "<one of the list>", "reason": "<short>"}}
+Rules:
+- Select the command whose purpose and required inputs best match the user intent.
+- Do not be biased by incidental path fragments like '/.../star_2sample'.
+- Prefer specialized commands over generic workflows when the intent is specific.
+
+Return JSON only: {{"subcommand": "<one of candidate list>", "reason": "<short>"}}
 """.strip()
 
     try:
@@ -547,27 +851,19 @@ Return JSON only: {{"subcommand": "<one of the list>", "reason": "<short>"}}
         j = {}
 
     sub = j.get("subcommand") if isinstance(j, dict) else None
-    if isinstance(sub, str) and sub in tools:
+    if isinstance(sub, str) and sub in candidate_tools:
+        # Accept LLM decision only if it is not clearly worse than top deterministic candidate.
+        top_score = score_map.get(fallback_sub)
+        sub_score = score_map.get(sub)
+        if top_score is not None and sub_score is not None:
+            # score tuple = (intent_kw_bonus, rag_votes, req_overlap, name_overlap, profile_overlap, dir_bonus)
+            # If LLM-picked command has weaker retrieval+intent evidence than top, keep deterministic top.
+            if (sub_score[0], sub_score[1], sub_score[2]) < (top_score[0], top_score[1], top_score[2]):
+                return fallback_sub
         return sub
 
-    # Last-resort fallback: lexical overlap against tool names and notes (not hardcoded routing).
-    bag = set(re.findall(r"[a-z0-9_]+", tl))
-    best = tools[0]
-    best_score = -1
-    for t in tools:
-        r = rules.get(t, {}) if isinstance(rules.get(t, {}), dict) else {}
-        txt = " ".join([
-            t,
-            " ".join(r.get("required", []) if isinstance(r.get("required", []), list) else []),
-            json.dumps(r.get("notes", {}), ensure_ascii=False),
-        ]).lower()
-        cand = set(re.findall(r"[a-z0-9_]+", txt))
-        score = len(bag & cand)
-        if score > best_score:
-            best_score = score
-            best = t
+    return fallback_sub
 
-    return best
 FLAG_MAP = {
     "fastq": "--fastq",
     "outdir": "--outdir",
@@ -647,33 +943,142 @@ def compute_needs(subcommand: str, rules: Dict[str, Any], params: Dict[str, Any]
     need_confirm = [k for k in confirm if k not in confirmed]
     return missing, need_confirm
 
+
+
+
+
+
+def _param_hint_text(key: str, note: Any, prefer_chinese: bool, rule: Dict[str, Any]) -> str:
+    if isinstance(note, str) and note.strip():
+        base = note
+        return _translate_to_chinese(base) if prefer_chinese else base
+
+    param_hints = rule.get("param_hints", {}) if isinstance(rule, dict) else {}
+    if isinstance(param_hints, dict):
+        hv = param_hints.get(key)
+        if isinstance(hv, dict):
+            base = hv.get("zh") if prefer_chinese else hv.get("en")
+            if isinstance(base, str) and base.strip():
+                return base.strip()
+
+    return (f"参数 {key} 的值。" if prefer_chinese else f"Value for parameter '{key}'.")
+
+def _format_param_detail(subcommand: str, key: str, rule: Dict[str, Any], prefer_chinese: bool) -> str:
+    notes = rule.get("notes", {}) if isinstance(rule.get("notes", {}), dict) else {}
+    choices = rule.get("choices", {}) if isinstance(rule.get("choices", {}), dict) else {}
+    note = notes.get(key)
+    choice_txt = None
+    if key in choices and isinstance(choices.get(key), list) and choices.get(key):
+        choice_txt = ", ".join([str(x) for x in choices.get(key)])
+
+    hint = _param_hint_text(key, note, prefer_chinese, rule)
+    if prefer_chinese:
+        parts = [f"- {key}（必填）", f"说明: {hint}"]
+        if choice_txt:
+            parts.append(f"可选值: {choice_txt}")
+        return "；".join(parts)
+
+    parts = [f"- {key} (required)", f"note: {hint}"]
+    if choice_txt:
+        parts.append(f"choices: {choice_txt}")
+    return "; ".join(parts)
+
+
+def _optional_default_text(rule: Dict[str, Any], key: str, prefer_chinese: bool) -> str:
+    optional_defaults = rule.get("optional_defaults", {}) if isinstance(rule.get("optional_defaults", {}), dict) else {}
+    val = optional_defaults.get(key)
+    if val in (None, "", []):
+        val = load_defaults().get(key)
+    if val in (None, "", []):
+        val = BUILTIN_OPTIONAL_DEFAULTS.get(key)
+    if val in (None, "", []):
+        return "未配置" if prefer_chinese else "not configured"
+    return str(val)
+
+
+def _format_optional_details(rule: Dict[str, Any], prefer_chinese: bool) -> List[str]:
+    opt = rule.get("optional", []) if isinstance(rule.get("optional", []), list) else []
+    choices = rule.get("choices", {}) if isinstance(rule.get("choices", {}), dict) else {}
+    notes = rule.get("notes", {}) if isinstance(rule.get("notes", {}), dict) else {}
+    lines: List[str] = []
+    for k in opt:
+        choice_txt = None
+        if k in choices and isinstance(choices.get(k), list) and choices.get(k):
+            choice_txt = ", ".join([str(x) for x in choices.get(k)])
+        note = notes.get(k)
+        hint = _param_hint_text(k, note, prefer_chinese, rule)
+        default_txt = _optional_default_text(rule, k, prefer_chinese)
+        if prefer_chinese:
+            seg = [f"- {k}", f"说明: {hint}", f"默认值: {default_txt}"]
+            if choice_txt:
+                seg.append(f"可选值: {choice_txt}")
+            lines.append("；".join(seg))
+        else:
+            seg = [f"- {k}", f"note: {hint}", f"default: {default_txt}"]
+            if choice_txt:
+                seg.append(f"choices: {choice_txt}")
+            lines.append("; ".join(seg))
+    return lines
+
 def compose_questions(subcommand: str, missing: List[str], need_confirm: List[str], params: Dict[str, Any], rules: Dict[str, Any], prefer_chinese: bool = False) -> str:
-    lines = []
-    rule = rules.get(subcommand, {})
-    notes = rule.get("notes", {}) if isinstance(rule, dict) else {}
+    lines: List[str] = []
+    rule = rules.get(subcommand, {}) if isinstance(rules.get(subcommand, {}), dict) else {}
+
+    lines.append((f"当前将执行: iobrpy {subcommand}") if prefer_chinese else (f"Current target command: iobrpy {subcommand}"))
 
     for m in missing:
         if m == "__one_of_group":
-            msg = notes.get("required_one_of") or notes.get("input_mode")
-            lines.append((_translate_to_chinese(msg) if prefer_chinese else msg) if isinstance(msg, str) and msg.strip() else ("请提供一种有效输入模式。" if prefer_chinese else "Please provide one valid input mode."))
+            if subcommand == "trust4":
+                if prefer_chinese:
+                    lines.append(
+                        "缺少输入模式（四选一）:\n"
+                        "1) BAM/目录模式：-b <BAM文件或BAM目录>\n"
+                        "2) 双端FASTQ模式：-1 <read1.fastq.gz> -2 <read2.fastq.gz>\n"
+                        "3) 单端FASTQ模式：-u <single.fastq.gz>\n"
+                        "4) 批量FASTQ目录模式：--fqdir <FASTQ目录>\n"
+                        "示例：iobrpy trust4 -b /path/sample.bam -o sample_prefix"
+                    )
+                else:
+                    lines.append(
+                        "Missing input mode (choose one):\n"
+                        "1) BAM/file-or-dir mode: -b <BAM file or BAM directory>\n"
+                        "2) Paired FASTQ mode: -1 <read1.fastq.gz> -2 <read2.fastq.gz>\n"
+                        "3) Single-end FASTQ mode: -u <single.fastq.gz>\n"
+                        "4) Batch FASTQ dir mode: --fqdir <FASTQ directory>\n"
+                        "Example: iobrpy trust4 -b /path/sample.bam -o sample_prefix"
+                    )
+            else:
+                notes = rule.get("notes", {}) if isinstance(rule.get("notes", {}), dict) else {}
+                msg = notes.get("required_one_of") or notes.get("input_mode")
+                lines.append((_translate_to_chinese(msg) if prefer_chinese else msg) if isinstance(msg, str) and msg.strip() else ("请提供一种有效输入模式。" if prefer_chinese else "Please provide one valid input mode."))
             continue
-        msg = notes.get(m) if isinstance(notes, dict) else None
-        if isinstance(msg, str) and msg.strip():
-            lines.append(_translate_to_chinese(msg) if prefer_chinese else msg)
-        else:
-            lines.append((f"请提供 {m}。") if prefer_chinese else (f"Please provide {m}."))
+
+        lines.append(_format_param_detail(subcommand, m, rule, prefer_chinese))
 
     for k in need_confirm:
         v = params.get(k)
         if v not in (None, "", []):
-            lines.append((f"请确认 {k}={v}。可回复：confirm {k}") if prefer_chinese else (f"Please confirm {k}={v}. Reply like: confirm {k}"))
+            lines.append((f"请确认参数: {k}={v}（回复: confirm {k}）") if prefer_chinese else (f"Please confirm parameter: {k}={v} (reply: confirm {k})"))
+
+    optional_lines = _format_optional_details(rule, prefer_chinese)
+    if optional_lines:
+        lines.append("可选参数（按需修改默认值）:" if prefer_chinese else "Optional parameters (modify defaults only if needed):")
+        lines.append("若你未提供某个可选参数，将使用默认值。" if prefer_chinese else "If an optional parameter is omitted, its default value will be used.")
+        lines.extend(optional_lines[:8])
+
     return "\n".join(lines) if lines else ("请补充缺失参数。" if prefer_chinese else "Please provide the missing parameters.")
 
 def merge_defaults(params: Dict[str, Any], subcommand: str, rules: Dict[str, Any]) -> Dict[str, Any]:
     d = load_defaults()
+    rule = rules.get(subcommand, {}) if isinstance(rules.get(subcommand, {}), dict) else {}
+    rule_defaults = rule.get("optional_defaults", {}) if isinstance(rule.get("optional_defaults", {}), dict) else {}
     allowed_set = set([k for k in allowed_keys_for(subcommand, rules) if k != "confirm"])
     out = {}
     for k in allowed_set:
+        if k in rule_defaults and rule_defaults[k] not in (None, "", []):
+            out[k] = rule_defaults[k]
+        elif k in BUILTIN_OPTIONAL_DEFAULTS and BUILTIN_OPTIONAL_DEFAULTS[k] not in (None, "", []):
+            out[k] = BUILTIN_OPTIONAL_DEFAULTS[k]
         if k in d and d[k] not in (None, "", []):
             out[k] = d[k]
     for k, v in params.items():
@@ -685,6 +1090,15 @@ def apply_confirmations(state: SessionState, extracted: Dict[str, Any]):
     conf = extracted.get("confirm")
     if isinstance(conf, list):
         for k in conf:
+            state.confirmed.add(str(k).strip())
+
+def auto_confirm_filled_values(state: SessionState, extracted: Dict[str, Any], rules: Dict[str, Any]):
+    """Auto-confirm fields that require confirmation once user explicitly provides a concrete value."""
+    if not state.subcommand:
+        return
+    rule = rules.get(state.subcommand, {}) if isinstance(rules.get(state.subcommand, {}), dict) else {}
+    for k in rule.get("confirm", []) if isinstance(rule.get("confirm", []), list) else []:
+        if k in extracted and extracted.get(k) not in (None, "", []):
             state.confirmed.add(str(k).strip())
 
 def tool_iobrpy_assistant(session_id: str, task: Optional[str] = None, answer_text: Optional[str] = None, run: bool = False) -> Dict[str, Any]:
@@ -707,17 +1121,26 @@ def tool_iobrpy_assistant(session_id: str, task: Optional[str] = None, answer_te
             state.params = {}
             state.confirmed = set()
             state.prefer_chinese = False
+            return {"status": "need_info", "question": "Please describe what you want to do (natural language).", "needs": ["task"]}
 
     if task:
         parse_task = task_en or task
         state.task = parse_task
-        state.subcommand = choose_subcommand(parse_task, rules)
+        if _is_function_discovery_query(task):
+            q = _compose_function_suggestions(task, rules, state.prefer_chinese)
+            state.subcommand = None
+            state.params = {}
+            state.confirmed = set()
+            return {"status": "need_info", "question": q, "needs": ["choose_function"]}
+        # Route with the original user text to avoid translation-induced intent drift.
+        state.subcommand = choose_subcommand(task, rules)
         state.params = {}
         state.confirmed = set()
 
         allowed = allowed_keys_for(state.subcommand, rules)
-        extracted = extract_slots(parse_task, allowed)
+        extracted = extract_slots_multisource(task, parse_task, allowed)
         apply_confirmations(state, extracted)
+        auto_confirm_filled_values(state, extracted, rules)
         # Apply reset/unset requests
         resets = extracted.get("_reset")
         if isinstance(resets, list):
@@ -734,14 +1157,19 @@ def tool_iobrpy_assistant(session_id: str, task: Optional[str] = None, answer_te
         if not state.subcommand:
             parse_answer = answer_text_en or answer_text
             state.task = parse_answer
-            state.subcommand = choose_subcommand(parse_answer, rules)
+            if _is_function_discovery_query(answer_text):
+                q = _compose_function_suggestions(answer_text, rules, state.prefer_chinese)
+                return {"status": "need_info", "question": q, "needs": ["choose_function"]}
+            # Route with original answer text; translation is only auxiliary for slot extraction.
+            state.subcommand = choose_subcommand(answer_text, rules)
             state.params = {}
             state.confirmed = set()
 
         allowed = allowed_keys_for(state.subcommand, rules)
         parse_answer = answer_text_en or answer_text
-        extracted = extract_slots(parse_answer, allowed)
+        extracted = extract_slots_multisource(answer_text, parse_answer, allowed)
         apply_confirmations(state, extracted)
+        auto_confirm_filled_values(state, extracted, rules)
 
         # Apply reset/unset requests (natural language): 'reset fastq', 'clear index', 'unset threads'
         resets = extracted.get("_reset")
@@ -848,7 +1276,7 @@ TOOLS = [
             "type": "object",
             "properties": {
                 "query": {"type": "string"},
-                "top_k": {"type": "integer", "default": 6, "minimum": 1, "maximum": 50}
+                "top_k": {"type": "integer", "default": 10, "minimum": 1, "maximum": 50}
             },
             "required": ["query"],
             "additionalProperties": False
@@ -887,7 +1315,7 @@ def handle_tools_call(_id, params):
     try:
         if name == "rag_search":
             q = args["query"]
-            top_k = int(args.get("top_k", 6))
+            top_k = int(args.get("top_k", 10))
             data = rag_search(q, top_k=top_k)
             send({"jsonrpc":"2.0","id":_id,"result":{"content":[{"type":"text","text":json.dumps(data,ensure_ascii=False)}],"isError":False}})
             return

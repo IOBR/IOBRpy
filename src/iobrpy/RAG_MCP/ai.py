@@ -183,12 +183,16 @@ def run_interactive(
         embed_model=embed_model,
     )
     server = _import_server()
+    server_file = Path(getattr(server, "__file__", "<unknown>")).resolve()
+    rules_file = Path(os.environ.get("IOBRPY_REQUIRED_PARAMS_FILE", "<unknown>"))
 
     session_id = _new_session_id()
 
     print("IOBRpy AI (embedded RAG-MCP)")
     print(f"logdir : {logdir_p}")
     print(f"session: {session_id}")
+    print(f"server : {server_file}")
+    print(f"rules  : {rules_file}")
     if ollama_host:
         print(f"ollama : {ollama_host}")
     if chat_model:
