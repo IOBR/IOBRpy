@@ -25,19 +25,24 @@
 
 ## 2）总体架构
 
+可以把系统理解成 **4 层**，从上到下非常直观：
+
+1. **交互层（你看到的）**：用户在终端输入自然语言。
+2. **理解层（AI 大脑）**：识别你要用哪个子命令、缺什么参数、要不要继续追问。
+3. **约束层（安全护栏）**：只允许规则文件中声明的参数，避免乱猜、乱传。
+4. **执行层（真正跑命令）**：拼好参数后执行 `python -m iobrpy.main ...`，并写日志。
+
+对应的最简流程如下：
+
 ```mermaid
 flowchart LR
-    U[用户\n自然语言输入] --> A[CLI 入口\niobrpy ai]
-    A --> E[启动层\nenv/logdir/chroma/rules]
-    E --> S[RAG-MCP 服务\nintent + params + dialog state]
-    S --> R[(规则 JSON\nrequired/optional/choices/confirm)]
-    S --> C[(Chroma 向量库\n检索上下文)]
-    S --> O[(Ollama\n对话 + 向量)]
-    S --> P[命令规划器\n构建 argv]
-    P --> X[执行器\npython -m iobrpy.main ...]
-    X --> L[(运行日志)]
-    L --> U
+    U[用户输入自然语言] --> I[iobrpy ai 交互入口]
+    I --> M[AI 服务<br/>识别意图+补全参数]
+    M --> G[规则约束<br/>required/optional/confirm]
+    G --> E[执行 iobrpy 命令并记录日志]
 ```
+
+一句话总结：**先理解，再约束，最后执行**。
 
 ---
 
