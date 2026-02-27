@@ -1,4 +1,4 @@
-# IOBRpy AI 架构说明（纯“用户 ↔ iobrpy ai”对话版）
+# IOBRpy AI 架构说明
 
 > **用户**：我完全不会 iobrpy 命令，`iobrpy ai` 能做什么？  
 > **iobrpy ai**：你只要描述目标，我负责把自然语言需求转成可执行命令，并在确认后执行。
