@@ -1,99 +1,99 @@
-# IOBRpy AI Architecture (Draft v0.2)
+# IOBRpy AI 架构说明（草案 v0.3）
 
-> This document describes the `iobrpy ai` architecture, including module boundaries, runtime flow, safety constraints, and extension guidance.
-
----
-
-## 1) Goals and Non-goals
-
-### Goals
-- Provide a natural-language interactive entrypoint for IOBRpy via `iobrpy ai --logdir ...`.
-- Complete command preparation before execution:
-  - subcommand intent selection,
-  - parameter extraction,
-  - missing-parameter follow-up,
-  - confirmation of key parameters.
-- Enforce strict parameter constraints to prevent unsafe or accidental execution.
-- Execute real IOBRpy commands in the current Python environment with traceable logs.
-
-### Non-goals
-- Replacing native validation already implemented by individual `iobrpy` CLI subcommands.
-- Re-implementing bioinformatics algorithms (deconvolution, scoring, clustering, etc.).
-- Guaranteeing identical model behavior across different LLM backends.
+> 本文档用于说明 `iobrpy ai` 的系统架构、模块边界、运行流程、安全约束与扩展方式。
 
 ---
 
-## 2) High-level Architecture
+## 1）目标与非目标
+
+### 目标
+- 提供自然语言交互入口：`iobrpy ai --logdir ...`。
+- 在执行命令前完成：
+  - 子命令意图识别，
+  - 参数提取，
+  - 缺失参数追问，
+  - 关键参数确认。
+- 通过严格参数约束，降低误执行和不安全执行风险。
+- 在当前 Python 环境执行真实 IOBRpy 命令，并保留可追溯日志。
+
+### 非目标
+- 不替代各 `iobrpy` 子命令自身已有的参数校验能力。
+- 不重写生信算法本体（如 deconvolution、signature scoring、clustering）。
+- 不保证不同 LLM 后端在输出风格与结果上的完全一致。
+
+---
+
+## 2）总体架构
 
 ```mermaid
 flowchart LR
-    U[User\nNatural-language input] --> A[CLI Entrypoint\niobrpy ai]
-    A --> E[Bootstrap Layer\nenv/logdir/chroma/rules]
-    E --> S[RAG-MCP Service\nintent + params + dialog state]
-    S --> R[(Rules JSON\nrequired/optional/choices/confirm)]
-    S --> C[(Chroma Vector DB\nretrieval context)]
-    S --> O[(Ollama\nchat + embedding)]
-    S --> P[Command Planner\nbuild argv]
-    P --> X[Executor\npython -m iobrpy.main ...]
-    X --> L[(Run logs)]
+    U[用户\n自然语言输入] --> A[CLI 入口\niobrpy ai]
+    A --> E[启动层\nenv/logdir/chroma/rules]
+    E --> S[RAG-MCP 服务\nintent + params + dialog state]
+    S --> R[(规则 JSON\nrequired/optional/choices/confirm)]
+    S --> C[(Chroma 向量库\n检索上下文)]
+    S --> O[(Ollama\n对话 + 向量)]
+    S --> P[命令规划器\n构建 argv]
+    P --> X[执行器\npython -m iobrpy.main ...]
+    X --> L[(运行日志)]
     L --> U
 ```
 
 ---
 
-## 3) Runtime Flow (Request Lifecycle)
+## 3）运行流程（请求生命周期）
 
-1. User starts `iobrpy ai --logdir <dir>`.
-2. Bootstrap sets runtime environment values (embedded Chroma, rules path, log paths, model config).
-3. A `session_id` is created and an interactive dialog loop starts.
-4. For each user turn, the service performs:
-   - intent/subcommand selection,
-   - allowed-parameter filtering,
-   - parameter extraction,
-   - missing-parameter detection,
-   - confirmation requests when required.
-5. Once run conditions are satisfied, the planner builds CLI arguments.
-6. Executor runs:
+1. 用户启动 `iobrpy ai --logdir <dir>`。
+2. 启动层设置运行时环境（内置 Chroma、规则文件、日志路径、模型配置）。
+3. 创建 `session_id`，进入交互循环。
+4. 每轮对话由服务层执行：
+   - 意图/子命令选择，
+   - 允许参数过滤，
+   - 参数提取，
+   - 缺失参数检测，
+   - 必要时发起确认。
+5. 当运行条件满足后，规划器构建 CLI 参数。
+6. 执行器运行：
    - `python -m iobrpy.main <subcommand> ...`
-7. Full output is written to `<logdir>/<session>_<subcommand>.log`; tail content is shown back to the user.
+7. 全量输出写入 `<logdir>/<session>_<subcommand>.log`，并向用户回显日志尾部。
 
 ---
 
-## 4) Module Responsibilities
+## 4）模块职责
 
 ### 4.1 `src/iobrpy/RAG_MCP/ai.py`
-- Interactive entrypoint and conversation loop.
-- Environment initialization for embedded assets and user-writable state.
-- Calls the assistant tool to advance state (`need_info` / `ready` / `done` / `error`).
-- Executes real IOBRpy command in the current environment and captures logs.
+- 交互入口与对话循环。
+- 初始化运行环境（内置资源 + 可写状态目录）。
+- 调用 assistant 工具推进状态（`need_info` / `ready` / `done` / `error`）。
+- 在当前环境执行真实命令并记录日志。
 
 ### 4.2 `src/iobrpy/RAG_MCP/iobrpy_rag_mcp.py`
-- Core MCP/JSON-RPC service implementation.
-- RAG retrieval + intent routing + parameter extraction.
-- Command building and option validation guardrails.
-- Language handling helpers (including Chinese/English conversion support).
+- MCP/JSON-RPC 核心服务。
+- 负责 RAG 检索、意图路由、参数提取与状态推进。
+- 负责命令组装与选项校验防护。
+- 提供中英文处理辅助能力。
 
 ### 4.3 `src/iobrpy/RAG_MCP/iobrpy_required_params.json`
-- Parameter contract per subcommand:
-  - `required`, `optional`, `confirm`, `choices`, `notes`.
-- Intent trigger hints (multilingual).
-- Parameter hints/defaults for follow-up prompts.
+- 定义各子命令参数契约：
+  - `required`、`optional`、`confirm`、`choices`、`notes`。
+- 定义意图触发提示（多语言）。
+- 提供参数提示与默认值。
 
 ---
 
-## 5) Safety and Guardrails
+## 5）安全约束与防护
 
-- **Strict allowlist**: only parameters defined in rules are considered.
-- **No guessing**: values must be supported by user-provided evidence.
-- **Confirm-first for critical fields**: selected parameters can require explicit confirmation.
-- **Execution transparency**: draft command is visible before run.
-- **Traceability**: every run writes to a persistent log file.
+- **严格白名单**：仅处理规则中声明的参数。
+- **不猜参数**：值必须有用户输入证据支持。
+- **关键参数先确认**：对高风险字段可配置显式确认。
+- **执行透明**：运行前可见草拟命令（draft command）。
+- **可追溯**：每次运行均写入持久化日志。
 
 ---
 
-## 6) Configuration Surface
+## 6）配置面
 
-Common environment variables:
+常见环境变量：
 
 - `CHROMA_DIR`
 - `IOBRPY_REQUIRED_PARAMS_FILE`
@@ -103,57 +103,57 @@ Common environment variables:
 - `CHAT_MODEL`
 - `EMBED_MODEL`
 
-Operational recommendations:
-- Pin model versions in deployment environments.
-- Keep rules JSON versioned with code releases to avoid contract drift.
-- Use writable runtime directories for logs/defaults (avoid package install paths).
+运维建议：
+- 在部署环境固定模型版本。
+- 规则 JSON 与代码版本同步发布，避免契约漂移。
+- 日志与默认配置使用可写目录，避免写入 site-packages。
 
 ---
 
-## 7) Relationship to “Skill” (Conceptual)
+## 7）与 Skill 的关系（概念层）
 
-This architecture is compatible with a skill-oriented workflow model:
+可将两者理解为互补：
 
-- **Architecture document** explains system structure, responsibilities, and invariants.
-- **Skill definition** (if introduced) explains reusable task procedures.
+- **架构文档**：回答系统“是什么、如何工作、边界是什么”。
+- **Skill（如后续引入）**：回答“某类任务应该按什么流程做”。
 
-Suggested mapping:
-- Keep command contracts in rules JSON.
-- Add task-level skills for common workflows (for example `runall`, `tme_profile`, `count2tpm`).
-- Let skills reference this architecture and rule contracts for consistency.
-
----
-
-## 8) Extension Playbook
-
-### Add a new subcommand to `iobrpy ai`
-1. Add a new rule entry in `iobrpy_required_params.json`.
-2. Define `required/optional/confirm/choices/intent_keywords`.
-3. Add parameter hints and defaults when helpful.
-4. Validate with dialog dry-runs:
-   - missing required fields trigger follow-up,
-   - unsupported flags are excluded from draft,
-   - complete inputs become runnable.
-
-### Replace retrieval/model backends
-- Retrieval backend can be replaced if query/result semantics are preserved.
-- LLM backend can be replaced if JSON output contracts are preserved.
+建议映射：
+- 命令契约继续由 rules JSON 维护。
+- 常见任务（如 `runall`、`tme_profile`、`count2tpm`）可沉淀为任务型 skill。
+- skill 可引用本架构文档与规则契约，保证一致性。
 
 ---
 
-## 9) Known Risks (Draft)
+## 8）扩展手册
 
-- Contract drift between CLI options and rules JSON.
-- JSON-output variability from LLM responses.
-- Multilingual normalization edge cases for paths/flags.
-- Availability dependency on local model/vector services.
+### 为 `iobrpy ai` 新增子命令
+1. 在 `iobrpy_required_params.json` 增加新条目。
+2. 定义 `required/optional/confirm/choices/intent_keywords`。
+3. 补充参数提示与默认值（如需要）。
+4. 用对话 dry-run 验证：
+   - 缺失必填会追问，
+   - 不支持参数不进入 draft，
+   - 参数齐备后可执行。
+
+### 替换检索/模型后端
+- 检索后端可替换，但需保持查询/结果语义一致。
+- LLM 后端可替换，但需保持 JSON 输出契约一致。
 
 ---
 
-## 10) Next Steps
+## 9）已知风险（草案）
 
-- [ ] Add a sequence diagram for the `need_info -> ready -> done/error` state machine.
-- [ ] Add a failure-handling matrix (model unavailable, Chroma unavailable, invalid paths).
-- [ ] Add an “add-new-subcommand” checklist template.
-- [ ] Link this document from `README.md` for discoverability.
+- CLI 实际选项与 rules JSON 存在漂移风险。
+- LLM JSON 输出稳定性会影响参数提取质量。
+- 多语言标准化可能引入路径/flag 边缘错误。
+- 依赖本地模型与向量服务可用性。
+
+---
+
+## 10）后续计划
+
+- [ ] 补充时序图（`need_info -> ready -> done/error` 状态机）。
+- [ ] 增加失败处理矩阵（模型不可达、Chroma 不可达、路径非法等）。
+- [ ] 增加“新增子命令”检查清单模板。
+- [ ] 在 `README.md` 增加入口链接，提升可发现性。
 
