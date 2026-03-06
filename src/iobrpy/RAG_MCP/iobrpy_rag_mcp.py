@@ -105,6 +105,12 @@ def _normalize_text(s: str) -> str:
     return s
 
 
+def _contains_cjk(text: str) -> bool:
+    if not text:
+        return False
+    return re.search(r"[\u4e00-\u9fff]", text) is not None
+
+
 def _extract_json_block(text: str) -> Dict[str, Any]:
     if not text:
         return {}
@@ -191,11 +197,47 @@ def _llm_generate_json(prompt: str) -> Dict[str, Any]:
 
 
 def _translate_to_english(text: str) -> str:
-    return text or ""
+    if not text:
+        return ""
+    if not _contains_cjk(text):
+        return text
+    prompt = f"""
+Translate the following user text to English faithfully.
+Keep subcommand names, parameter names, CLI flags, file paths, numbers, and enum values unchanged.
+Return JSON only: {{"english": "..."}}
+
+Text:
+{text}
+""".strip()
+    try:
+        j = _llm_generate_json(prompt)
+        out = j.get("english") if isinstance(j, dict) else None
+        if isinstance(out, str) and out.strip():
+            return out.strip()
+    except Exception:
+        pass
+    return text
 
 
 def _translate_to_chinese(text: str) -> str:
-    return text or ""
+    if not text:
+        return ""
+    prompt = f"""
+Translate the following UI text to Chinese faithfully.
+Keep subcommand names, parameter names, CLI flags, file paths, numbers, and enum values unchanged.
+Return JSON only: {{"chinese": "..."}}
+
+Text:
+{text}
+""".strip()
+    try:
+        j = _llm_generate_json(prompt)
+        out = j.get("chinese") if isinstance(j, dict) else None
+        if isinstance(out, str) and out.strip():
+            return out.strip()
+    except Exception:
+        pass
+    return text
 
 
 DEFAULT_INTENT_KEYWORDS: Dict[str, List[str]] = {
@@ -463,15 +505,21 @@ def _function_summary(rule: Dict[str, Any], prefer_chinese: bool) -> str:
     if isinstance(summary, str) and summary.strip():
         return summary.strip()
     req = rule.get("required", []) if isinstance(rule.get("required", []), list) else []
-    return f"Requires: {', '.join(req[:4]) if req else 'none'}."
+    return (f"需要参数: {', '.join(req[:4]) if req else '无'}。" if prefer_chinese else f"Requires: {', '.join(req[:4]) if req else 'none'}.")
 
 
 def _compose_function_suggestions(task: str, rules: Dict[str, Any], prefer_chinese: bool) -> str:
     ranked = _rank_subcommands(task, rules, top_n=5)
-    lines = ["You can choose from these functions first (ranked by relevance):"]
+    if prefer_chinese:
+        lines = ["你可以先从这些 function 里选择（按相关度排序）："]
+    else:
+        lines = ["You can choose from these functions first (ranked by relevance):"]
     for i, (cmd, _) in enumerate(ranked, 1):
         lines.append(f"{i}) {cmd}: {_function_summary(rules.get(cmd, {}), prefer_chinese)}")
-    lines.append("Reply with a function name, and I will continue parameter completion.")
+    if prefer_chinese:
+        lines.append("请回复 function 名称，我将继续补全参数。")
+    else:
+        lines.append("Reply with a function name, and I will continue parameter completion.")
     return "\n".join(lines)
 
 
@@ -568,18 +616,25 @@ def compute_needs(subcommand: str, rules: Dict[str, Any], params: Dict[str, Any]
 
 
 def compose_questions(subcommand: str, missing: List[str], need_confirm: List[str], params: Dict[str, Any], rules: Dict[str, Any], prefer_chinese: bool = False) -> str:
-    lines = [f"Current target command: iobrpy {subcommand}"]
+    lines = [f"当前目标命令: iobrpy {subcommand}" if prefer_chinese else f"Current target command: iobrpy {subcommand}"]
     rule = rules.get(subcommand, {}) if isinstance(rules.get(subcommand, {}), dict) else {}
     notes = rule.get("notes", {}) if isinstance(rule.get("notes", {}), dict) else {}
     for m in missing:
         if m == "__one_of_group":
-            lines.append(str(notes.get("required_one_of") or "Please provide one valid input mode."))
+            default_msg = "请提供一种有效输入模式。" if prefer_chinese else "Please provide one valid input mode."
+            msg = str(notes.get("required_one_of") or default_msg)
+            if prefer_chinese and not _contains_cjk(msg):
+                msg = _translate_to_chinese(msg)
+            lines.append(msg)
         else:
-            lines.append(f"- {m} (required)")
+            lines.append(f"- {m}（必填）" if prefer_chinese else f"- {m} (required)")
     for k in need_confirm:
         v = params.get(k)
         if v not in (None, "", []):
-            lines.append(f"Please confirm parameter: {k}={v} (reply: confirm {k})")
+            if prefer_chinese:
+                lines.append(f"请确认参数: {k}={v}（回复: confirm {k}）")
+            else:
+                lines.append(f"Please confirm parameter: {k}={v} (reply: confirm {k})")
     return "\n".join(lines)
 
 
@@ -654,19 +709,30 @@ def tool_iobrpy_assistant(session_id: str, task: Optional[str] = None, answer_te
     rules = load_rules()
     state = get_session(session_id)
 
+    if task:
+        if _contains_cjk(task):
+            state.prefer_chinese = True
+        elif any(ch.isalpha() for ch in task):
+            state.prefer_chinese = False
+
     if answer_text:
+        if _contains_cjk(answer_text):
+            state.prefer_chinese = True
+        elif any(ch.isalpha() for ch in answer_text):
+            state.prefer_chinese = False
         atl = _normalize_text(answer_text).lower()
         if re.search(r"\b(restart|start over|new task|reset session)\b", atl):
             state.task = ""
             state.subcommand = None
             state.params = {}
             state.confirmed = set()
-            return {"status": "need_info", "question": "Please describe what you want to do (natural language).", "needs": ["task"]}
+            q = "请用自然语言描述你的需求。" if state.prefer_chinese else "Please describe what you want to do (natural language)."
+            return {"status": "need_info", "question": q, "needs": ["task"], "prefer_chinese": state.prefer_chinese}
 
     if task:
         state.task = task
         if _is_function_discovery_query(task):
-            return {"status": "need_info", "question": _compose_function_suggestions(task, rules, state.prefer_chinese), "needs": ["choose_function"]}
+            return {"status": "need_info", "question": _compose_function_suggestions(task, rules, state.prefer_chinese), "needs": ["choose_function"], "prefer_chinese": state.prefer_chinese}
         state.subcommand = choose_subcommand(task, rules)
         state.params = {}
         state.confirmed = set()
@@ -699,7 +765,7 @@ def tool_iobrpy_assistant(session_id: str, task: Optional[str] = None, answer_te
                 state.params[k] = v
 
     if not state.subcommand:
-        return {"status": "need_info", "question": "Please describe what you want to do (natural language).", "needs": ["task"]}
+        return {"status": "need_info", "question": ("请用自然语言描述你的需求。" if state.prefer_chinese else "Please describe what you want to do (natural language)."), "needs": ["task"], "prefer_chinese": state.prefer_chinese}
 
     merged = merge_defaults(state.params, state.subcommand, rules)
     missing, need_confirm = compute_needs(state.subcommand, rules, merged, state.confirmed)
@@ -710,13 +776,14 @@ def tool_iobrpy_assistant(session_id: str, task: Optional[str] = None, answer_te
             "status": "need_info",
             "subcommand": state.subcommand,
             "needs": missing + [f"confirm:{c}" for c in need_confirm],
-            "question": compose_questions(state.subcommand, missing, need_confirm, merged, rules),
+            "question": compose_questions(state.subcommand, missing, need_confirm, merged, rules, prefer_chinese=state.prefer_chinese),
             "draft_command": draft_cmd,
             "params": merged,
+            "prefer_chinese": state.prefer_chinese,
         }
 
     if not run:
-        return {"status": "ready", "subcommand": state.subcommand, "draft_command": draft_cmd, "params": merged}
+        return {"status": "ready", "subcommand": state.subcommand, "draft_command": draft_cmd, "params": merged, "prefer_chinese": state.prefer_chinese}
 
     run_dir = os.getenv("IOBRPY_RUN_LOG_DIR", os.path.join(os.path.dirname(__file__), "mcp_runs"))
     os.makedirs(run_dir, exist_ok=True)
@@ -742,7 +809,7 @@ def tool_iobrpy_assistant(session_id: str, task: Optional[str] = None, answer_te
             tail = "".join(f.readlines()[-80:])
     except Exception:
         pass
-    return {"status": "done" if rc == 0 else "error", "returncode": rc, "draft_command": draft_cmd, "log_path": log_path, "tail": tail}
+    return {"status": "done" if rc == 0 else "error", "returncode": rc, "draft_command": draft_cmd, "log_path": log_path, "tail": tail, "prefer_chinese": state.prefer_chinese}
 
 
 TOOLS = [

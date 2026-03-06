@@ -55,6 +55,37 @@ def _new_session_id() -> str:
     return f"s{int(time.time())}_{os.getpid()}_{uuid.uuid4().hex[:6]}"
 
 
+def _contains_cjk(text: str) -> bool:
+    return any("\u4e00" <= ch <= "\u9fff" for ch in (text or ""))
+
+
+def _ui_text(key: str, prefer_chinese: bool, **kwargs: Any) -> str:
+    zh = {
+        "welcome": "IOBRpy AI（BYOK 云端 LLM）",
+        "type_request": "请输入自然语言需求。",
+        "commands": "命令: :exit  :quit  :restart",
+        "bye": "再见",
+        "ready": "就绪。草稿命令: {draft}",
+        "confirm_run": "现在执行这个命令吗？[y/N] ",
+        "cancelled": "已取消执行。你可以继续修改参数，或输入“执行”来运行。",
+        "done": "[完成] rc={rc}",
+        "error": "[失败] rc={rc}",
+    }
+    en = {
+        "welcome": "IOBRpy AI (BYOK cloud LLM)",
+        "type_request": "Type your request in natural language.",
+        "commands": "Commands: :exit  :quit  :restart",
+        "bye": "bye",
+        "ready": "Ready. Draft: {draft}",
+        "confirm_run": "Execute this command now? [y/N] ",
+        "cancelled": "Execution cancelled. You can keep editing parameters, or reply 'run' to execute.",
+        "done": "[done] rc={rc}",
+        "error": "[error] rc={rc}",
+    }
+    t = (zh if prefer_chinese else en).get(key, key)
+    return t.format(**kwargs)
+
+
 def _resolve_api_key(alias: str, api_key_arg: Optional[str]) -> str:
     if api_key_arg:
         return api_key_arg
@@ -68,7 +99,17 @@ def _resolve_api_key(alias: str, api_key_arg: Optional[str]) -> str:
     return key
 
 
-def _print_state(obj: Dict[str, Any]) -> None:
+def _is_positive_confirm(text: str) -> bool:
+    t = (text or "").strip().lower()
+    return t in {"y", "yes", "confirm", "run", "execute", "ok", "确认", "执行", "是"}
+
+
+def _is_negative_confirm(text: str) -> bool:
+    t = (text or "").strip().lower()
+    return t in {"n", "no", "cancel", "stop", "取消", "不执行", "否"}
+
+
+def _print_state(obj: Dict[str, Any], prefer_chinese: bool) -> None:
     status = obj.get("status")
     if status == "need_info":
         if obj.get("draft_command"):
@@ -78,10 +119,10 @@ def _print_state(obj: Dict[str, Any]) -> None:
             print(q)
         return
     if status == "ready":
-        print(f"\nReady. Draft: {obj.get('draft_command')}")
+        print("\n" + _ui_text("ready", prefer_chinese, draft=obj.get("draft_command")))
         return
     if status in ("done", "error"):
-        print(f"\n[{status}] rc={obj.get('returncode')}")
+        print("\n" + _ui_text("done" if status == "done" else "error", prefer_chinese, rc=obj.get("returncode")))
         if obj.get("draft_command"):
             print(f"Cmd : {obj.get('draft_command')}")
         if obj.get("log_path"):
@@ -118,7 +159,7 @@ def _run_iobrpy_current_env(*, session_id: str, subcommand: str, params: Dict[st
     return {"status": "done" if rc == 0 else "error", "returncode": rc, "draft_command": draft_cmd, "log_path": str(log_path), "tail": tail}
 
 
-def run_interactive(logdir: str, *, llm: str, api_key: Optional[str] = None, model: Optional[str] = None) -> None:
+def run_interactive(logdir: str, *, llm: str, api_key: Optional[str] = None, model: Optional[str] = None, base_url: Optional[str] = None) -> None:
     logdir_p = Path(logdir).expanduser().resolve()
     logdir_p.mkdir(parents=True, exist_ok=True)
 
@@ -129,7 +170,8 @@ def run_interactive(logdir: str, *, llm: str, api_key: Optional[str] = None, mod
     profile = PROVIDERS[llm]
     resolved_key = _resolve_api_key(llm, api_key)
     resolved_model = model or profile.default_model
-    cfg = AIConfig(llm_alias=llm, api_key=resolved_key, model=resolved_model, base_url=profile.base_url, logdir=str(logdir_p))
+    resolved_base_url = (base_url or profile.base_url).strip()
+    cfg = AIConfig(llm_alias=llm, api_key=resolved_key, model=resolved_model, base_url=resolved_base_url, logdir=str(logdir_p))
 
     os.environ["IOBRPY_REQUIRED_PARAMS_FILE"] = str(req_file)
     os.environ["IOBRPY_RUN_LOG_DIR"] = str(logdir_p)
@@ -139,45 +181,87 @@ def run_interactive(logdir: str, *, llm: str, api_key: Optional[str] = None, mod
 
     server.configure_runtime(server.AIConfig(**cfg.__dict__))
     session_id = _new_session_id()
+    prefer_chinese = False
+    pending_ready_plan: Optional[Dict[str, Any]] = None
 
-    print("IOBRpy AI (BYOK cloud LLM)")
+    print(_ui_text("welcome", prefer_chinese))
     print(f"logdir : {logdir_p}")
     print(f"session: {session_id}")
     print(f"llm    : {llm}")
     print(f"model  : {resolved_model}")
-    print("\nType your request in natural language.")
-    print("Commands: :exit  :quit  :restart\n")
+    print(_ui_text("type_request", prefer_chinese))
+    print(_ui_text("commands", prefer_chinese) + "\n")
 
     def call(answer: Optional[str] = None) -> Dict[str, Any]:
         return server.tool_iobrpy_assistant(session_id, task=None, answer_text=answer, run=False)
 
     last = call()
-    _print_state(last)
+    prefer_chinese = bool(last.get("prefer_chinese", prefer_chinese))
+    _print_state(last, prefer_chinese)
 
     while True:
         try:
             user_in = input("AI> ").strip()
         except (EOFError, KeyboardInterrupt):
-            print("\nbye")
+            print("\n" + _ui_text("bye", prefer_chinese))
             return
+
         if not user_in:
             continue
+
+        if _contains_cjk(user_in):
+            prefer_chinese = True
+        elif not _contains_cjk(user_in) and any(c.isalpha() for c in user_in):
+            prefer_chinese = False
+
         low = user_in.lower()
         if low in (":exit", ":quit", "exit", "quit"):
-            print("bye")
+            print(_ui_text("bye", prefer_chinese))
             return
         if low in (":restart", "restart"):
+            pending_ready_plan = None
             last = call("restart session")
-            _print_state(last)
+            prefer_chinese = bool(last.get("prefer_chinese", prefer_chinese))
+            _print_state(last, prefer_chinese)
+            continue
+
+        if pending_ready_plan is not None and _is_positive_confirm(user_in):
+            out = _run_iobrpy_current_env(
+                session_id=session_id,
+                subcommand=str(pending_ready_plan.get("subcommand")),
+                params=dict(pending_ready_plan.get("params") or {}),
+                server=server,
+                logdir=logdir_p,
+            )
+            _print_state(out, prefer_chinese)
+            pending_ready_plan = None
+            continue
+        if pending_ready_plan is not None and _is_negative_confirm(user_in):
+            print(_ui_text("cancelled", prefer_chinese))
             continue
 
         last = call(user_in)
-        _print_state(last)
+        prefer_chinese = bool(last.get("prefer_chinese", prefer_chinese))
+        _print_state(last, prefer_chinese)
         if last.get("status") == "ready":
-            out = _run_iobrpy_current_env(session_id=session_id, subcommand=str(last.get("subcommand")), params=dict(last.get("params") or {}), server=server, logdir=logdir_p)
-            _print_state(out)
-            last = call("restart session")
-            _print_state(last)
+            pending_ready_plan = {
+                "subcommand": last.get("subcommand"),
+                "params": dict(last.get("params") or {}),
+                "draft_command": last.get("draft_command"),
+            }
+            confirm_in = input(_ui_text("confirm_run", prefer_chinese)).strip()
+            if _is_positive_confirm(confirm_in):
+                out = _run_iobrpy_current_env(
+                    session_id=session_id,
+                    subcommand=str(pending_ready_plan.get("subcommand")),
+                    params=dict(pending_ready_plan.get("params") or {}),
+                    server=server,
+                    logdir=logdir_p,
+                )
+                _print_state(out, prefer_chinese)
+                pending_ready_plan = None
+            else:
+                print(_ui_text("cancelled", prefer_chinese))
 
 
 def main(argv: Optional[list[str]] = None) -> None:
@@ -186,8 +270,9 @@ def main(argv: Optional[list[str]] = None) -> None:
     p.add_argument("--llm", required=True, choices=list(PROVIDERS.keys()), help="LLM provider alias")
     p.add_argument("--api-key", default=None, help="BYOK API key; if omitted, reads env then hidden prompt")
     p.add_argument("--model", default=None, help="Override model name")
+    p.add_argument("--base-url", default=None, help="Override provider base URL")
     args = p.parse_args(argv)
-    run_interactive(args.logdir, llm=args.llm, api_key=args.api_key, model=args.model)
+    run_interactive(args.logdir, llm=args.llm, api_key=args.api_key, model=args.model, base_url=args.base_url)
 
 
 if __name__ == "__main__":

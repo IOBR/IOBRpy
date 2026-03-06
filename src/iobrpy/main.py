@@ -457,6 +457,7 @@ def main():
     p_ai.add_argument('--llm', required=True, choices=['qwen','kimi','deepseek','glm','openai','claude','gemini'], help='LLM provider alias')
     p_ai.add_argument('--api-key', default=None, help='BYOK API key; if omitted, reads env then hidden prompt')
     p_ai.add_argument('--model', default=None, help='Override model name')
+    p_ai.add_argument('--base-url', default=None, help='Override provider base URL')
 
     args, unknown = parser.parse_known_args()
 
@@ -927,6 +928,7 @@ def main():
             llm=args.llm,
             api_key=args.api_key,
             model=args.model,
+            base_url=args.base_url,
         )
         return
 
