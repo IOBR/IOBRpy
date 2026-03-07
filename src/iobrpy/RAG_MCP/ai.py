@@ -156,18 +156,47 @@ def _is_negative_confirm(text: str) -> bool:
     return t in {"n", "no", "cancel", "stop", "取消", "不执行", "否"}
 
 
+
+
+def should_show_draft(assistant_result: Dict[str, Any]) -> bool:
+    phase = str(assistant_result.get("phase") or "")
+    category = str(assistant_result.get("intent_category") or "")
+    if category in {"greeting", "help", "chit_chat"}:
+        return False
+    if phase in {"idle", "intent_clarification"}:
+        return False
+    if phase == "command_selected":
+        return False
+    if phase in {"parameter_filling", "ready_to_run"}:
+        return bool(assistant_result.get("subcommand") and assistant_result.get("draft_command"))
+    return False
+
+
+def _should_show_state_summary(assistant_result: Dict[str, Any]) -> bool:
+    phase = str(assistant_result.get("phase") or "")
+    return phase in {"parameter_filling", "ready_to_run"}
+
 def _print_state(obj: Dict[str, Any], prefer_chinese: bool) -> None:
     status = obj.get("status")
+    phase = str(obj.get("phase") or "")
+
     if status == "need_info":
-        if obj.get("draft_command"):
-            print(f"\nDraft: {obj.get('draft_command')}")
         q = obj.get("question") or ""
         if q:
             print(q)
+        if phase == "command_selected" and obj.get("subcommand"):
+            if prefer_chinese:
+                print(f"已识别命令: {obj.get('subcommand')}")
+            else:
+                print(f"Recognized command: {obj.get('subcommand')}")
+        if should_show_draft(obj):
+            print(f"\nDraft: {obj.get('draft_command')}")
         return
+
     if status == "ready":
         print("\n" + _ui_text("ready", prefer_chinese, draft=obj.get("draft_command")))
         return
+
     if status in ("done", "error"):
         print("\n" + _ui_text("done" if status == "done" else "error", prefer_chinese, rc=obj.get("returncode")))
         if obj.get("draft_command"):
@@ -179,6 +208,7 @@ def _print_state(obj: Dict[str, Any], prefer_chinese: bool) -> None:
             print("\n--- log tail ---")
             print(tail, end="" if str(tail).endswith("\n") else "\n")
         return
+
     print(obj)
 
 

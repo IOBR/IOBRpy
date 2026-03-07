@@ -1047,26 +1047,35 @@ def tool_iobrpy_assistant(session_id: str, task: Optional[str] = None, answer_te
         state.pending_switch_subcommand = None
         state.subcommand_confidence = None
         q = "请用自然语言描述你的需求。" if state.prefer_chinese else "Please describe what you want to do (natural language)."
-        return {"status": "need_info", "question": q, "needs": ["task"], "prefer_chinese": state.prefer_chinese, "phase": state.phase}
+        return {"status": "need_info", "question": q, "needs": ["task"], "prefer_chinese": state.prefer_chinese, "phase": state.phase, "intent_category": cls["category"]}
 
     if cls["category"] in ("greeting", "help", "chit_chat"):
         state.phase = "idle"
         state.subcommand = None
         state.pending_candidates = []
         if cls["category"] == "help":
-            q = _compose_function_suggestions("analysis", rules, state.prefer_chinese)
+            if state.prefer_chinese:
+                q = (
+                    "我可以帮助你运行 iobrpy 中的多个分析流程，例如 runall、trust4、spechla、hla_typing。"
+                    "你可以直接告诉我你的任务，比如“我想做 bulk RNA-seq 分析”或“我想做 HLA typing”。"
+                )
+            else:
+                q = (
+                    "I can help run multiple iobrpy workflows, such as runall, trust4, spechla, and hla_typing. "
+                    "You can directly describe your task, e.g. 'I want to run bulk RNA-seq analysis' or 'I want HLA typing'."
+                )
         elif cls["category"] == "chit_chat":
             q = "不客气。你可以直接告诉我想做什么分析。" if state.prefer_chinese else "You're welcome. Tell me what analysis you want to run."
         else:
-            q = "你好！请告诉我你想做什么分析。" if state.prefer_chinese else "Hi! Please tell me what analysis you want to do."
-        return {"status": "need_info", "question": q, "needs": ["task"], "prefer_chinese": state.prefer_chinese, "phase": state.phase}
+            q = "你好，我可以帮你选择合适的 iobrpy 功能，并一步步补全参数。你想做什么分析？" if state.prefer_chinese else "Hi, I can help choose the right iobrpy function and fill parameters step by step. What analysis do you want to run?"
+        return {"status": "need_info", "question": q, "needs": ["task"], "prefer_chinese": state.prefer_chinese, "phase": state.phase, "intent_category": cls["category"]}
 
     if cls["category"] == "undo":
         ok = state.rollback()
         msg = ("已撤销上一条。" if ok else "没有可撤销的历史。") if state.prefer_chinese else ("Undid last change." if ok else "No history to undo.")
         if not state.subcommand:
             state.phase = "idle"
-            return {"status": "need_info", "question": msg, "needs": ["task"], "prefer_chinese": state.prefer_chinese, "phase": state.phase}
+            return {"status": "need_info", "question": msg, "needs": ["task"], "prefer_chinese": state.prefer_chinese, "phase": state.phase, "intent_category": cls["category"]}
 
     if cls["category"] == "reset_command":
         state.push_snapshot()
@@ -1077,7 +1086,7 @@ def tool_iobrpy_assistant(session_id: str, task: Optional[str] = None, answer_te
         state.pending_switch_candidates = []
         state.pending_switch_subcommand = None
         q = "已重置命令选择。请描述你要做什么。" if state.prefer_chinese else "Command selection reset. Please describe what you want to do."
-        return {"status": "need_info", "question": q, "needs": ["task"], "prefer_chinese": state.prefer_chinese, "phase": state.phase}
+        return {"status": "need_info", "question": q, "needs": ["task"], "prefer_chinese": state.prefer_chinese, "phase": state.phase, "intent_category": cls["category"]}
 
     if state.pending_switch_subcommand and text:
         if cls["category"] == "confirm_yes":
@@ -1095,7 +1104,7 @@ def tool_iobrpy_assistant(session_id: str, task: Optional[str] = None, answer_te
             state.pending_switch_subcommand = None
             state.pending_switch_candidates = []
             msg = "保持当前命令，继续补充参数。" if state.prefer_chinese else "Keep current command and continue filling parameters."
-            return {"status": "need_info", "question": msg, "needs": [], "prefer_chinese": state.prefer_chinese, "phase": state.phase}
+            return {"status": "need_info", "question": msg, "needs": [], "prefer_chinese": state.prefer_chinese, "phase": state.phase, "intent_category": cls["category"]}
 
     # No selected command yet: only task_description can trigger routing
     if not state.subcommand:
@@ -1106,12 +1115,23 @@ def tool_iobrpy_assistant(session_id: str, task: Optional[str] = None, answer_te
             if not sel.get("is_clear"):
                 state.phase = "intent_clarification"
                 cand_show = ", ".join([c.get("name") for c in state.pending_candidates[:4] if c.get("name")]) or "runall, trust4, spechla"
-                q = (
-                    f"你的需求还不够明确。你是想用这些功能中的哪一个：{cand_show}？"
-                    if state.prefer_chinese
-                    else f"Your request is still ambiguous. Which function do you want: {cand_show}?"
-                )
-                return {"status": "need_info", "question": q, "needs": ["clarify_intent"], "prefer_chinese": state.prefer_chinese, "phase": state.phase, "candidates": state.pending_candidates}
+                if state.prefer_chinese:
+                    q = (
+                        "我需要再确认一下你的目标。你更接近下面哪一种？\n"
+                        "1. bulk RNA-seq / 常规流程\n"
+                        "2. HLA typing\n"
+                        "3. TRUST4 相关分析\n"
+                        f"4. 其他（可选候选: {cand_show}），请直接描述"
+                    )
+                else:
+                    q = (
+                        "I need one more clarification about your goal. Which is closest?\n"
+                        "1. bulk RNA-seq / standard workflow\n"
+                        "2. HLA typing\n"
+                        "3. TRUST4-related analysis\n"
+                        f"4. Other (candidate hints: {cand_show}), please describe"
+                    )
+                return {"status": "need_info", "question": q, "needs": ["clarify_intent"], "prefer_chinese": state.prefer_chinese, "phase": state.phase, "candidates": state.pending_candidates, "intent_category": cls["category"]}
             state.push_snapshot()
             state.task = text or ""
             state.subcommand = sel.get("top1")
@@ -1121,7 +1141,7 @@ def tool_iobrpy_assistant(session_id: str, task: Optional[str] = None, answer_te
         elif cls["category"] in ("slot_update", "execute", "unknown", "confirm_yes", "confirm_no"):
             state.phase = "idle"
             q = "请先告诉我你要执行哪类分析任务。" if state.prefer_chinese else "Please first tell me what analysis task you want to run."
-            return {"status": "need_info", "question": q, "needs": ["task"], "prefer_chinese": state.prefer_chinese, "phase": state.phase}
+            return {"status": "need_info", "question": q, "needs": ["task"], "prefer_chinese": state.prefer_chinese, "phase": state.phase, "intent_category": cls["category"]}
 
     # lightweight switch detection only for task-like new description
     if answer_text and state.subcommand and cls["category"] == "task_description":
@@ -1130,11 +1150,11 @@ def tool_iobrpy_assistant(session_id: str, task: Optional[str] = None, answer_te
             state.pending_switch_subcommand = switch_cand
             state.pending_switch_candidates = [switch_cand]
             q = f"检测到你可能想切换到 {switch_cand}，是否切换？" if state.prefer_chinese else f"I detected you may want to switch to {switch_cand}. Switch now?"
-            return {"status": "need_info", "question": q, "needs": ["confirm_switch"], "prefer_chinese": state.prefer_chinese, "phase": state.phase}
+            return {"status": "need_info", "question": q, "needs": ["confirm_switch"], "prefer_chinese": state.prefer_chinese, "phase": state.phase, "intent_category": cls["category"]}
 
     if not state.subcommand:
         state.phase = "idle"
-        return {"status": "need_info", "question": ("请用自然语言描述你的需求。" if state.prefer_chinese else "Please describe what you want to do (natural language)."), "needs": ["task"], "prefer_chinese": state.prefer_chinese, "phase": state.phase}
+        return {"status": "need_info", "question": ("请用自然语言描述你的需求。" if state.prefer_chinese else "Please describe what you want to do (natural language)."), "needs": ["task"], "prefer_chinese": state.prefer_chinese, "phase": state.phase, "intent_category": cls["category"]}
 
     state.phase = "parameter_filling"
     allowed = allowed_keys_for(state.subcommand, rules)
@@ -1170,16 +1190,16 @@ def tool_iobrpy_assistant(session_id: str, task: Optional[str] = None, answer_te
     if cls["category"] == "execute" and (missing or need_confirm):
         q = "参数还不完整，暂时不能执行。" if state.prefer_chinese else "Parameters are still incomplete, cannot execute yet."
         q += "\n\n" + _state_summary_text(state, merged, missing, state.prefer_chinese)
-        return {"status": "need_info", "subcommand": state.subcommand, "needs": missing + [f"confirm:{c}" for c in need_confirm], "question": q, "draft_command": draft_cmd, "params": merged, "prefer_chinese": state.prefer_chinese, "phase": state.phase}
+        return {"status": "need_info", "subcommand": state.subcommand, "needs": missing + [f"confirm:{c}" for c in need_confirm], "question": q, "draft_command": draft_cmd, "params": merged, "prefer_chinese": state.prefer_chinese, "phase": state.phase, "intent_category": cls["category"]}
 
     if missing or need_confirm:
         q1 = compose_questions(state.subcommand, missing, need_confirm, merged, rules, prefer_chinese=state.prefer_chinese)
         q2 = _state_summary_text(state, merged, missing, state.prefer_chinese)
-        return {"status": "need_info", "subcommand": state.subcommand, "needs": missing + [f"confirm:{c}" for c in need_confirm], "question": q1 + "\n\n" + q2, "draft_command": draft_cmd, "params": merged, "prefer_chinese": state.prefer_chinese, "phase": state.phase}
+        return {"status": "need_info", "subcommand": state.subcommand, "needs": missing + [f"confirm:{c}" for c in need_confirm], "question": q1 + "\n\n" + q2, "draft_command": draft_cmd, "params": merged, "prefer_chinese": state.prefer_chinese, "phase": state.phase, "intent_category": cls["category"]}
 
     state.phase = "ready_to_run"
     if not run:
-        return {"status": "ready", "subcommand": state.subcommand, "draft_command": draft_cmd, "params": merged, "prefer_chinese": state.prefer_chinese, "phase": state.phase}
+        return {"status": "ready", "subcommand": state.subcommand, "draft_command": draft_cmd, "params": merged, "prefer_chinese": state.prefer_chinese, "phase": state.phase, "intent_category": cls["category"]}
 
     run_dir = os.getenv("IOBRPY_RUN_LOG_DIR", os.path.join(os.path.dirname(__file__), "mcp_runs"))
     os.makedirs(run_dir, exist_ok=True)
@@ -1205,7 +1225,7 @@ def tool_iobrpy_assistant(session_id: str, task: Optional[str] = None, answer_te
             tail = "".join(f.readlines()[-80:])
     except Exception:
         pass
-    return {"status": "done" if rc == 0 else "error", "returncode": rc, "draft_command": draft_cmd, "log_path": log_path, "tail": tail, "prefer_chinese": state.prefer_chinese, "phase": state.phase}
+    return {"status": "done" if rc == 0 else "error", "returncode": rc, "draft_command": draft_cmd, "log_path": log_path, "tail": tail, "prefer_chinese": state.prefer_chinese, "phase": state.phase, "intent_category": cls["category"]}
 
 
 TOOLS = [
