@@ -599,6 +599,57 @@ def _is_function_discovery_query(text: str) -> bool:
     return any(re.search(p, t) for p in patterns)
 
 
+def classify_user_input(text: str, state: "SessionState") -> Dict[str, Any]:
+    t = _normalize_text(text)
+    tl = t.lower()
+    if not t:
+        return {"category": "unknown", "confidence": 0.2, "normalized_text": ""}
+
+    if re.search(r"\b(restart|start over|new task|reset session)\b|重来|重新开始", tl):
+        return {"category": "restart_session", "confidence": 0.99, "normalized_text": t}
+    if _wants_undo(t):
+        return {"category": "undo", "confidence": 0.99, "normalized_text": t}
+    if _wants_reset_command(t):
+        return {"category": "reset_command", "confidence": 0.99, "normalized_text": t}
+    if _is_positive_confirm_text(t):
+        return {"category": "confirm_yes", "confidence": 0.98, "normalized_text": t}
+    if _is_negative_confirm_text(t):
+        return {"category": "confirm_no", "confidence": 0.98, "normalized_text": t}
+
+    greetings = ["你好", "您好", "hello", "hi", "hey", "早上好", "晚上好"]
+    if any(g == tl for g in greetings) or any(tl.startswith(g + " ") for g in ["hello", "hi", "hey"]):
+        return {"category": "greeting", "confidence": 0.95, "normalized_text": t}
+
+    helps = ["你能做什么", "你可以做什么", "help", "what can you do", "有哪些功能", "有哪些命令"]
+    if any(h in tl for h in helps):
+        return {"category": "help", "confidence": 0.95, "normalized_text": t}
+
+    chitchat = ["谢谢", "thanks", "thank you", "辛苦了"]
+    if any(x in tl for x in chitchat):
+        return {"category": "chit_chat", "confidence": 0.9, "normalized_text": t}
+
+    execute_words = ["执行", "run", "execute", "开始", "现在开始", "确认运行"]
+    if any(x == tl for x in execute_words):
+        return {"category": "execute", "confidence": 0.95, "normalized_text": t}
+
+    has_slot_tokens = bool(re.search(r"\b\w+\s*=\s*[^\s]+", t)) or bool(
+        re.search(r"reset|clear|unset|remove|change|modify|update|set|删除|去掉|清空|重置|改成|改为|修改", tl)
+    )
+    if has_slot_tokens:
+        return {"category": "slot_update", "confidence": 0.85, "normalized_text": t}
+
+    task_markers = [
+        "分析", "analysis", "bulk", "rna", "fastq", "pipeline", "workflow", "tcr", "bcr", "hla",
+        "runall", "trust4", "spechla", "hla_typing", "extract_hla_read",
+    ]
+    if any(x in tl for x in task_markers):
+        return {"category": "task_description", "confidence": 0.8, "normalized_text": t}
+
+    if state.subcommand:
+        return {"category": "slot_update", "confidence": 0.55, "normalized_text": t}
+    return {"category": "unknown", "confidence": 0.35, "normalized_text": t}
+
+
 def _function_summary(rule: Dict[str, Any], prefer_chinese: bool) -> str:
     summary = rule.get("function_summary") if isinstance(rule, dict) else None
     if isinstance(summary, dict):
@@ -643,6 +694,82 @@ def _rank_subcommands(task: str, rules: Dict[str, Any], top_n: Optional[int] = N
     ranked.sort(key=lambda x: x[0], reverse=True)
     out = [(cmd, score) for score, cmd in ranked]
     return out[:top_n] if top_n else out
+
+
+def choose_subcommand_with_confidence(task: str, rules: Dict[str, Any]) -> Dict[str, Any]:
+    tl = _normalize_text(task).lower()
+    trivial = ["你好", "您好", "hello", "hi", "hey", "thanks", "thank you", "谢谢"]
+    if tl in trivial:
+        return {
+            "top1": None,
+            "top1_score": 0.0,
+            "top2": None,
+            "top2_score": 0.0,
+            "candidates": [],
+            "is_clear": False,
+        }
+
+    # strong domain heuristics first
+    heuristic_hits: List[Tuple[str, float]] = []
+    heuristics = [
+        ("runall", ["bulk rna", "rna-seq", "rnaseq", "fastq", "pipeline", "workflow", "bulk"], 0.86),
+        ("trust4", ["tcr", "bcr", "vdj", "clonotype", "repertoire"], 0.9),
+        ("spechla", ["spechla", "hla typing", "hla分型", "hla typing"], 0.88),
+        ("hla_typing", ["hla_typing", "hla typing", "hla 分型"], 0.82),
+    ]
+    for cmd, keys, score in heuristics:
+        if cmd not in rules:
+            continue
+        if any(k in tl for k in keys):
+            heuristic_hits.append((cmd, score))
+    if heuristic_hits:
+        heuristic_hits = sorted(heuristic_hits, key=lambda x: x[1], reverse=True)
+        top1 = heuristic_hits[0]
+        top2 = heuristic_hits[1] if len(heuristic_hits) > 1 else (None, 0.0)
+        clear = top1[1] >= 0.60 and (top1[1] - float(top2[1])) >= 0.15
+        cands = [{"name": n, "score": float(s)} for n, s in heuristic_hits]
+        return {
+            "top1": top1[0] if clear else None,
+            "top1_score": float(top1[1]),
+            "top2": top2[0],
+            "top2_score": float(top2[1]),
+            "candidates": cands,
+            "is_clear": clear,
+        }
+
+    ranked = _rank_subcommands(task, rules, top_n=5)
+    if not ranked:
+        return {
+            "top1": None,
+            "top1_score": 0.0,
+            "top2": None,
+            "top2_score": 0.0,
+            "candidates": [],
+            "is_clear": False,
+        }
+
+    def _score_norm(sc: Tuple[int, int, int]) -> float:
+        raw = float((3 * sc[0]) + (2 * sc[1]) + sc[2])
+        if raw <= 0:
+            return 0.0
+        return min(1.0, raw / (raw + 2.0))
+
+    cands = []
+    for cmd, sc in ranked:
+        cands.append({"name": cmd, "score": _score_norm(sc)})
+
+    top1 = cands[0] if cands else {"name": None, "score": 0.0}
+    top2 = cands[1] if len(cands) > 1 else {"name": None, "score": 0.0}
+    clear = bool(top1["name"]) and top1["score"] >= 0.60 and (top1["score"] - top2["score"]) >= 0.15
+
+    return {
+        "top1": top1["name"] if clear else None,
+        "top1_score": float(top1["score"]),
+        "top2": top2["name"],
+        "top2_score": float(top2["score"]),
+        "candidates": cands,
+        "is_clear": clear,
+    }
 
 
 def choose_subcommand(task: str, rules: Dict[str, Any]) -> str:
@@ -762,21 +889,39 @@ def merge_defaults(params: Dict[str, Any], subcommand: str, rules: Dict[str, Any
 
 class SessionState:
     def __init__(self):
+        self.phase: str = "idle"
         self.task: str = ""
         self.subcommand: Optional[str] = None
         self.params: Dict[str, Any] = {}
         self.confirmed: set = set()
         self.prefer_chinese: bool = False
+        self.history: List[Dict[str, Any]] = []
+        self.pending_candidates: List[Dict[str, Any]] = []
+        self.pending_switch_candidates: List[str] = []
+        self.last_user_intent: Optional[str] = None
+        self.subcommand_confidence: Optional[float] = None
         self.snapshots: List[Dict[str, Any]] = []
         self.pending_switch_subcommand: Optional[str] = None
 
     def push_snapshot(self):
+        self.history.append({
+            "phase": self.phase,
+            "subcommand": self.subcommand,
+            "params": deepcopy(self.params),
+        })
+        if len(self.history) > 80:
+            self.history = self.history[-80:]
         self.snapshots.append({
+            "phase": self.phase,
             "task": self.task,
             "subcommand": self.subcommand,
             "params": deepcopy(self.params),
             "confirmed": set(self.confirmed),
             "prefer_chinese": self.prefer_chinese,
+            "pending_candidates": deepcopy(self.pending_candidates),
+            "pending_switch_candidates": list(self.pending_switch_candidates),
+            "last_user_intent": self.last_user_intent,
+            "subcommand_confidence": self.subcommand_confidence,
             "pending_switch_subcommand": self.pending_switch_subcommand,
         })
         if len(self.snapshots) > 50:
@@ -786,11 +931,16 @@ class SessionState:
         if not self.snapshots:
             return False
         snap = self.snapshots.pop()
+        self.phase = snap.get("phase", "idle")
         self.task = snap.get("task", "")
         self.subcommand = snap.get("subcommand")
         self.params = deepcopy(snap.get("params", {}))
         self.confirmed = set(snap.get("confirmed", set()))
         self.prefer_chinese = bool(snap.get("prefer_chinese", self.prefer_chinese))
+        self.pending_candidates = deepcopy(snap.get("pending_candidates", []))
+        self.pending_switch_candidates = list(snap.get("pending_switch_candidates", []))
+        self.last_user_intent = snap.get("last_user_intent")
+        self.subcommand_confidence = snap.get("subcommand_confidence")
         self.pending_switch_subcommand = snap.get("pending_switch_subcommand")
         return True
 
@@ -876,15 +1026,61 @@ def tool_iobrpy_assistant(session_id: str, task: Optional[str] = None, answer_te
     state = get_session(session_id)
 
     text = answer_text if answer_text is not None else task
+    cls = classify_user_input(text or "", state)
+    state.last_user_intent = cls.get("category")
+
     if text:
         if _contains_cjk(text):
             state.prefer_chinese = True
         elif any(ch.isalpha() for ch in text):
             state.prefer_chinese = False
 
-    # handle pending command switch confirmation
+    if cls["category"] == "restart_session":
+        state.push_snapshot()
+        state.phase = "idle"
+        state.task = ""
+        state.subcommand = None
+        state.params = {}
+        state.confirmed = set()
+        state.pending_candidates = []
+        state.pending_switch_candidates = []
+        state.pending_switch_subcommand = None
+        state.subcommand_confidence = None
+        q = "请用自然语言描述你的需求。" if state.prefer_chinese else "Please describe what you want to do (natural language)."
+        return {"status": "need_info", "question": q, "needs": ["task"], "prefer_chinese": state.prefer_chinese, "phase": state.phase}
+
+    if cls["category"] in ("greeting", "help", "chit_chat"):
+        state.phase = "idle"
+        state.subcommand = None
+        state.pending_candidates = []
+        if cls["category"] == "help":
+            q = _compose_function_suggestions("analysis", rules, state.prefer_chinese)
+        elif cls["category"] == "chit_chat":
+            q = "不客气。你可以直接告诉我想做什么分析。" if state.prefer_chinese else "You're welcome. Tell me what analysis you want to run."
+        else:
+            q = "你好！请告诉我你想做什么分析。" if state.prefer_chinese else "Hi! Please tell me what analysis you want to do."
+        return {"status": "need_info", "question": q, "needs": ["task"], "prefer_chinese": state.prefer_chinese, "phase": state.phase}
+
+    if cls["category"] == "undo":
+        ok = state.rollback()
+        msg = ("已撤销上一条。" if ok else "没有可撤销的历史。") if state.prefer_chinese else ("Undid last change." if ok else "No history to undo.")
+        if not state.subcommand:
+            state.phase = "idle"
+            return {"status": "need_info", "question": msg, "needs": ["task"], "prefer_chinese": state.prefer_chinese, "phase": state.phase}
+
+    if cls["category"] == "reset_command":
+        state.push_snapshot()
+        state.phase = "idle"
+        state.subcommand = None
+        state.subcommand_confidence = None
+        state.pending_candidates = []
+        state.pending_switch_candidates = []
+        state.pending_switch_subcommand = None
+        q = "已重置命令选择。请描述你要做什么。" if state.prefer_chinese else "Command selection reset. Please describe what you want to do."
+        return {"status": "need_info", "question": q, "needs": ["task"], "prefer_chinese": state.prefer_chinese, "phase": state.phase}
+
     if state.pending_switch_subcommand and text:
-        if _is_positive_confirm_text(text):
+        if cls["category"] == "confirm_yes":
             target = state.pending_switch_subcommand
             state.push_snapshot()
             old_params = dict(state.params)
@@ -893,72 +1089,61 @@ def tool_iobrpy_assistant(session_id: str, task: Optional[str] = None, answer_te
             state.params = {k: v for k, v in old_params.items() if k in allowed}
             state.confirmed = set([k for k in state.confirmed if k in allowed])
             state.pending_switch_subcommand = None
-        elif _is_negative_confirm_text(text):
+            state.pending_switch_candidates = []
+            state.phase = "command_selected"
+        elif cls["category"] == "confirm_no":
             state.pending_switch_subcommand = None
+            state.pending_switch_candidates = []
             msg = "保持当前命令，继续补充参数。" if state.prefer_chinese else "Keep current command and continue filling parameters."
-            return {"status": "need_info", "question": msg, "needs": [], "prefer_chinese": state.prefer_chinese}
+            return {"status": "need_info", "question": msg, "needs": [], "prefer_chinese": state.prefer_chinese, "phase": state.phase}
 
-    if text and _wants_undo(text):
-        ok = state.rollback()
-        msg = ("已撤销上一条。" if ok else "没有可撤销的历史。") if state.prefer_chinese else (("Undid last change." if ok else "No history to undo."))
-        if not state.subcommand:
-            return {"status": "need_info", "question": msg + (" 请描述你的需求。" if state.prefer_chinese else " Please describe your task."), "needs": ["task"], "prefer_chinese": state.prefer_chinese}
-
-    if text and _wants_reset_command(text):
-        state.push_snapshot()
-        state.subcommand = None
-        state.params = {}
-        state.confirmed = set()
-        state.pending_switch_subcommand = None
-        q = "已重置命令选择。请描述你要做什么。" if state.prefer_chinese else "Command selection reset. Please describe what you want to do."
-        return {"status": "need_info", "question": q, "needs": ["task"], "prefer_chinese": state.prefer_chinese}
-
-    if answer_text:
-        atl = _normalize_text(answer_text).lower()
-        if re.search(r"\b(restart|start over|new task|reset session)\b", atl):
+    # No selected command yet: only task_description can trigger routing
+    if not state.subcommand:
+        if cls["category"] == "task_description":
+            sel = choose_subcommand_with_confidence(text or "", rules)
+            state.pending_candidates = list(sel.get("candidates") or [])
+            state.subcommand_confidence = sel.get("top1_score")
+            if not sel.get("is_clear"):
+                state.phase = "intent_clarification"
+                cand_show = ", ".join([c.get("name") for c in state.pending_candidates[:4] if c.get("name")]) or "runall, trust4, spechla"
+                q = (
+                    f"你的需求还不够明确。你是想用这些功能中的哪一个：{cand_show}？"
+                    if state.prefer_chinese
+                    else f"Your request is still ambiguous. Which function do you want: {cand_show}?"
+                )
+                return {"status": "need_info", "question": q, "needs": ["clarify_intent"], "prefer_chinese": state.prefer_chinese, "phase": state.phase, "candidates": state.pending_candidates}
             state.push_snapshot()
-            state.task = ""
-            state.subcommand = None
+            state.task = text or ""
+            state.subcommand = sel.get("top1")
+            state.phase = "command_selected"
             state.params = {}
             state.confirmed = set()
-            state.pending_switch_subcommand = None
-            q = "请用自然语言描述你的需求。" if state.prefer_chinese else "Please describe what you want to do (natural language)."
-            return {"status": "need_info", "question": q, "needs": ["task"], "prefer_chinese": state.prefer_chinese}
+        elif cls["category"] in ("slot_update", "execute", "unknown", "confirm_yes", "confirm_no"):
+            state.phase = "idle"
+            q = "请先告诉我你要执行哪类分析任务。" if state.prefer_chinese else "Please first tell me what analysis task you want to run."
+            return {"status": "need_info", "question": q, "needs": ["task"], "prefer_chinese": state.prefer_chinese, "phase": state.phase}
 
-    if task:
-        state.push_snapshot()
-        state.task = task
-        if _is_function_discovery_query(task):
-            return {"status": "need_info", "question": _compose_function_suggestions(task, rules, state.prefer_chinese), "needs": ["choose_function"], "prefer_chinese": state.prefer_chinese}
-        state.subcommand = choose_subcommand(task, rules)
-        state.params = {}
-        state.confirmed = set()
-
-    if answer_text and state.subcommand:
+    # lightweight switch detection only for task-like new description
+    if answer_text and state.subcommand and cls["category"] == "task_description":
         switch_cand = _detect_switch_candidate(answer_text, state.subcommand, rules)
         if switch_cand:
             state.pending_switch_subcommand = switch_cand
+            state.pending_switch_candidates = [switch_cand]
             q = f"检测到你可能想切换到 {switch_cand}，是否切换？" if state.prefer_chinese else f"I detected you may want to switch to {switch_cand}. Switch now?"
-            return {"status": "need_info", "question": q, "needs": ["confirm_switch"], "prefer_chinese": state.prefer_chinese}
-
-    if answer_text and not state.subcommand:
-        state.push_snapshot()
-        state.subcommand = choose_subcommand(answer_text, rules)
-        state.params = {}
-        state.confirmed = set()
+            return {"status": "need_info", "question": q, "needs": ["confirm_switch"], "prefer_chinese": state.prefer_chinese, "phase": state.phase}
 
     if not state.subcommand:
-        return {"status": "need_info", "question": ("请用自然语言描述你的需求。" if state.prefer_chinese else "Please describe what you want to do (natural language)."), "needs": ["task"], "prefer_chinese": state.prefer_chinese}
+        state.phase = "idle"
+        return {"status": "need_info", "question": ("请用自然语言描述你的需求。" if state.prefer_chinese else "Please describe what you want to do (natural language)."), "needs": ["task"], "prefer_chinese": state.prefer_chinese, "phase": state.phase}
 
+    state.phase = "parameter_filling"
     allowed = allowed_keys_for(state.subcommand, rules)
     parse_text = text or ""
     translated = _translate_to_english(parse_text) if parse_text else ""
     extracted = extract_slots_multisource(parse_text, translated, allowed) if parse_text else {}
 
-    changed = False
     if extracted:
         state.push_snapshot()
-        changed = True
     apply_confirmations(state, extracted)
     auto_confirm_filled_values(state, extracted, rules)
 
@@ -978,32 +1163,23 @@ def tool_iobrpy_assistant(session_id: str, task: Optional[str] = None, answer_te
 
     merged = merge_defaults(state.params, state.subcommand, rules)
     missing, need_confirm = compute_needs(state.subcommand, rules, merged, state.confirmed)
-    # reduce rigid confirmations for default-only values
     need_confirm = [k for k in need_confirm if state.params.get(k) not in (None, "", [])]
 
     draft_cmd, argv = build_command(state.subcommand, merged, rules)
 
+    if cls["category"] == "execute" and (missing or need_confirm):
+        q = "参数还不完整，暂时不能执行。" if state.prefer_chinese else "Parameters are still incomplete, cannot execute yet."
+        q += "\n\n" + _state_summary_text(state, merged, missing, state.prefer_chinese)
+        return {"status": "need_info", "subcommand": state.subcommand, "needs": missing + [f"confirm:{c}" for c in need_confirm], "question": q, "draft_command": draft_cmd, "params": merged, "prefer_chinese": state.prefer_chinese, "phase": state.phase}
+
     if missing or need_confirm:
         q1 = compose_questions(state.subcommand, missing, need_confirm, merged, rules, prefer_chinese=state.prefer_chinese)
         q2 = _state_summary_text(state, merged, missing, state.prefer_chinese)
-        return {
-            "status": "need_info",
-            "subcommand": state.subcommand,
-            "needs": missing + [f"confirm:{c}" for c in need_confirm],
-            "question": q1 + "\n\n" + q2,
-            "draft_command": draft_cmd,
-            "params": merged,
-            "prefer_chinese": state.prefer_chinese,
-        }
+        return {"status": "need_info", "subcommand": state.subcommand, "needs": missing + [f"confirm:{c}" for c in need_confirm], "question": q1 + "\n\n" + q2, "draft_command": draft_cmd, "params": merged, "prefer_chinese": state.prefer_chinese, "phase": state.phase}
 
+    state.phase = "ready_to_run"
     if not run:
-        return {
-            "status": "ready",
-            "subcommand": state.subcommand,
-            "draft_command": draft_cmd,
-            "params": merged,
-            "prefer_chinese": state.prefer_chinese,
-        }
+        return {"status": "ready", "subcommand": state.subcommand, "draft_command": draft_cmd, "params": merged, "prefer_chinese": state.prefer_chinese, "phase": state.phase}
 
     run_dir = os.getenv("IOBRPY_RUN_LOG_DIR", os.path.join(os.path.dirname(__file__), "mcp_runs"))
     os.makedirs(run_dir, exist_ok=True)
@@ -1029,7 +1205,7 @@ def tool_iobrpy_assistant(session_id: str, task: Optional[str] = None, answer_te
             tail = "".join(f.readlines()[-80:])
     except Exception:
         pass
-    return {"status": "done" if rc == 0 else "error", "returncode": rc, "draft_command": draft_cmd, "log_path": log_path, "tail": tail, "prefer_chinese": state.prefer_chinese}
+    return {"status": "done" if rc == 0 else "error", "returncode": rc, "draft_command": draft_cmd, "log_path": log_path, "tail": tail, "prefer_chinese": state.prefer_chinese, "phase": state.phase}
 
 
 TOOLS = [
