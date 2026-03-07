@@ -81,6 +81,13 @@ def _require_ai_config() -> AIConfig:
     return _AI_CONFIG
 
 
+def _runtime_identity() -> Dict[str, str]:
+    cfg = _AI_CONFIG
+    if cfg is None:
+        return {"llm_alias": "unknown", "model": "unknown", "base_url": "unknown"}
+    return {"llm_alias": cfg.llm_alias, "model": cfg.model, "base_url": cfg.base_url}
+
+
 def log(*a):
     print(*a, file=sys.stderr, flush=True)
 
@@ -521,6 +528,8 @@ Decision principles:
 - Do not switch command merely because another tool/method/command is mentioned.
 - Use switch_command or confirm_switch only when replacement intent is explicit or strongly implied.
 - For side questions, prefer action=reply_only with keep_current_command=true and a direct helpful answer.
+- If user asks identity/model/provider/runtime questions, answer truthfully using Runtime identity context.
+- Distinguish role (IOBRpy assistant) from runtime model/provider.
 
 Execution guardrails:
 - Only use command names and parameter keys that exist in catalog.
@@ -537,6 +546,9 @@ Planner JSON schema:
 
 Current session state:
 {json.dumps(state.to_planner_state(), ensure_ascii=False)}
+
+Runtime identity:
+{json.dumps(_runtime_identity(), ensure_ascii=False)}
 
 Catalog:
 {json.dumps(catalog, ensure_ascii=False)}
@@ -822,7 +834,7 @@ def apply_planner_output(state: SessionState, plan: Dict[str, Any], rules: Dict[
 
     if is_side_question or (action == "reply_only" and keep_current):
         state.phase = "idle" if not state.selected_command else state.phase
-        return {"status": "need_info", "question": enforce_output_language(msg or ("请继续告诉我你的任务。" if state.prefer_chinese else "Please continue with your task details."), state.prefer_chinese), "needs": [] if state.selected_command else ["task"]}
+        return {"status": "need_info", "question": enforce_output_language(msg or ("请继续告诉我你的任务。" if state.prefer_chinese else "Please continue with your task details."), state.prefer_chinese), "needs": []}
 
     if state.pending_switch and action == "confirm_switch":
         target = plan.get("switch_to") or plan.get("subcommand") or state.pending_switch.get("target")
@@ -882,7 +894,7 @@ def apply_planner_output(state: SessionState, plan: Dict[str, Any], rules: Dict[
 
     if action == "reply_only":
         state.phase = "idle" if not state.selected_command else state.phase
-        return {"status": "need_info", "question": enforce_output_language(msg or ("请继续告诉我你的任务。" if state.prefer_chinese else "Please continue with your task details."), state.prefer_chinese), "needs": ["task"] if not state.selected_command else []}
+        return {"status": "need_info", "question": enforce_output_language(msg or ("请继续告诉我你的任务。" if state.prefer_chinese else "Please continue with your task details."), state.prefer_chinese), "needs": []}
 
     if action == "update_params":
         if not state.selected_command:
