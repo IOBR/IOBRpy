@@ -290,10 +290,9 @@ def run_interactive(logdir: str, *, llm: str, api_key: Optional[str] = None, mod
         if not user_in:
             continue
 
-        if _contains_cjk(user_in):
-            prefer_chinese = True
-        elif not _contains_cjk(user_in) and any(c.isalpha() for c in user_in):
-            prefer_chinese = False
+        # Language mode is now planner/session-driven:
+        # default English; Chinese only when the user's first interaction is Chinese.
+        # Do not flip language locally per-turn in UI.
 
         low = user_in.lower()
         if low in (":exit", ":quit", "exit", "quit"):

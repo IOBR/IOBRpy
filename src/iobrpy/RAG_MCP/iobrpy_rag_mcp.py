@@ -663,6 +663,7 @@ class SessionState:
     last_plan: Optional[Dict[str, Any]] = None
     last_message: Optional[str] = None
     prefer_chinese: bool = False
+    language_initialized: bool = False
     phase: str = "idle"  # idle / clarifying / collecting / ready / executing
 
     def snapshot(self):
@@ -676,6 +677,7 @@ class SessionState:
                 "last_plan": deepcopy(self.last_plan),
                 "last_message": self.last_message,
                 "prefer_chinese": self.prefer_chinese,
+                "language_initialized": self.language_initialized,
                 "phase": self.phase,
             }
         )
@@ -694,6 +696,7 @@ class SessionState:
         self.last_plan = deepcopy(snap.get("last_plan"))
         self.last_message = snap.get("last_message")
         self.prefer_chinese = bool(snap.get("prefer_chinese", self.prefer_chinese))
+        self.language_initialized = bool(snap.get("language_initialized", self.language_initialized))
         self.phase = snap.get("phase", self.phase)
         return True
 
@@ -706,6 +709,7 @@ class SessionState:
             "pending_switch": self.pending_switch,
             "last_message": self.last_message,
             "prefer_chinese": self.prefer_chinese,
+            "language_initialized": self.language_initialized,
             "phase": self.phase,
         }
 
@@ -900,10 +904,13 @@ def tool_iobrpy_assistant(session_id: str, task: Optional[str] = None, answer_te
     text = answer_text if answer_text is not None else task
     user_text = _normalize_text(text or "")
 
-    if _contains_cjk(user_text):
-        state.prefer_chinese = True
-    elif any(ch.isalpha() for ch in user_text):
-        state.prefer_chinese = False
+    # Language policy:
+    # - default English
+    # - switch to Chinese ONLY if the first meaningful user input is Chinese
+    # - do not auto-switch back/forth on later turns
+    if user_text and not state.language_initialized:
+        state.prefer_chinese = _contains_cjk(user_text)
+        state.language_initialized = True
 
     if user_text in {":restart", "restart", "restart session"}:
         plan = {"action": "restart_session", "message": ""}
