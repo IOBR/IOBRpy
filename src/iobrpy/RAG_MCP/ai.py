@@ -163,11 +163,9 @@ def should_show_draft(assistant_result: Dict[str, Any]) -> bool:
     category = str(assistant_result.get("intent_category") or "")
     if category in {"greeting", "help", "chit_chat"}:
         return False
-    if phase in {"idle", "intent_clarification"}:
+    if phase in {"idle", "clarifying", "intent_clarification", "command_selected"}:
         return False
-    if phase == "command_selected":
-        return False
-    if phase in {"parameter_filling", "ready_to_run"}:
+    if phase in {"collecting", "parameter_filling", "ready", "ready_to_run"}:
         return bool(assistant_result.get("subcommand") and assistant_result.get("draft_command"))
     return False
 

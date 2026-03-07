@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""BYOK iobrpy assistant server.
+"""
+IOBRpy BYOK assistant server.
 
-No local embedding / Chroma / Ollama dependency.
+Refactor boundaries:
+1) Planner (LLM): understands user intent and proposes structured next action (JSON plan only).
+2) Guardrails (Python): validates planner output, enforces schema/rules, updates state safely, builds/executes command.
+3) UI (ai.py): only renders responses and handles terminal input/output.
 """
 
 import json
@@ -12,7 +16,7 @@ import subprocess
 import sys
 import traceback
 from copy import deepcopy
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
 import requests
@@ -32,11 +36,26 @@ IOBRPY_SRC_DIR = os.getenv("IOBRPY_SRC_DIR", "")
 SUPPORTED_PROTOCOLS = ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"]
 SERVER_INFO = {
     "name": "iobrpy-ai-agentic",
-    "title": "iobrpy AI Agentic (BYOK cloud LLM)",
-    "version": "0.4.0",
-    "description": "Natural language → choose iobrpy function → fill allowed params only → ask missing → run when ready.",
+    "title": "iobrpy AI Agentic (BYOK cloud LLM planner)",
+    "version": "0.7.0",
+    "description": "Planner-first natural language assistant for iobrpy.",
 }
 CAPABILITIES = {"tools": {"listChanged": False}}
+
+VALID_ACTIONS = {
+    "reply_only",
+    "select_command",
+    "clarify_intent",
+    "update_params",
+    "remove_params",
+    "switch_command",
+    "confirm_switch",
+    "ask_missing_params",
+    "ready_to_run",
+    "execute",
+    "undo",
+    "restart_session",
+}
 
 
 @dataclass
@@ -67,7 +86,7 @@ def log(*a):
 
 
 def _debug_enabled() -> bool:
-    return os.getenv("IOBRPY_AI_DEBUG", "0").strip() in {"1", "true", "TRUE", "yes", "on"}
+    return os.getenv("IOBRPY_AI_DEBUG", "0").strip().lower() in {"1", "true", "yes", "on"}
 
 
 def dlog(*a):
@@ -116,9 +135,7 @@ def _normalize_text(s: str) -> str:
 
 
 def _contains_cjk(text: str) -> bool:
-    if not text:
-        return False
-    return re.search(r"[\u4e00-\u9fff]", text) is not None
+    return re.search(r"[\u4e00-\u9fff]", text or "") is not None
 
 
 def _extract_json_block(text: str) -> Dict[str, Any]:
@@ -169,9 +186,8 @@ def _post_anthropic(base_url: str, api_key: str, model: str, prompt: str) -> str
     r = requests.post(url, headers=headers, json=payload, timeout=120)
     r.raise_for_status()
     data = r.json()
-    parts = data.get("content") or []
     out = ""
-    for p in parts:
+    for p in data.get("content") or []:
         if isinstance(p, dict) and p.get("type") == "text":
             out += p.get("text") or ""
     return out.strip()
@@ -190,16 +206,14 @@ def _post_gemini(base_url: str, api_key: str, model: str, prompt: str) -> str:
     if not cands:
         return ""
     parts = (((cands[0] or {}).get("content") or {}).get("parts") or [])
-    texts = [p.get("text", "") for p in parts if isinstance(p, dict)]
-    return "\n".join(texts).strip()
+    return "\n".join([p.get("text", "") for p in parts if isinstance(p, dict)]).strip()
 
 
 def _llm_generate_json(prompt: str) -> Dict[str, Any]:
     cfg = _require_ai_config()
-    alias = cfg.llm_alias
-    if alias == "claude":
+    if cfg.llm_alias == "claude":
         txt = _post_anthropic(cfg.base_url, cfg.api_key, cfg.model, prompt)
-    elif alias == "gemini":
+    elif cfg.llm_alias == "gemini":
         txt = _post_gemini(cfg.base_url, cfg.api_key, cfg.model, prompt)
     else:
         txt = _post_openai_compatible(cfg.base_url, cfg.api_key, cfg.model, prompt)
@@ -207,17 +221,13 @@ def _llm_generate_json(prompt: str) -> Dict[str, Any]:
 
 
 def _translate_to_english(text: str) -> str:
-    if not text:
-        return ""
-    if not _contains_cjk(text):
-        return text
+    if not text or not _contains_cjk(text):
+        return text or ""
     prompt = f"""
-Translate the following user text to English faithfully.
-Keep subcommand names, parameter names, CLI flags, file paths, numbers, and enum values unchanged.
+Translate user text to English faithfully.
+Keep command names, parameter names, flags, file paths, and numbers unchanged.
 Return JSON only: {{"english": "..."}}
-
-Text:
-{text}
+Text: {text}
 """.strip()
     try:
         j = _llm_generate_json(prompt)
@@ -233,12 +243,10 @@ def _translate_to_chinese(text: str) -> str:
     if not text:
         return ""
     prompt = f"""
-Translate the following UI text to Chinese faithfully.
-Keep subcommand names, parameter names, CLI flags, file paths, numbers, and enum values unchanged.
+Translate text to Chinese faithfully.
+Keep command names, parameter names, flags, file paths, and numbers unchanged.
 Return JSON only: {{"chinese": "..."}}
-
-Text:
-{text}
+Text: {text}
 """.strip()
     try:
         j = _llm_generate_json(prompt)
@@ -251,11 +259,11 @@ Text:
 
 
 DEFAULT_INTENT_KEYWORDS: Dict[str, List[str]] = {
-    "runall": ["fastq", "workflow", "pipeline", "from fastq to tme", "bulk workflow"],
-    "trust4": ["tcr", "bcr", "vdj", "repertoire", "clonotype", "immune receptor"],
+    "runall": ["fastq", "workflow", "pipeline", "bulk", "rna-seq"],
+    "trust4": ["tcr", "bcr", "vdj", "repertoire", "clonotype"],
     "spechla": ["hla", "typing"],
     "extract_hla_read": ["hla", "extract hla read"],
-    "hla_typing": ["hla", "typing", "hla analysis"],
+    "hla_typing": ["hla", "typing"],
 }
 DEFAULT_RULES = {
     "runall": {
@@ -270,38 +278,22 @@ def load_rules() -> Dict[str, Any]:
     rules = _read_json(REQUIRED_FILE, DEFAULT_RULES)
     if not isinstance(rules, dict) or not rules:
         return DEFAULT_RULES
-    out = {}
+    out: Dict[str, Any] = {}
     for k, v in rules.items():
         if not isinstance(v, dict):
             continue
-        req = v.get("required", [])
-        conf = v.get("confirm", [])
-        opt = v.get("optional", [])
-        choices = v.get("choices", {})
-        req_one = v.get("required_one_of", [])
-        notes = v.get("notes", {})
-        optional_defaults = v.get("optional_defaults", {})
+        req = v.get("required", []) if isinstance(v.get("required", []), list) else []
+        conf = v.get("confirm", []) if isinstance(v.get("confirm", []), list) else []
+        opt = v.get("optional", []) if isinstance(v.get("optional", []), list) else []
+        choices = v.get("choices", {}) if isinstance(v.get("choices", {}), dict) else {}
+        req_one = v.get("required_one_of", []) if isinstance(v.get("required_one_of", []), list) else []
+        notes = v.get("notes", {}) if isinstance(v.get("notes", {}), dict) else {}
+        optional_defaults = v.get("optional_defaults", {}) if isinstance(v.get("optional_defaults", {}), dict) else {}
         intent_keywords = v.get("intent_keywords", [])
-        param_hints = v.get("param_hints", {})
+        param_hints = v.get("param_hints", {}) if isinstance(v.get("param_hints", {}), dict) else {}
         function_summary = v.get("function_summary", "")
-        if not isinstance(req, list):
-            req = []
-        if not isinstance(conf, list):
-            conf = []
-        if not isinstance(opt, list):
-            opt = []
-        if not isinstance(choices, dict):
-            choices = {}
-        if not isinstance(req_one, list):
-            req_one = []
-        if not isinstance(notes, dict):
-            notes = {}
-        if not isinstance(optional_defaults, dict):
-            optional_defaults = {}
         if not isinstance(intent_keywords, (list, dict)):
             intent_keywords = []
-        if not isinstance(param_hints, dict):
-            param_hints = {}
         if (not intent_keywords) and k in DEFAULT_INTENT_KEYWORDS:
             intent_keywords = list(DEFAULT_INTENT_KEYWORDS[k])
         out[k] = {
@@ -320,10 +312,8 @@ def load_rules() -> Dict[str, Any]:
 
 
 def allowed_keys_for(subcommand: str, rules: Dict[str, Any]) -> List[str]:
-    r = rules.get(subcommand, {})
-    if not isinstance(r, dict):
-        return []
-    keys = []
+    r = rules.get(subcommand, {}) if isinstance(rules.get(subcommand, {}), dict) else {}
+    keys: List[str] = []
     for k in r.get("required", []):
         if k not in keys:
             keys.append(k)
@@ -359,456 +349,10 @@ def set_defaults(new_defaults: Dict[str, Any], rules: Dict[str, Any]) -> Dict[st
     return {"ok": True, "defaults": cur}
 
 
-def _has_token(text_l: str, token: str) -> bool:
-    return re.search(rf"\b{re.escape(token)}\b", text_l) is not None
-
-
-def _sanitize_path(p: str) -> str:
-    if not p:
-        return p
-    p = p.strip().strip('"').strip("'")
-    p = re.sub(r"[,\.;:\)\]\}]+$", "", p)
-    return p
-
-
-POSITIVE_CONFIRM_WORDS = {
-    "y", "yes", "confirm", "run", "execute", "ok", "go", "sure",
-    "确认", "执行", "是", "好", "开始", "现在开始", "确认运行",
-}
-NEGATIVE_CONFIRM_WORDS = {
-    "n", "no", "cancel", "stop", "nope", "取消", "否", "不", "不执行",
-}
-UNDO_WORDS = {
-    "undo", "rollback", "back", "undo last", "撤销", "回退", "上一步",
-}
-RESET_COMMAND_WORDS = {
-    "reset command", "rechoose command", "change command", "重新选命令", "重选命令", "重来",
-}
-
-
-def _is_positive_confirm_text(text: str) -> bool:
-    t = _normalize_text(text).lower()
-    if t in POSITIVE_CONFIRM_WORDS:
-        return True
-    return any(x in t for x in ["确认运行", "现在开始", "好 执行", "好,执行", "start now"])
-
-
-def _is_negative_confirm_text(text: str) -> bool:
-    t = _normalize_text(text).lower()
-    if t in NEGATIVE_CONFIRM_WORDS:
-        return True
-    return any(x in t for x in ["不执行", "先不", "暂不"])
-
-
-def _wants_undo(text: str) -> bool:
-    t = _normalize_text(text).lower()
-    return t in UNDO_WORDS or any(x in t for x in ["撤销", "回退", "上一步"])
-
-
-def _wants_reset_command(text: str) -> bool:
-    t = _normalize_text(text).lower()
-    if t in RESET_COMMAND_WORDS:
-        return True
-    return any(x in t for x in ["重新选命令", "重选命令", "change command", "rechoose command"])
-
-
-def _regex_extract_slots(text: str, allowed: List[str]) -> Dict[str, Any]:
-    t = _normalize_text(text)
-    tl = t.lower()
-    out: Dict[str, Any] = {}
-
-    if "mode" in allowed:
-        if _has_token(tl, "salmon"):
-            out["mode"] = "salmon"
-        elif _has_token(tl, "star"):
-            out["mode"] = "star"
-        elif re.search(r"改成\s*star|改为\s*star", t, flags=re.I):
-            out["mode"] = "star"
-        elif re.search(r"改成\s*salmon|改为\s*salmon", t, flags=re.I):
-            out["mode"] = "salmon"
-        elif re.search(r"改回\s*star", t, flags=re.I):
-            out["mode"] = "star"
-        elif re.search(r"改回\s*salmon", t, flags=re.I):
-            out["mode"] = "salmon"
-    for key in ["index", "input", "output", "fastq", "outdir", "bam", "fqdir", "ru", "r1", "r2", "ref", "od"]:
-        if key in allowed:
-            m = re.search(rf"\b{re.escape(key)}\b\s*(?:is|=|:)?\s*(/[^ \t;,，；。]+)", t, flags=re.I)
-            if m:
-                out[key] = _sanitize_path(m.group(1))
-                continue
-            m_cn_as = re.search(rf"用\s*(/[^ \t;,，；。]+)\s*作为\s*{re.escape(key)}", t, flags=re.I)
-            if m_cn_as:
-                out[key] = _sanitize_path(m_cn_as.group(1))
-
-    for key in ["threads", "batch_size", "t", "k"]:
-        if key in allowed:
-            m = re.search(rf"\b{re.escape(key)}s?\b\s*(?:is|=|:)?\s*(\d+)\b", tl)
-            if m:
-                out[key] = int(m.group(1))
-                continue
-            m_cn = re.search(rf"(?:把\s*)?{re.escape(key)}\s*(?:改成|改为|设为|设置为|修改为)\s*(\d+)\b", t, flags=re.I)
-            if m_cn:
-                out[key] = int(m_cn.group(1))
-
-    for key in ["project", "o", "f"]:
-        if key in allowed:
-            m = re.search(rf"\b{re.escape(key)}\b\s*(?:is|=|:)?\s*([A-Za-z0-9_.-]+)", t, flags=re.I)
-            if m:
-                out[key] = m.group(1)
-
-    if "confirm" in allowed:
-        confirms = re.findall(r"\bconfirm\s+([A-Za-z0-9_]+)\b", tl)
-        if confirms:
-            out["confirm"] = sorted(set(confirms))
-
-    m_reset = re.findall(r"\b(?:reset|clear|unset|remove)\s+([A-Za-z0-9_]+)\b", tl)
-    m_reset_cn = re.findall(r"(?:删除|去掉|清空|重置)\s*([A-Za-z0-9_]+)", t)
-    to_reset = sorted(set([k for k in (m_reset + m_reset_cn) if k in allowed]))
-    if to_reset:
-        out["_reset"] = to_reset
-
-    # generic key=value edits
-    for key in allowed:
-        if key in ("confirm",):
-            continue
-        mv = re.search(rf"\b{re.escape(key)}\b\s*=\s*([^,;\s]+)", t, flags=re.I)
-        if mv:
-            raw = mv.group(1)
-            if key in ("threads", "batch_size", "t", "k"):
-                if raw.isdigit():
-                    out[key] = int(raw)
-            elif key in ("mode",):
-                if raw.lower() in ("salmon", "star"):
-                    out[key] = raw.lower()
-            elif key in ("index", "input", "output", "fastq", "outdir", "bam", "fqdir", "ru", "r1", "r2", "ref", "od"):
-                sv = _sanitize_path(raw)
-                if sv.startswith("/"):
-                    out[key] = sv
-            else:
-                out[key] = raw
-
-    # Chinese/English set patterns with explicit target key
-    for key in allowed:
-        if key in ("confirm",):
-            continue
-        ms = re.search(rf"(?:set|change|modify|update)\s+{re.escape(key)}\s+(?:to|as)?\s*([^,;]+)", t, flags=re.I)
-        ms_cn = re.search(rf"(?:把\s*)?{re.escape(key)}\s*(?:改成|改为|设置为|设为|修改为|用)\s*([^,;]+)", t, flags=re.I)
-        g = (ms.group(1).strip() if ms else None) or (ms_cn.group(1).strip() if ms_cn else None)
-        if not g:
-            continue
-        if key in ("threads", "batch_size", "t", "k"):
-            mnum = re.search(r"\d+", g)
-            if mnum:
-                out[key] = int(mnum.group(0))
-        elif key == "mode":
-            gl = g.lower()
-            if "star" in gl:
-                out[key] = "star"
-            elif "salmon" in gl:
-                out[key] = "salmon"
-        elif key in ("index", "input", "output", "fastq", "outdir", "bam", "fqdir", "ru", "r1", "r2", "ref", "od"):
-            mpath = re.search(r"/[^ \t;,，；。]+", g)
-            if mpath:
-                out[key] = _sanitize_path(mpath.group(0))
-        else:
-            out[key] = g
-
-    if re.search(r"\b(?:undo|rollback|back)\b|撤销|回退|上一步", tl):
-        out["_undo"] = True
-    if re.search(r"重新选命令|重选命令|change\s+command|rechoose\s+command", tl):
-        out["_reset_command"] = True
-
-    return out
-
-
-def _llm_extract_slots(text: str, allowed: List[str]) -> Dict[str, Any]:
-    prompt = f"""
-You are a strict information extraction system.
-Extract ONLY fields explicitly present in the user's message.
-Return JSON object only.
-
-Allowed keys: {allowed}
-Rules:
-- Path-like fields must be absolute Linux paths (start with /).
-- threads/batch_size/t/k must be integers.
-- mode can only be salmon or star.
-- If a field is not explicitly provided, omit it.
-
-User message:
-{text}
-""".strip()
-    j = _llm_generate_json(prompt)
-    return j if isinstance(j, dict) else {}
-
-
-def _evidence_filter(text: str, extracted: Dict[str, Any], allowed: List[str]) -> Dict[str, Any]:
-    t = _normalize_text(text)
-    out: Dict[str, Any] = {}
-    for k, v in extracted.items():
-        if k not in allowed and k not in ("confirm", "_reset"):
-            continue
-        if isinstance(v, str):
-            if k in ("index", "input", "output", "fastq", "outdir", "bam", "fqdir", "ru", "r1", "r2", "ref", "od"):
-                sv = _sanitize_path(v)
-                if sv.startswith("/"):
-                    out[k] = sv
-            elif v and v.lower() in t.lower():
-                out[k] = v
-        elif isinstance(v, (int, float, bool, list)):
-            out[k] = v
-    return out
-
-
-def extract_slots(text: str, allowed: List[str]) -> Dict[str, Any]:
-    out = _regex_extract_slots(text, allowed)
-    try:
-        llm = _llm_extract_slots(text, allowed)
-        out.update(_evidence_filter(text, llm, allowed))
-    except Exception as e:
-        log("LLM extraction failed:", e)
-    return out
-
-
-def extract_slots_multisource(raw_text: str, translated_text: Optional[str], allowed: List[str]) -> Dict[str, Any]:
-    primary = extract_slots(raw_text, allowed)
-    t = translated_text or ""
-    if t and t != raw_text:
-        secondary = extract_slots(t, allowed)
-        primary.update(secondary)
-    return primary
-
-
-def _intent_tokenize(text: str) -> set:
-    text = text.lower().replace("_", " ")
-    toks = set(re.findall(r"[a-z][a-z0-9]+", text))
-    toks.update([x for x in re.findall(r"[一-鿿]{2,}", text)])
-    return toks
-
-
-def _intent_keywords_list(rule: Dict[str, Any]) -> List[str]:
-    kws = rule.get("intent_keywords", []) if isinstance(rule, dict) else []
-    if isinstance(kws, dict):
-        arr = kws.get("en", [])
-        return arr if isinstance(arr, list) else []
-    return kws if isinstance(kws, list) else []
-
-
-def _intent_keyword_score(task_l: str, task_tokens: set, rule: Dict[str, Any]) -> int:
-    score = 0
-    for kw in _intent_keywords_list(rule):
-        k = str(kw).strip().lower()
-        if not k:
-            continue
-        if " " in k and _normalize_text(k) in _normalize_text(task_l):
-            score += 2
-        elif k in task_tokens or k in task_l:
-            score += 1
-    return score
-
-
-def _is_function_discovery_query(text: str) -> bool:
-    t = _normalize_text(text).lower()
-    patterns = [
-        r"有哪些\s*(function|functions|命令|功能)",
-        r"which\s+(function|functions|command|commands)",
-        r"what\s+can\s+i\s+use",
-    ]
-    return any(re.search(p, t) for p in patterns)
-
-
-def classify_user_input(text: str, state: "SessionState") -> Dict[str, Any]:
-    t = _normalize_text(text)
-    tl = t.lower()
-    if not t:
-        return {"category": "unknown", "confidence": 0.2, "normalized_text": ""}
-
-    if re.search(r"\b(restart|start over|new task|reset session)\b|重来|重新开始", tl):
-        return {"category": "restart_session", "confidence": 0.99, "normalized_text": t}
-    if _wants_undo(t):
-        return {"category": "undo", "confidence": 0.99, "normalized_text": t}
-    if _wants_reset_command(t):
-        return {"category": "reset_command", "confidence": 0.99, "normalized_text": t}
-    if _is_positive_confirm_text(t):
-        return {"category": "confirm_yes", "confidence": 0.98, "normalized_text": t}
-    if _is_negative_confirm_text(t):
-        return {"category": "confirm_no", "confidence": 0.98, "normalized_text": t}
-
-    greetings = ["你好", "您好", "hello", "hi", "hey", "早上好", "晚上好"]
-    if any(g == tl for g in greetings) or any(tl.startswith(g + " ") for g in ["hello", "hi", "hey"]):
-        return {"category": "greeting", "confidence": 0.95, "normalized_text": t}
-
-    helps = ["你能做什么", "你可以做什么", "help", "what can you do", "有哪些功能", "有哪些命令"]
-    if any(h in tl for h in helps):
-        return {"category": "help", "confidence": 0.95, "normalized_text": t}
-
-    chitchat = ["谢谢", "thanks", "thank you", "辛苦了"]
-    if any(x in tl for x in chitchat):
-        return {"category": "chit_chat", "confidence": 0.9, "normalized_text": t}
-
-    switch_task_markers = ["runall", "trust4", "spechla", "hla typing", "hla_typing", "extract_hla_read"]
-    if any(x in tl for x in switch_task_markers) and any(x in tl for x in ["改成", "改为", "换", "不做", "change", "switch"]):
-        return {"category": "task_description", "confidence": 0.9, "normalized_text": t}
-
-    execute_words = ["执行", "run", "execute", "开始", "现在开始", "确认运行", "现在运行", "确认执行"]
-    if any(x == tl for x in execute_words):
-        return {"category": "execute", "confidence": 0.95, "normalized_text": t}
-
-    has_slot_tokens = bool(re.search(r"\b\w+\s*=\s*[^\s]+", t)) or bool(
-        re.search(r"reset|clear|unset|remove|change\s+\w+|modify\s+\w+|update\s+\w+|set\s+\w+|删除\s*[A-Za-z_]|去掉\s*[A-Za-z_]|清空\s*[A-Za-z_]|重置\s*[A-Za-z_]|改成\s*(star|salmon)|改为\s*(star|salmon)", tl)
-    )
-    if has_slot_tokens:
-        return {"category": "slot_update", "confidence": 0.85, "normalized_text": t}
-
-    task_markers = [
-        "分析", "analysis", "bulk", "rna", "fastq", "pipeline", "workflow", "tcr", "bcr", "hla",
-        "runall", "trust4", "spechla", "hla_typing", "extract_hla_read",
-    ]
-    if any(x in tl for x in task_markers):
-        return {"category": "task_description", "confidence": 0.8, "normalized_text": t}
-
-    if state.subcommand:
-        return {"category": "slot_update", "confidence": 0.55, "normalized_text": t}
-    return {"category": "unknown", "confidence": 0.35, "normalized_text": t}
-
-
-def _function_summary(rule: Dict[str, Any], prefer_chinese: bool) -> str:
-    summary = rule.get("function_summary") if isinstance(rule, dict) else None
-    if isinstance(summary, dict):
-        txt = summary.get("zh" if prefer_chinese else "en")
-        if isinstance(txt, str) and txt.strip():
-            return txt.strip()
-    if isinstance(summary, str) and summary.strip():
-        return summary.strip()
-    req = rule.get("required", []) if isinstance(rule.get("required", []), list) else []
-    return (f"需要参数: {', '.join(req[:4]) if req else '无'}。" if prefer_chinese else f"Requires: {', '.join(req[:4]) if req else 'none'}.")
-
-
-def _compose_function_suggestions(task: str, rules: Dict[str, Any], prefer_chinese: bool) -> str:
-    ranked = _rank_subcommands(task, rules, top_n=5)
-    if prefer_chinese:
-        lines = ["你可以先从这些 function 里选择（按相关度排序）："]
-    else:
-        lines = ["You can choose from these functions first (ranked by relevance):"]
-    for i, (cmd, _) in enumerate(ranked, 1):
-        lines.append(f"{i}) {cmd}: {_function_summary(rules.get(cmd, {}), prefer_chinese)}")
-    if prefer_chinese:
-        lines.append("请回复 function 名称，我将继续补全参数。")
-    else:
-        lines.append("Reply with a function name, and I will continue parameter completion.")
-    return "\n".join(lines)
-
-
-def _rank_subcommands(task: str, rules: Dict[str, Any], top_n: Optional[int] = None):
-    tl = _normalize_text(task).lower()
-    bag = _intent_tokenize(tl)
-    ranked: List[Tuple[Tuple[int, int, int], str]] = []
-    for cmd, rule in rules.items():
-        required = rule.get("required", []) if isinstance(rule, dict) else []
-        req_tokens = set(re.findall(r"[a-z][a-z0-9]*", " ".join([str(x) for x in required]).lower()))
-        name_tokens = set(re.findall(r"[a-z][a-z0-9]*", cmd.replace("_", " ").lower()))
-        sc = (
-            _intent_keyword_score(tl, bag, rule if isinstance(rule, dict) else {}),
-            len(bag & req_tokens),
-            len(bag & name_tokens),
-        )
-        ranked.append((sc, cmd))
-    ranked.sort(key=lambda x: x[0], reverse=True)
-    out = [(cmd, score) for score, cmd in ranked]
-    return out[:top_n] if top_n else out
-
-
-def choose_subcommand_with_confidence(task: str, rules: Dict[str, Any]) -> Dict[str, Any]:
-    tl = _normalize_text(task).lower()
-    trivial = ["你好", "您好", "hello", "hi", "hey", "thanks", "thank you", "谢谢"]
-    if tl in trivial:
-        return {
-            "top1": None,
-            "top1_score": 0.0,
-            "top2": None,
-            "top2_score": 0.0,
-            "candidates": [],
-            "is_clear": False,
-        }
-
-    # strong domain heuristics first
-    heuristic_hits: List[Tuple[str, float]] = []
-    heuristics = [
-        ("runall", ["bulk rna", "rna-seq", "rnaseq", "fastq", "pipeline", "workflow", "bulk"], 0.86),
-        ("trust4", ["tcr", "bcr", "vdj", "clonotype", "repertoire"], 0.9),
-        ("spechla", ["spechla", "hla typing", "hla分型", "hla typing"], 0.88),
-        ("hla_typing", ["hla_typing", "hla typing", "hla 分型"], 0.82),
-    ]
-    for cmd, keys, score in heuristics:
-        if cmd not in rules:
-            continue
-        if any(k in tl for k in keys):
-            heuristic_hits.append((cmd, score))
-    if heuristic_hits:
-        heuristic_hits = sorted(heuristic_hits, key=lambda x: x[1], reverse=True)
-        top1 = heuristic_hits[0]
-        top2 = heuristic_hits[1] if len(heuristic_hits) > 1 else (None, 0.0)
-        clear = top1[1] >= 0.60 and (top1[1] - float(top2[1])) >= 0.15
-        cands = [{"name": n, "score": float(s)} for n, s in heuristic_hits]
-        return {
-            "top1": top1[0] if clear else None,
-            "top1_score": float(top1[1]),
-            "top2": top2[0],
-            "top2_score": float(top2[1]),
-            "candidates": cands,
-            "is_clear": clear,
-        }
-
-    ranked = _rank_subcommands(task, rules, top_n=5)
-    if not ranked:
-        return {
-            "top1": None,
-            "top1_score": 0.0,
-            "top2": None,
-            "top2_score": 0.0,
-            "candidates": [],
-            "is_clear": False,
-        }
-
-    def _score_norm(sc: Tuple[int, int, int]) -> float:
-        raw = float((3 * sc[0]) + (2 * sc[1]) + sc[2])
-        if raw <= 0:
-            return 0.0
-        return min(1.0, raw / (raw + 2.0))
-
-    cands = []
-    for cmd, sc in ranked:
-        cands.append({"name": cmd, "score": _score_norm(sc)})
-
-    top1 = cands[0] if cands else {"name": None, "score": 0.0}
-    top2 = cands[1] if len(cands) > 1 else {"name": None, "score": 0.0}
-    clear = bool(top1["name"]) and top1["score"] >= 0.60 and (top1["score"] - top2["score"]) >= 0.15
-
-    return {
-        "top1": top1["name"] if clear else None,
-        "top1_score": float(top1["score"]),
-        "top2": top2["name"],
-        "top2_score": float(top2["score"]),
-        "candidates": cands,
-        "is_clear": clear,
-    }
-
-
-def choose_subcommand(task: str, rules: Dict[str, Any]) -> str:
-    ranked = _rank_subcommands(task, rules, top_n=5)
-    candidates = [c for c, _ in ranked]
-    fallback = candidates[0] if candidates else list(rules.keys())[0]
-
-    prompt = f"""
-Select the best iobrpy subcommand from candidates: {candidates}
-Return JSON only: {{"subcommand": "<candidate>"}}
-User request: {task}
-""".strip()
-    try:
-        j = _llm_generate_json(prompt)
-    except Exception:
-        j = {}
-    sub = j.get("subcommand") if isinstance(j, dict) else None
-    return sub if isinstance(sub, str) and sub in candidates else fallback
+def _shell_quote(s: str) -> str:
+    if re.fullmatch(r"[A-Za-z0-9_./=-]+", s):
+        return s
+    return "'" + s.replace("'", "'\"'\"'") + "'"
 
 
 FLAG_MAP = {
@@ -823,16 +367,10 @@ BOOL_FLAGS = {
 }
 
 
-def _shell_quote(s: str) -> str:
-    if re.fullmatch(r"[A-Za-z0-9_./=-]+", s):
-        return s
-    return "'" + s.replace("'", "'\"'\"'") + "'"
-
-
 def build_command(subcommand: str, params: Dict[str, Any], rules: Dict[str, Any]) -> Tuple[str, List[str]]:
     allowed_set = set([k for k in allowed_keys_for(subcommand, rules) if k != "confirm"])
     argv = [subcommand]
-    rule = rules.get(subcommand, {})
+    rule = rules.get(subcommand, {}) if isinstance(rules.get(subcommand, {}), dict) else {}
     ordered = list(rule.get("required", [])) + [k for k in rule.get("optional", []) if k not in rule.get("required", [])]
     for k in ordered:
         if k not in allowed_set or k not in params:
@@ -851,123 +389,325 @@ def build_command(subcommand: str, params: Dict[str, Any], rules: Dict[str, Any]
     return "iobrpy " + " ".join([_shell_quote(a) for a in argv]), argv
 
 
-def compute_needs(subcommand: str, rules: Dict[str, Any], params: Dict[str, Any], confirmed: set) -> Tuple[List[str], List[str]]:
-    rule = rules.get(subcommand, {})
-    required = rule.get("required", [])
-    confirm = rule.get("confirm", [])
-    required_one_of = rule.get("required_one_of", [])
-    missing = [k for k in required if k not in params or params[k] in (None, "", [])]
-    if isinstance(required_one_of, list) and required_one_of:
-        def _group_ok(group):
-            return isinstance(group, list) and group and all((k in params and params[k] not in (None, "", [])) for k in group)
-        if not any(_group_ok(g) for g in required_one_of):
-            missing.append("__one_of_group")
-    need_confirm = [k for k in confirm if k not in confirmed]
-    return missing, need_confirm
-
-
-def compose_questions(subcommand: str, missing: List[str], need_confirm: List[str], params: Dict[str, Any], rules: Dict[str, Any], prefer_chinese: bool = False) -> str:
-    lines = [f"当前目标命令: iobrpy {subcommand}" if prefer_chinese else f"Current target command: iobrpy {subcommand}"]
-    rule = rules.get(subcommand, {}) if isinstance(rules.get(subcommand, {}), dict) else {}
-    notes = rule.get("notes", {}) if isinstance(rule.get("notes", {}), dict) else {}
-    for m in missing:
-        if m == "__one_of_group":
-            default_msg = "请提供一种有效输入模式。" if prefer_chinese else "Please provide one valid input mode."
-            msg = str(notes.get("required_one_of") or default_msg)
-            if prefer_chinese and not _contains_cjk(msg):
-                msg = _translate_to_chinese(msg)
-            lines.append(msg)
-        else:
-            lines.append(f"- {m}（必填）" if prefer_chinese else f"- {m} (required)")
-    for k in need_confirm:
-        v = params.get(k)
-        if v not in (None, "", []):
-            if prefer_chinese:
-                lines.append(f"请确认参数: {k}={v}（回复: confirm {k}）")
-            else:
-                lines.append(f"Please confirm parameter: {k}={v} (reply: confirm {k})")
-    return "\n".join(lines)
-
-
-def merge_defaults(params: Dict[str, Any], subcommand: str, rules: Dict[str, Any]) -> Dict[str, Any]:
+def merge_defaults(params: Dict[str, Any], subcommand: str, rules: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, str]]:
     d = load_defaults()
     rule = rules.get(subcommand, {}) if isinstance(rules.get(subcommand, {}), dict) else {}
     rule_defaults = rule.get("optional_defaults", {}) if isinstance(rule.get("optional_defaults", {}), dict) else {}
     allowed_set = set([k for k in allowed_keys_for(subcommand, rules) if k != "confirm"])
-    out = {}
+    out: Dict[str, Any] = {}
+    src: Dict[str, str] = {}
+
     for k in allowed_set:
         if k in params and params[k] in (None, "", []):
             continue
         if k in rule_defaults and rule_defaults[k] not in (None, "", []):
             out[k] = rule_defaults[k]
+            src[k] = "default"
         elif k in BUILTIN_OPTIONAL_DEFAULTS:
             out[k] = BUILTIN_OPTIONAL_DEFAULTS[k]
+            src[k] = "default"
         if k in d and d[k] not in (None, "", []):
             out[k] = d[k]
+            src[k] = "default"
+
     for k, v in params.items():
         if k in allowed_set and v not in (None, "", []):
             out[k] = v
+            src[k] = "user"
         elif k in allowed_set and v in (None, "", []) and k in out:
             out.pop(k, None)
+            src.pop(k, None)
+
+    return out, src
+
+
+def compute_needs(subcommand: str, rules: Dict[str, Any], params: Dict[str, Any]) -> Tuple[List[str], List[str]]:
+    rule = rules.get(subcommand, {}) if isinstance(rules.get(subcommand, {}), dict) else {}
+    required = rule.get("required", []) if isinstance(rule.get("required", []), list) else []
+    confirm = rule.get("confirm", []) if isinstance(rule.get("confirm", []), list) else []
+    required_one_of = rule.get("required_one_of", []) if isinstance(rule.get("required_one_of", []), list) else []
+
+    missing = [k for k in required if k not in params or params[k] in (None, "", [])]
+
+    if required_one_of:
+        def _group_ok(group):
+            return isinstance(group, list) and group and all((k in params and params[k] not in (None, "", [])) for k in group)
+        if not any(_group_ok(g) for g in required_one_of):
+            missing.append("__one_of_group")
+
+    # keep confirm as soft recommendation, not hard gate
+    need_confirm = [k for k in confirm if k in params and params.get(k) not in (None, "", [])]
+    return missing, need_confirm
+
+
+def build_command_catalog(rules: Dict[str, Any]) -> Dict[str, Any]:
+    tools: List[Dict[str, Any]] = []
+    for cmd, r in rules.items():
+        if not isinstance(r, dict):
+            continue
+        summary = r.get("function_summary", "")
+        if isinstance(summary, dict):
+            summary_txt = summary.get("zh") or summary.get("en") or ""
+        else:
+            summary_txt = summary or ""
+        tools.append(
+            {
+                "name": cmd,
+                "summary": summary_txt,
+                "required": r.get("required", []),
+                "optional": r.get("optional", []),
+                "choices": r.get("choices", {}),
+                "required_one_of": r.get("required_one_of", []),
+                "optional_defaults": r.get("optional_defaults", {}),
+                "intent_keywords": r.get("intent_keywords", []),
+                "param_hints": r.get("param_hints", {}),
+                "notes": r.get("notes", {}),
+            }
+        )
+    return {"commands": tools}
+
+
+PLANNER_SCHEMA = {
+    "action": "one of: reply_only/select_command/clarify_intent/update_params/remove_params/switch_command/confirm_switch/ask_missing_params/ready_to_run/execute/undo/restart_session",
+    "message": "natural-language assistant reply",
+    "subcommand": "command name or null",
+    "param_updates": "object of key->value",
+    "param_removals": "array of parameter keys",
+    "switch_to": "command name or null",
+    "ask_for": "array of missing parameter keys",
+    "confirm": "null or object with type/details",
+    "confidence": "0..1",
+    "reason": "short internal reason",
+}
+
+
+def build_planner_prompt(state: "SessionState", user_text: str, catalog: Dict[str, Any], merged_params: Dict[str, Any], missing: List[str], draft_command: Optional[str]) -> str:
+    return f"""
+You are the iobrpy planner assistant (not a generic chatbot).
+Your job: understand user intent, choose iobrpy command, update/remove parameters, ask clarification, support switch/undo, and decide execution readiness.
+
+Hard constraints:
+- Only use command names and parameter keys that exist in catalog.
+- Never invent command or parameter.
+- If user is greeting/help/thanks/chitchat: use action=reply_only.
+- If intent is ambiguous: use action=clarify_intent.
+- If user modifies/removes parameters for selected command: use update_params/remove_params.
+- If user clearly wants another command while one is selected: use confirm_switch (or switch_command if already confirmed context).
+- If required inputs are missing: do NOT execute.
+- If user says run/execute but missing inputs exist: action=ask_missing_params.
+- If everything required is satisfied and user asks to run: action=execute.
+- Output JSON only, exactly following schema fields.
+
+Planner JSON schema:
+{json.dumps(PLANNER_SCHEMA, ensure_ascii=False)}
+
+Current session state:
+{json.dumps(state.to_planner_state(), ensure_ascii=False)}
+
+Catalog:
+{json.dumps(catalog, ensure_ascii=False)}
+
+Current merged params:
+{json.dumps(merged_params, ensure_ascii=False)}
+Current missing params:
+{json.dumps(missing, ensure_ascii=False)}
+Current draft command:
+{json.dumps(draft_command, ensure_ascii=False)}
+
+User message:
+{json.dumps(user_text, ensure_ascii=False)}
+
+Return JSON only.
+""".strip()
+
+
+def _safe_fallback_plan(state: "SessionState", user_text: str) -> Dict[str, Any]:
+    t = _normalize_text(user_text).lower()
+    if not t:
+        return {"action": "reply_only", "message": "Please describe your task.", "confidence": 0.3}
+    if t in {"undo", "rollback", "back", "撤销", "回退", "上一步"}:
+        return {"action": "undo", "message": "", "confidence": 0.9}
+    if t in {"restart", ":restart", "restart session", "重置会话", "重新开始"}:
+        return {"action": "restart_session", "message": "", "confidence": 0.9}
+    if t in {"run", "execute", "执行", "开始", "现在运行", "确认执行"}:
+        return {"action": "execute", "message": "", "confidence": 0.7}
+    if t in {"你好", "您好", "hello", "hi", "hey", "谢谢", "thanks", "thank you", "help", "你能做什么", "你可以做什么"}:
+        return {"action": "reply_only", "message": "", "confidence": 0.8}
+    return {"action": "clarify_intent", "message": "", "confidence": 0.4}
+
+
+def llm_plan_next_action(state: "SessionState", user_text: str, rules: Dict[str, Any]) -> Dict[str, Any]:
+    catalog = build_command_catalog(rules)
+    sub = state.selected_command or ""
+    merged, _ = merge_defaults(state.params, sub, rules) if sub else ({}, {})
+    missing, _ = compute_needs(sub, rules, merged) if sub else ([], [])
+    draft = build_command(sub, merged, rules)[0] if sub else None
+    prompt = build_planner_prompt(state, user_text, catalog, merged, missing, draft)
+
+    try:
+        plan = _llm_generate_json(prompt)
+        if not isinstance(plan, dict) or not plan:
+            plan = _safe_fallback_plan(state, user_text)
+    except Exception as e:
+        dlog("planner_call_failed", repr(e))
+        plan = _safe_fallback_plan(state, user_text)
+
+    dlog("planner_raw_plan", plan)
+    return plan
+
+
+def _convert_value_for_key(key: str, value: Any, rules: Dict[str, Any], subcommand: str) -> Any:
+    rule = rules.get(subcommand, {}) if isinstance(rules.get(subcommand, {}), dict) else {}
+    choices = rule.get("choices", {}) if isinstance(rule.get("choices", {}), dict) else {}
+    if key in {"threads", "batch_size", "t", "k"}:
+        if isinstance(value, int):
+            return value
+        if isinstance(value, str) and value.strip().isdigit():
+            return int(value.strip())
+    if key in {"mode"}:
+        if isinstance(value, str):
+            vl = value.strip().lower()
+            if vl in {"salmon", "star"}:
+                return vl
+    if key in {"index", "input", "output", "fastq", "outdir", "bam", "fqdir", "ru", "r1", "r2", "ref", "od"}:
+        if isinstance(value, str):
+            v = value.strip()
+            if v.startswith("/"):
+                return v
+    if key in choices and isinstance(choices.get(key), list) and choices[key]:
+        if value not in choices[key]:
+            raise ValueError(f"invalid choice for {key}: {value}, allowed={choices[key]}")
+    return value
+
+
+def validate_planner_output(plan: Dict[str, Any], rules: Dict[str, Any], state: "SessionState") -> Dict[str, Any]:
+    if not isinstance(plan, dict):
+        return {"action": "reply_only", "message": "I could not parse planner output.", "confidence": 0.0}
+
+    action = str(plan.get("action") or "reply_only")
+    if action not in VALID_ACTIONS:
+        dlog("invalid_action", action)
+        action = "reply_only"
+
+    out = {
+        "action": action,
+        "message": str(plan.get("message") or ""),
+        "subcommand": plan.get("subcommand"),
+        "param_updates": plan.get("param_updates") if isinstance(plan.get("param_updates"), dict) else {},
+        "param_removals": plan.get("param_removals") if isinstance(plan.get("param_removals"), list) else [],
+        "switch_to": plan.get("switch_to"),
+        "ask_for": plan.get("ask_for") if isinstance(plan.get("ask_for"), list) else [],
+        "confirm": plan.get("confirm"),
+        "confidence": float(plan.get("confidence") or 0.0),
+        "reason": str(plan.get("reason") or ""),
+    }
+
+    # command guardrails
+    if out["subcommand"] is not None and out["subcommand"] not in rules:
+        dlog("invalid_subcommand", out["subcommand"])
+        out["subcommand"] = None
+        if out["action"] in {"select_command", "switch_command", "confirm_switch"}:
+            out["action"] = "clarify_intent"
+
+    if out["switch_to"] is not None and out["switch_to"] not in rules:
+        dlog("invalid_switch_to", out["switch_to"])
+        out["switch_to"] = None
+        if out["action"] in {"switch_command", "confirm_switch"}:
+            out["action"] = "clarify_intent"
+
+    # parameter guardrails
+    target_cmd = state.selected_command or out.get("subcommand") or out.get("switch_to")
+    if out["action"] in {"update_params", "remove_params"} and not target_cmd:
+        out["action"] = "clarify_intent"
+        out["message"] = out["message"] or ("请先告诉我要运行哪个功能。" if state.prefer_chinese else "Please tell me which command you want first.")
+        out["param_updates"] = {}
+        out["param_removals"] = []
+
+    if target_cmd and target_cmd in rules:
+        allowed = set([k for k in allowed_keys_for(target_cmd, rules) if k != "confirm"])
+        safe_updates: Dict[str, Any] = {}
+        invalid_keys: List[str] = []
+        invalid_choices: List[str] = []
+        for k, v in out["param_updates"].items():
+            if k not in allowed:
+                invalid_keys.append(k)
+                continue
+            try:
+                safe_updates[k] = _convert_value_for_key(k, v, rules, target_cmd)
+            except Exception:
+                invalid_choices.append(k)
+        out["param_updates"] = safe_updates
+        out["param_removals"] = [k for k in out["param_removals"] if k in allowed]
+
+        if invalid_keys:
+            out["message"] = out["message"] or (
+                ("这些参数不存在，将忽略: " + ", ".join(invalid_keys)) if state.prefer_chinese else ("Ignored unknown params: " + ", ".join(invalid_keys))
+            )
+        if invalid_choices:
+            out["message"] = out["message"] or (
+                ("这些参数取值不合法，将忽略: " + ", ".join(invalid_choices)) if state.prefer_chinese else ("Ignored invalid choices for: " + ", ".join(invalid_choices))
+            )
+
     return out
 
 
+@dataclass
 class SessionState:
-    def __init__(self):
-        self.phase: str = "idle"
-        self.task: str = ""
-        self.subcommand: Optional[str] = None
-        self.params: Dict[str, Any] = {}
-        self.confirmed: set = set()
-        self.prefer_chinese: bool = False
-        self.history: List[Dict[str, Any]] = []
-        self.pending_candidates: List[Dict[str, Any]] = []
-        self.pending_switch_candidates: List[str] = []
-        self.last_user_intent: Optional[str] = None
-        self.subcommand_confidence: Optional[float] = None
-        self.snapshots: List[Dict[str, Any]] = []
-        self.pending_switch_subcommand: Optional[str] = None
+    session_id: str
+    selected_command: Optional[str] = None
+    params: Dict[str, Any] = field(default_factory=dict)
+    param_sources: Dict[str, str] = field(default_factory=dict)
+    pending_confirmation: Optional[Dict[str, Any]] = None
+    pending_switch: Optional[Dict[str, Any]] = None
+    history: List[Dict[str, Any]] = field(default_factory=list)
+    last_plan: Optional[Dict[str, Any]] = None
+    last_message: Optional[str] = None
+    prefer_chinese: bool = False
+    phase: str = "idle"  # idle / clarifying / collecting / ready / executing
 
-    def push_snapshot(self):
-        self.history.append({
-            "phase": self.phase,
-            "subcommand": self.subcommand,
-            "params": deepcopy(self.params),
-        })
-        if len(self.history) > 80:
-            self.history = self.history[-80:]
-        self.snapshots.append({
-            "phase": self.phase,
-            "task": self.task,
-            "subcommand": self.subcommand,
-            "params": deepcopy(self.params),
-            "confirmed": set(self.confirmed),
-            "prefer_chinese": self.prefer_chinese,
-            "pending_candidates": deepcopy(self.pending_candidates),
-            "pending_switch_candidates": list(self.pending_switch_candidates),
-            "last_user_intent": self.last_user_intent,
-            "subcommand_confidence": self.subcommand_confidence,
-            "pending_switch_subcommand": self.pending_switch_subcommand,
-        })
-        if len(self.snapshots) > 50:
-            self.snapshots = self.snapshots[-50:]
+    def snapshot(self):
+        self.history.append(
+            {
+                "selected_command": self.selected_command,
+                "params": deepcopy(self.params),
+                "param_sources": deepcopy(self.param_sources),
+                "pending_confirmation": deepcopy(self.pending_confirmation),
+                "pending_switch": deepcopy(self.pending_switch),
+                "last_plan": deepcopy(self.last_plan),
+                "last_message": self.last_message,
+                "prefer_chinese": self.prefer_chinese,
+                "phase": self.phase,
+            }
+        )
+        if len(self.history) > 100:
+            self.history = self.history[-100:]
 
-    def rollback(self) -> bool:
-        if not self.snapshots:
+    def undo(self) -> bool:
+        if not self.history:
             return False
-        snap = self.snapshots.pop()
-        self.phase = snap.get("phase", "idle")
-        self.task = snap.get("task", "")
-        self.subcommand = snap.get("subcommand")
+        snap = self.history.pop()
+        self.selected_command = snap.get("selected_command")
         self.params = deepcopy(snap.get("params", {}))
-        self.confirmed = set(snap.get("confirmed", set()))
+        self.param_sources = deepcopy(snap.get("param_sources", {}))
+        self.pending_confirmation = deepcopy(snap.get("pending_confirmation"))
+        self.pending_switch = deepcopy(snap.get("pending_switch"))
+        self.last_plan = deepcopy(snap.get("last_plan"))
+        self.last_message = snap.get("last_message")
         self.prefer_chinese = bool(snap.get("prefer_chinese", self.prefer_chinese))
-        self.pending_candidates = deepcopy(snap.get("pending_candidates", []))
-        self.pending_switch_candidates = list(snap.get("pending_switch_candidates", []))
-        self.last_user_intent = snap.get("last_user_intent")
-        self.subcommand_confidence = snap.get("subcommand_confidence")
-        self.pending_switch_subcommand = snap.get("pending_switch_subcommand")
+        self.phase = snap.get("phase", self.phase)
         return True
+
+    def to_planner_state(self) -> Dict[str, Any]:
+        return {
+            "selected_command": self.selected_command,
+            "params": self.params,
+            "param_sources": self.param_sources,
+            "pending_confirmation": self.pending_confirmation,
+            "pending_switch": self.pending_switch,
+            "last_message": self.last_message,
+            "prefer_chinese": self.prefer_chinese,
+            "phase": self.phase,
+        }
 
 
 SESSIONS: Dict[str, SessionState] = {}
@@ -975,79 +715,8 @@ SESSIONS: Dict[str, SessionState] = {}
 
 def get_session(session_id: str) -> SessionState:
     if session_id not in SESSIONS:
-        SESSIONS[session_id] = SessionState()
+        SESSIONS[session_id] = SessionState(session_id=session_id)
     return SESSIONS[session_id]
-
-
-def apply_confirmations(state: SessionState, extracted: Dict[str, Any]):
-    conf = extracted.get("confirm")
-    if isinstance(conf, list):
-        for k in conf:
-            state.confirmed.add(str(k).strip())
-
-
-def auto_confirm_filled_values(state: SessionState, extracted: Dict[str, Any], rules: Dict[str, Any]):
-    if not state.subcommand:
-        return
-    rule = rules.get(state.subcommand, {}) if isinstance(rules.get(state.subcommand, {}), dict) else {}
-    for k in rule.get("confirm", []) if isinstance(rule.get("confirm", []), list) else []:
-        if k in extracted and extracted.get(k) not in (None, "", []):
-            state.confirmed.add(str(k).strip())
-
-
-def _detect_switch_candidate(text: str, current_subcommand: Optional[str], rules: Dict[str, Any]) -> Optional[str]:
-    if not text or not current_subcommand:
-        return None
-    tl = _normalize_text(text).lower()
-    # explicit phrasing: "switch/change to ..."
-    mapped = [
-        ("hla_typing", ["hla typing", "hla分型", "做 hla", "换 hla"]),
-        ("spechla", ["spechla", "换 spechla", "做 spechla"]),
-        ("trust4", ["trust4", "tcr", "bcr", "vdj"]),
-        ("runall", ["runall", "bulk rna", "rna-seq", "workflow", "pipeline"]),
-    ]
-    for cmd, kws in mapped:
-        if cmd == current_subcommand or cmd not in rules:
-            continue
-        if any(k in tl for k in kws):
-            return cmd
-
-    for cmd in rules.keys():
-        if cmd == current_subcommand:
-            continue
-        if re.search(rf"\b{re.escape(cmd.lower())}\b", tl):
-            return cmd
-    # fallback: high-confidence re-routing signal
-    sel = choose_subcommand_with_confidence(text, rules)
-    top1 = sel.get("top1")
-    if isinstance(top1, str) and top1 != current_subcommand:
-        return top1
-    return None
-
-
-def _state_summary_text(state: SessionState, merged: Dict[str, Any], missing: List[str], prefer_chinese: bool) -> str:
-    non_empty = []
-    for k in sorted(merged.keys()):
-        v = merged.get(k)
-        if v in (None, "", []):
-            continue
-        tag = " (默认)" if k in BUILTIN_OPTIONAL_DEFAULTS and state.params.get(k) in (None, "", []) else ""
-        non_empty.append(f"{k}={v}{tag}")
-    recognized = ", ".join(non_empty) if non_empty else ("无" if prefer_chinese else "none")
-    miss_show = ", ".join([m for m in missing if m != "__one_of_group"]) if missing else ("无" if prefer_chinese else "none")
-    if prefer_chinese:
-        return (
-            f"当前命令: iobrpy {state.subcommand}\n"
-            f"已识别: {recognized}\n"
-            f"缺失: {miss_show}\n"
-            "你可以继续补充参数，也可以说“把 threads 改成 16”“删除 project”“撤销上一条”“重新选命令”。"
-        )
-    return (
-        f"Current command: iobrpy {state.subcommand}\n"
-        f"Recognized: {recognized}\n"
-        f"Missing: {miss_show}\n"
-        "You can keep adding parameters, or say 'set threads to 16', 'remove project', 'undo', or 'change command'."
-    )
 
 
 def _resolve_iobrpy_pythonpath() -> Optional[str]:
@@ -1064,256 +733,254 @@ def _resolve_iobrpy_pythonpath() -> Optional[str]:
     return None
 
 
+def _state_summary_text(state: SessionState, merged: Dict[str, Any], missing: List[str], sources: Dict[str, str], prefer_chinese: bool) -> str:
+    items = []
+    for k in sorted(merged.keys()):
+        v = merged.get(k)
+        if v in (None, "", []):
+            continue
+        src = sources.get(k, "user")
+        tag = " (默认)" if src == "default" else ""
+        items.append(f"{k}={v}{tag}")
+    recognized = ", ".join(items) if items else ("无" if prefer_chinese else "none")
+    miss = [m for m in missing if m != "__one_of_group"]
+    missing_txt = ", ".join(miss) if miss else ("无" if prefer_chinese else "none")
+    if prefer_chinese:
+        return f"当前命令: iobrpy {state.selected_command}\n已识别: {recognized}\n缺失: {missing_txt}"
+    return f"Current command: iobrpy {state.selected_command}\nRecognized: {recognized}\nMissing: {missing_txt}"
+
+
+def apply_planner_output(state: SessionState, plan: Dict[str, Any], rules: Dict[str, Any], user_text: str) -> Dict[str, Any]:
+    action = plan.get("action", "reply_only")
+    msg = plan.get("message") or ""
+
+    if action == "restart_session":
+        state.snapshot()
+        state.selected_command = None
+        state.params = {}
+        state.param_sources = {}
+        state.pending_confirmation = None
+        state.pending_switch = None
+        state.phase = "idle"
+        return {"status": "need_info", "question": msg or ("请描述你的任务。" if state.prefer_chinese else "Please describe your task."), "needs": ["task"]}
+
+    if action == "undo":
+        ok = state.undo()
+        if not ok:
+            return {"status": "need_info", "question": msg or ("没有可撤销的历史。" if state.prefer_chinese else "No history to undo."), "needs": []}
+
+    if state.pending_switch and action in {"confirm_switch", "switch_command", "select_command"}:
+        # planner indicates user accepted switch
+        target = plan.get("switch_to") or plan.get("subcommand") or state.pending_switch.get("target")
+        if target and target in rules:
+            state.snapshot()
+            old_params = deepcopy(state.params)
+            old_sources = deepcopy(state.param_sources)
+            allowed = set([k for k in allowed_keys_for(target, rules) if k != "confirm"])
+            state.selected_command = target
+            state.params = {k: v for k, v in old_params.items() if k in allowed}
+            state.param_sources = {k: old_sources.get(k, "user") for k in state.params.keys()}
+            state.pending_switch = None
+            state.phase = "collecting"
+
+    # switch proposal
+    if action in {"switch_command", "confirm_switch"} and state.selected_command:
+        target = plan.get("switch_to") or plan.get("subcommand")
+        if target and target in rules and target != state.selected_command:
+            state.pending_switch = {"from": state.selected_command, "target": target}
+            state.phase = "clarifying"
+            return {
+                "status": "need_info",
+                "question": msg or (
+                    f"检测到你可能想从 {state.selected_command} 切换到 {target}，是否切换？"
+                    if state.prefer_chinese
+                    else f"I detected you may want to switch from {state.selected_command} to {target}. Switch now?"
+                ),
+                "needs": ["confirm_switch"],
+            }
+
+    if action == "select_command":
+        sub = plan.get("subcommand")
+        if sub and sub in rules:
+            state.snapshot()
+            state.selected_command = sub
+            state.params = {}
+            state.param_sources = {}
+            state.phase = "collecting"
+        else:
+            state.phase = "clarifying"
+            return {"status": "need_info", "question": msg or ("我还不确定你要哪个功能，请再描述。" if state.prefer_chinese else "I am not sure which command you need yet. Please clarify."), "needs": ["clarify_intent"]}
+
+    if action == "clarify_intent":
+        state.phase = "clarifying"
+        return {"status": "need_info", "question": msg or ("请再具体描述你的分析目标。" if state.prefer_chinese else "Please describe your analysis goal more specifically."), "needs": ["clarify_intent"]}
+
+    if action == "reply_only":
+        state.phase = "idle" if not state.selected_command else state.phase
+        return {"status": "need_info", "question": msg or ("请继续告诉我你的任务。" if state.prefer_chinese else "Please continue with your task details."), "needs": ["task"] if not state.selected_command else []}
+
+    if action == "update_params":
+        if not state.selected_command:
+            return {"status": "need_info", "question": msg or ("请先告诉我要运行哪个功能。" if state.prefer_chinese else "Please tell me which command you want first."), "needs": ["task"]}
+        if plan.get("param_updates"):
+            state.snapshot()
+            for k, v in plan.get("param_updates", {}).items():
+                state.params[k] = v
+                state.param_sources[k] = "user"
+            state.phase = "collecting"
+
+    if action == "remove_params":
+        if not state.selected_command:
+            return {"status": "need_info", "question": msg or ("请先告诉我要运行哪个功能。" if state.prefer_chinese else "Please tell me which command you want first."), "needs": ["task"]}
+        if plan.get("param_removals"):
+            state.snapshot()
+            for k in plan.get("param_removals", []):
+                state.params[k] = None
+                state.param_sources[k] = "user"
+            state.phase = "collecting"
+
+    if action == "ask_missing_params":
+        state.phase = "collecting"
+
+    if action == "ready_to_run":
+        state.phase = "ready"
+
+    if action == "execute":
+        state.phase = "executing"
+
+    # compute final guarded status
+    if not state.selected_command:
+        state.phase = "idle"
+        return {"status": "need_info", "question": msg or ("请先告诉我你想运行的分析功能。" if state.prefer_chinese else "Please first tell me which analysis command you want."), "needs": ["task"]}
+
+    merged, sources = merge_defaults(state.params, state.selected_command, rules)
+    missing, need_confirm = compute_needs(state.selected_command, rules, merged)
+    draft_cmd, _ = build_command(state.selected_command, merged, rules)
+
+    if action == "execute" and (missing or need_confirm):
+        action = "ask_missing_params"
+
+    if missing or action == "ask_missing_params":
+        state.phase = "collecting"
+        q = msg or ("还不能执行，参数尚未完整。" if state.prefer_chinese else "Cannot execute yet, parameters are incomplete.")
+        q += "\n\n" + _state_summary_text(state, merged, missing, sources, state.prefer_chinese)
+        return {
+            "status": "need_info",
+            "subcommand": state.selected_command,
+            "question": q,
+            "needs": missing,
+            "draft_command": draft_cmd,
+            "params": merged,
+        }
+
+    # ready gate
+    state.phase = "ready"
+    if action == "execute":
+        return {
+            "status": "ready",
+            "subcommand": state.selected_command,
+            "question": msg or ("已准备好执行。" if state.prefer_chinese else "Ready to execute."),
+            "draft_command": draft_cmd,
+            "params": merged,
+        }
+
+    return {
+        "status": "ready",
+        "subcommand": state.selected_command,
+        "question": msg or ("参数已满足，可以执行。" if state.prefer_chinese else "All required parameters are satisfied. Ready to run."),
+        "draft_command": draft_cmd,
+        "params": merged,
+    }
+
+
 def tool_iobrpy_assistant(session_id: str, task: Optional[str] = None, answer_text: Optional[str] = None, run: bool = False) -> Dict[str, Any]:
     rules = load_rules()
     state = get_session(session_id)
-    phase_before = state.phase
 
     text = answer_text if answer_text is not None else task
-    cls = classify_user_input(text or "", state)
-    state.last_user_intent = cls.get("category")
-    dlog("input_category=", cls.get("category"), "confidence=", cls.get("confidence"), "phase_before=", phase_before)
+    user_text = _normalize_text(text or "")
 
-    if text:
-        if _contains_cjk(text):
-            state.prefer_chinese = True
-        elif any(ch.isalpha() for ch in text):
-            state.prefer_chinese = False
+    if _contains_cjk(user_text):
+        state.prefer_chinese = True
+    elif any(ch.isalpha() for ch in user_text):
+        state.prefer_chinese = False
 
-    if cls["category"] == "restart_session":
-        state.push_snapshot()
-        state.phase = "idle"
-        state.task = ""
-        state.subcommand = None
-        state.params = {}
-        state.confirmed = set()
-        state.pending_candidates = []
-        state.pending_switch_candidates = []
-        state.pending_switch_subcommand = None
-        state.subcommand_confidence = None
-        q = "请用自然语言描述你的需求。" if state.prefer_chinese else "Please describe what you want to do (natural language)."
-        return {"status": "need_info", "question": q, "needs": ["task"], "prefer_chinese": state.prefer_chinese, "phase": state.phase, "intent_category": cls["category"]}
+    if user_text in {":restart", "restart", "restart session"}:
+        plan = {"action": "restart_session", "message": ""}
+    else:
+        plan = llm_plan_next_action(state, user_text, rules)
 
-    if cls["category"] in ("greeting", "help", "chit_chat"):
-        state.phase = "idle"
-        state.subcommand = None
-        state.pending_candidates = []
-        if cls["category"] == "help":
-            if state.prefer_chinese:
-                q = (
-                    "我可以帮助你运行 iobrpy 中的多个分析流程，例如 runall、trust4、spechla、hla_typing。"
-                    "你可以直接告诉我你的任务，比如“我想做 bulk RNA-seq 分析”或“我想做 HLA typing”。"
-                )
-            else:
-                q = (
-                    "I can help run multiple iobrpy workflows, such as runall, trust4, spechla, and hla_typing. "
-                    "You can directly describe your task, e.g. 'I want to run bulk RNA-seq analysis' or 'I want HLA typing'."
-                )
-        elif cls["category"] == "chit_chat":
-            q = "不客气。你可以直接告诉我想做什么分析。" if state.prefer_chinese else "You're welcome. Tell me what analysis you want to run."
-        else:
-            q = "你好，我可以帮你选择合适的 iobrpy 功能，并一步步补全参数。你想做什么分析？" if state.prefer_chinese else "Hi, I can help choose the right iobrpy function and fill parameters step by step. What analysis do you want to run?"
-        return {"status": "need_info", "question": q, "needs": ["task"], "prefer_chinese": state.prefer_chinese, "phase": state.phase, "intent_category": cls["category"]}
+    validated = validate_planner_output(plan, rules, state)
+    dlog("phase_before", state.phase, "validated_action", validated.get("action"))
 
-    if cls["category"] == "undo":
-        ok = state.rollback()
-        msg = ("已撤销上一条。" if ok else "没有可撤销的历史。") if state.prefer_chinese else ("Undid last change." if ok else "No history to undo.")
-        if not state.subcommand:
-            state.phase = "idle"
-            dlog("phase_after=", state.phase, "undo_ok=", ok)
-            return {"status": "need_info", "question": msg, "needs": ["task"], "prefer_chinese": state.prefer_chinese, "phase": state.phase, "intent_category": cls["category"]}
-        merged_u = merge_defaults(state.params, state.subcommand, rules)
-        missing_u, need_confirm_u = compute_needs(state.subcommand, rules, merged_u, state.confirmed)
-        summary_u = _state_summary_text(state, merged_u, missing_u, state.prefer_chinese)
-        state.phase = "parameter_filling" if (missing_u or need_confirm_u) else "ready_to_run"
-        dlog("phase_after=", state.phase, "undo_ok=", ok)
-        return {
-            "status": "need_info" if state.phase == "parameter_filling" else "ready",
-            "subcommand": state.subcommand,
-            "question": msg + "\n\n" + summary_u,
-            "draft_command": build_command(state.subcommand, merged_u, rules)[0],
-            "params": merged_u,
+    state.last_plan = deepcopy(validated)
+    state.last_message = user_text
+
+    out = apply_planner_output(state, validated, rules, user_text)
+
+    out["prefer_chinese"] = state.prefer_chinese
+    out["phase"] = state.phase
+    out["intent_category"] = validated.get("action")
+
+    # runtime execute path is guarded and optional (ai.py usually calls with run=False)
+    if out.get("status") == "ready" and run:
+        sub = out.get("subcommand")
+        params = out.get("params") or {}
+        draft_cmd, argv = build_command(str(sub), dict(params), rules)
+
+        run_dir = os.getenv("IOBRPY_RUN_LOG_DIR", os.path.join(os.path.dirname(__file__), "mcp_runs"))
+        os.makedirs(run_dir, exist_ok=True)
+        log_path = os.path.join(run_dir, f"{session_id}_{sub}.log")
+        env = os.environ.copy()
+        pp = _resolve_iobrpy_pythonpath()
+        if pp:
+            env["PYTHONPATH"] = pp + (":" + env["PYTHONPATH"] if env.get("PYTHONPATH") else "")
+
+        cmd = [CONDA_EXE, "run", "-n", IOBRPY_CONDA_ENV, "python", "-m", "iobrpy.main"] + argv
+        try:
+            with open(log_path, "w", encoding="utf-8") as f:
+                p = subprocess.Popen(cmd, stdout=f, stderr=subprocess.STDOUT, text=True, env=env)
+                rc = p.wait()
+        except Exception as e:
+            with open(log_path, "a", encoding="utf-8") as f:
+                f.write("\n\nEXCEPTION:\n" + repr(e) + "\n" + traceback.format_exc())
+            rc = 1
+
+        tail = ""
+        try:
+            with open(log_path, "r", encoding="utf-8") as f:
+                tail = "".join(f.readlines()[-80:])
+        except Exception:
+            pass
+
+        out = {
+            "status": "done" if rc == 0 else "error",
+            "returncode": rc,
+            "draft_command": draft_cmd,
+            "log_path": log_path,
+            "tail": tail,
             "prefer_chinese": state.prefer_chinese,
             "phase": state.phase,
-            "intent_category": cls["category"],
+            "intent_category": validated.get("action"),
         }
 
-    if cls["category"] == "reset_command":
-        state.push_snapshot()
-        state.phase = "idle"
-        state.subcommand = None
-        state.subcommand_confidence = None
-        state.pending_candidates = []
-        state.pending_switch_candidates = []
-        state.pending_switch_subcommand = None
-        q = "已重置命令选择。请描述你要做什么。" if state.prefer_chinese else "Command selection reset. Please describe what you want to do."
-        return {"status": "need_info", "question": q, "needs": ["task"], "prefer_chinese": state.prefer_chinese, "phase": state.phase, "intent_category": cls["category"]}
-
-    if state.pending_switch_subcommand and text:
-        if cls["category"] == "confirm_yes":
-            target = state.pending_switch_subcommand
-            state.push_snapshot()
-            old_params = dict(state.params)
-            state.subcommand = target
-            allowed = set([k for k in allowed_keys_for(target, rules) if k != "confirm"])
-            state.params = {k: v for k, v in old_params.items() if k in allowed}
-            state.confirmed = set([k for k in state.confirmed if k in allowed])
-            state.pending_switch_subcommand = None
-            state.pending_switch_candidates = []
-            state.phase = "command_selected"
-        elif cls["category"] == "confirm_no":
-            state.pending_switch_subcommand = None
-            state.pending_switch_candidates = []
-            msg = "保持当前命令，继续补充参数。" if state.prefer_chinese else "Keep current command and continue filling parameters."
-            return {"status": "need_info", "question": msg, "needs": [], "prefer_chinese": state.prefer_chinese, "phase": state.phase, "intent_category": cls["category"]}
-
-    # No selected command yet: only task_description can trigger routing
-    if not state.subcommand:
-        if cls["category"] == "task_description":
-            sel = choose_subcommand_with_confidence(text or "", rules)
-            dlog("subcommand_candidates=", sel.get("candidates"), "top1_score=", sel.get("top1_score"), "top2_score=", sel.get("top2_score"))
-            state.pending_candidates = list(sel.get("candidates") or [])
-            state.subcommand_confidence = sel.get("top1_score")
-            if not sel.get("is_clear"):
-                state.phase = "intent_clarification"
-                cand_show = ", ".join([c.get("name") for c in state.pending_candidates[:4] if c.get("name")]) or "runall, trust4, spechla"
-                if state.prefer_chinese:
-                    q = (
-                        "我需要再确认一下你的目标。你更接近下面哪一种？\n"
-                        "1. bulk RNA-seq / 常规流程\n"
-                        "2. HLA typing\n"
-                        "3. TRUST4 相关分析\n"
-                        f"4. 其他（可选候选: {cand_show}），请直接描述"
-                    )
-                else:
-                    q = (
-                        "I need one more clarification about your goal. Which is closest?\n"
-                        "1. bulk RNA-seq / standard workflow\n"
-                        "2. HLA typing\n"
-                        "3. TRUST4-related analysis\n"
-                        f"4. Other (candidate hints: {cand_show}), please describe"
-                    )
-                return {"status": "need_info", "question": q, "needs": ["clarify_intent"], "prefer_chinese": state.prefer_chinese, "phase": state.phase, "candidates": state.pending_candidates, "intent_category": cls["category"]}
-            state.push_snapshot()
-            state.task = text or ""
-            state.subcommand = sel.get("top1")
-            state.phase = "command_selected"
-            state.params = {}
-            state.confirmed = set()
-            dlog("state transition -> command_selected", "subcommand=", state.subcommand)
-        elif cls["category"] in ("slot_update", "execute", "unknown", "confirm_yes", "confirm_no"):
-            state.phase = "idle"
-            mkey = re.search(r"\b([A-Za-z_][A-Za-z0-9_]*)\b\s*=", text or "") if text else None
-            key_hint = mkey.group(1) if mkey else None
-            if state.prefer_chinese:
-                q = (
-                    f"请先告诉我你想运行哪个功能，我再帮你设置 {key_hint}。"
-                    if key_hint
-                    else "请先告诉我你要执行哪类分析任务。"
-                )
-            else:
-                q = (
-                    f"Please tell me which function you want to run first, then I can set {key_hint}."
-                    if key_hint
-                    else "Please first tell me what analysis task you want to run."
-                )
-            return {"status": "need_info", "question": q, "needs": ["task"], "prefer_chinese": state.prefer_chinese, "phase": state.phase, "intent_category": cls["category"]}
-
-    # lightweight switch detection only for task-like new description
-    if answer_text and state.subcommand and cls["category"] == "task_description":
-        switch_cand = _detect_switch_candidate(answer_text, state.subcommand, rules)
-        if switch_cand:
-            state.pending_switch_subcommand = switch_cand
-            state.pending_switch_candidates = [switch_cand]
-            dlog("switch_candidate=", switch_cand, "current=", state.subcommand)
-            q = f"检测到你可能想切换到 {switch_cand}，是否切换？" if state.prefer_chinese else f"I detected you may want to switch to {switch_cand}. Switch now?"
-            return {"status": "need_info", "question": q, "needs": ["confirm_switch"], "prefer_chinese": state.prefer_chinese, "phase": state.phase, "intent_category": cls["category"]}
-
-    if not state.subcommand:
-        state.phase = "idle"
-        return {"status": "need_info", "question": ("请用自然语言描述你的需求。" if state.prefer_chinese else "Please describe what you want to do (natural language)."), "needs": ["task"], "prefer_chinese": state.prefer_chinese, "phase": state.phase, "intent_category": cls["category"]}
-
-    state.phase = "parameter_filling"
-    allowed = allowed_keys_for(state.subcommand, rules)
-    parse_text = text or ""
-    translated = _translate_to_english(parse_text) if parse_text else ""
-    extracted = extract_slots_multisource(parse_text, translated, allowed) if parse_text else {}
-
-    if extracted:
-        state.push_snapshot()
-    apply_confirmations(state, extracted)
-    auto_confirm_filled_values(state, extracted, rules)
-
-    resets = extracted.get("_reset")
-    if isinstance(resets, list):
-        for rk in resets:
-            if rk in allowed:
-                state.params[rk] = None
-                state.confirmed.discard(rk)
-
-    for k, v in extracted.items():
-        if k in ("confirm", "_reset", "_undo", "_reset_command"):
-            continue
-        if k in allowed and v not in (None, "", []):
-            state.params[k] = v
-            state.confirmed.add(str(k).strip())
-
-    merged = merge_defaults(state.params, state.subcommand, rules)
-    missing, need_confirm = compute_needs(state.subcommand, rules, merged, state.confirmed)
-    need_confirm = [k for k in need_confirm if state.params.get(k) not in (None, "", [])]
-
-    draft_cmd, argv = build_command(state.subcommand, merged, rules)
-
-    if cls["category"] == "execute" and (missing or need_confirm):
-        q = "参数还不完整，暂时不能执行。" if state.prefer_chinese else "Parameters are still incomplete, cannot execute yet."
-        q += "\n\n" + _state_summary_text(state, merged, missing, state.prefer_chinese)
-        return {"status": "need_info", "subcommand": state.subcommand, "needs": missing + [f"confirm:{c}" for c in need_confirm], "question": q, "draft_command": draft_cmd, "params": merged, "prefer_chinese": state.prefer_chinese, "phase": state.phase, "intent_category": cls["category"]}
-
-    if missing or need_confirm:
-        q1 = compose_questions(state.subcommand, missing, need_confirm, merged, rules, prefer_chinese=state.prefer_chinese)
-        q2 = _state_summary_text(state, merged, missing, state.prefer_chinese)
-        return {"status": "need_info", "subcommand": state.subcommand, "needs": missing + [f"confirm:{c}" for c in need_confirm], "question": q1 + "\n\n" + q2, "draft_command": draft_cmd, "params": merged, "prefer_chinese": state.prefer_chinese, "phase": state.phase, "intent_category": cls["category"]}
-
-    state.phase = "ready_to_run"
-    dlog("phase_after=", state.phase, "missing=", missing, "need_confirm=", need_confirm)
-    if not run:
-        return {"status": "ready", "subcommand": state.subcommand, "draft_command": draft_cmd, "params": merged, "prefer_chinese": state.prefer_chinese, "phase": state.phase, "intent_category": cls["category"]}
-
-    run_dir = os.getenv("IOBRPY_RUN_LOG_DIR", os.path.join(os.path.dirname(__file__), "mcp_runs"))
-    os.makedirs(run_dir, exist_ok=True)
-    log_path = os.path.join(run_dir, f"{session_id}_{state.subcommand}.log")
-    env = os.environ.copy()
-    pp = _resolve_iobrpy_pythonpath()
-    if pp:
-        env["PYTHONPATH"] = pp + (":" + env["PYTHONPATH"] if env.get("PYTHONPATH") else "")
-
-    cmd = [CONDA_EXE, "run", "-n", IOBRPY_CONDA_ENV, "python", "-m", "iobrpy.main"] + argv
-    try:
-        with open(log_path, "w", encoding="utf-8") as f:
-            p = subprocess.Popen(cmd, stdout=f, stderr=subprocess.STDOUT, text=True, env=env)
-            rc = p.wait()
-    except Exception as e:
-        with open(log_path, "a", encoding="utf-8") as f:
-            f.write("\n\nEXCEPTION:\n" + repr(e) + "\n" + traceback.format_exc())
-        rc = 1
-
-    tail = ""
-    try:
-        with open(log_path, "r", encoding="utf-8") as f:
-            tail = "".join(f.readlines()[-80:])
-    except Exception:
-        pass
-    return {"status": "done" if rc == 0 else "error", "returncode": rc, "draft_command": draft_cmd, "log_path": log_path, "tail": tail, "prefer_chinese": state.prefer_chinese, "phase": state.phase, "intent_category": cls["category"]}
+    dlog("phase_after", state.phase, "status", out.get("status"))
+    return out
 
 
 TOOLS = [
     {
         "name": "iobrpy_assistant",
-        "title": "iobrpy assistant (BYOK cloud LLM, strict params)",
-        "description": "Natural language planner: choose iobrpy subcommand, fill allowed params only, ask missing, and run when ready.",
+        "title": "iobrpy assistant (planner-first BYOK)",
+        "description": "Planner-first assistant: LLM plan + Python guardrails + local execution.",
         "inputSchema": {
             "type": "object",
-            "properties": {"session_id": {"type": "string"}, "task": {"type": "string"}, "answer_text": {"type": "string"}, "run": {"type": "boolean", "default": False}},
+            "properties": {
+                "session_id": {"type": "string"},
+                "task": {"type": "string"},
+                "answer_text": {"type": "string"},
+                "run": {"type": "boolean", "default": False},
+            },
             "required": ["session_id"],
             "additionalProperties": False,
         },
@@ -1322,7 +989,12 @@ TOOLS = [
         "name": "set_defaults",
         "title": "Set defaults (strict)",
         "description": "Persist defaults; only keys present in REQUIRED_PARAMS file are stored.",
-        "inputSchema": {"type": "object", "properties": {"defaults": {"type": "object"}}, "required": ["defaults"], "additionalProperties": False},
+        "inputSchema": {
+            "type": "object",
+            "properties": {"defaults": {"type": "object"}},
+            "required": ["defaults"],
+            "additionalProperties": False,
+        },
     },
     {
         "name": "get_defaults",
@@ -1364,8 +1036,8 @@ def handle_tools_call(_id, params):
             return
         jsonrpc_error(_id, -32601, f"Unknown tool: {name}")
     except Exception as e:
-        log("tools/call error:", repr(e))
-        log(traceback.format_exc())
+        dlog("tools/call error", repr(e))
+        dlog(traceback.format_exc())
         jsonrpc_error(_id, -32603, "Internal error", data={"exception": repr(e)})
 
 
@@ -1392,7 +1064,7 @@ def main():
                 if _id is not None:
                     jsonrpc_error(_id, -32601, f"Method not found: {method}")
         except Exception:
-            log(traceback.format_exc())
+            dlog(traceback.format_exc())
             if isinstance(msg, dict) and msg.get("id") is not None:
                 jsonrpc_error(msg["id"], -32603, "Internal error")
 
