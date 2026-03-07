@@ -11,6 +11,7 @@ import re
 import subprocess
 import sys
 import traceback
+from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -361,6 +362,47 @@ def _sanitize_path(p: str) -> str:
     return p
 
 
+POSITIVE_CONFIRM_WORDS = {
+    "y", "yes", "confirm", "run", "execute", "ok", "go", "sure",
+    "确认", "执行", "是", "好", "开始", "现在开始", "确认运行",
+}
+NEGATIVE_CONFIRM_WORDS = {
+    "n", "no", "cancel", "stop", "nope", "取消", "否", "不", "不执行",
+}
+UNDO_WORDS = {
+    "undo", "rollback", "back", "undo last", "撤销", "回退", "上一步",
+}
+RESET_COMMAND_WORDS = {
+    "reset command", "rechoose command", "change command", "重新选命令", "重选命令", "重来",
+}
+
+
+def _is_positive_confirm_text(text: str) -> bool:
+    t = _normalize_text(text).lower()
+    if t in POSITIVE_CONFIRM_WORDS:
+        return True
+    return any(x in t for x in ["确认运行", "现在开始", "好 执行", "好,执行", "start now"])
+
+
+def _is_negative_confirm_text(text: str) -> bool:
+    t = _normalize_text(text).lower()
+    if t in NEGATIVE_CONFIRM_WORDS:
+        return True
+    return any(x in t for x in ["不执行", "先不", "暂不"])
+
+
+def _wants_undo(text: str) -> bool:
+    t = _normalize_text(text).lower()
+    return t in UNDO_WORDS or any(x in t for x in ["撤销", "回退", "上一步"])
+
+
+def _wants_reset_command(text: str) -> bool:
+    t = _normalize_text(text).lower()
+    if t in RESET_COMMAND_WORDS:
+        return True
+    return any(x in t for x in ["重新选命令", "重选命令", "change command", "rechoose command"])
+
+
 def _regex_extract_slots(text: str, allowed: List[str]) -> Dict[str, Any]:
     t = _normalize_text(text)
     tl = t.lower()
@@ -371,6 +413,10 @@ def _regex_extract_slots(text: str, allowed: List[str]) -> Dict[str, Any]:
             out["mode"] = "salmon"
         elif _has_token(tl, "star"):
             out["mode"] = "star"
+        elif re.search(r"改成\s*star|改为\s*star", t, flags=re.I):
+            out["mode"] = "star"
+        elif re.search(r"改成\s*salmon|改为\s*salmon", t, flags=re.I):
+            out["mode"] = "salmon"
     for key in ["index", "input", "output", "fastq", "outdir", "bam", "fqdir", "ru", "r1", "r2", "ref", "od"]:
         if key in allowed:
             m = re.search(rf"\b{re.escape(key)}\b\s*(?:is|=|:)?\s*(/[^ \t;,，；。]+)", t, flags=re.I)
@@ -382,6 +428,10 @@ def _regex_extract_slots(text: str, allowed: List[str]) -> Dict[str, Any]:
             m = re.search(rf"\b{re.escape(key)}s?\b\s*(?:is|=|:)?\s*(\d+)\b", tl)
             if m:
                 out[key] = int(m.group(1))
+                continue
+            m_cn = re.search(rf"(?:把\s*)?{re.escape(key)}\s*(?:改成|改为|设为|设置为|修改为)\s*(\d+)\b", t, flags=re.I)
+            if m_cn:
+                out[key] = int(m_cn.group(1))
 
     for key in ["project", "o", "f"]:
         if key in allowed:
@@ -395,8 +445,61 @@ def _regex_extract_slots(text: str, allowed: List[str]) -> Dict[str, Any]:
             out["confirm"] = sorted(set(confirms))
 
     m_reset = re.findall(r"\b(?:reset|clear|unset|remove)\s+([A-Za-z0-9_]+)\b", tl)
-    if m_reset:
-        out["_reset"] = sorted(set([k for k in m_reset if k in allowed]))
+    m_reset_cn = re.findall(r"(?:删除|去掉|清空|重置)\s*([A-Za-z0-9_]+)", t)
+    to_reset = sorted(set([k for k in (m_reset + m_reset_cn) if k in allowed]))
+    if to_reset:
+        out["_reset"] = to_reset
+
+    # generic key=value edits
+    for key in allowed:
+        if key in ("confirm",):
+            continue
+        mv = re.search(rf"\b{re.escape(key)}\b\s*=\s*([^,;\s]+)", t, flags=re.I)
+        if mv:
+            raw = mv.group(1)
+            if key in ("threads", "batch_size", "t", "k"):
+                if raw.isdigit():
+                    out[key] = int(raw)
+            elif key in ("mode",):
+                if raw.lower() in ("salmon", "star"):
+                    out[key] = raw.lower()
+            elif key in ("index", "input", "output", "fastq", "outdir", "bam", "fqdir", "ru", "r1", "r2", "ref", "od"):
+                sv = _sanitize_path(raw)
+                if sv.startswith("/"):
+                    out[key] = sv
+            else:
+                out[key] = raw
+
+    # Chinese/English set patterns with explicit target key
+    for key in allowed:
+        if key in ("confirm",):
+            continue
+        ms = re.search(rf"(?:set|change|modify|update)\s+{re.escape(key)}\s+(?:to|as)?\s*([^,;]+)", t, flags=re.I)
+        ms_cn = re.search(rf"(?:把\s*)?{re.escape(key)}\s*(?:改成|改为|设置为|设为|修改为|用)\s*([^,;]+)", t, flags=re.I)
+        g = (ms.group(1).strip() if ms else None) or (ms_cn.group(1).strip() if ms_cn else None)
+        if not g:
+            continue
+        if key in ("threads", "batch_size", "t", "k"):
+            mnum = re.search(r"\d+", g)
+            if mnum:
+                out[key] = int(mnum.group(0))
+        elif key == "mode":
+            gl = g.lower()
+            if "star" in gl:
+                out[key] = "star"
+            elif "salmon" in gl:
+                out[key] = "salmon"
+        elif key in ("index", "input", "output", "fastq", "outdir", "bam", "fqdir", "ru", "r1", "r2", "ref", "od"):
+            mpath = re.search(r"/[^ \t;,，；。]+", g)
+            if mpath:
+                out[key] = _sanitize_path(mpath.group(0))
+        else:
+            out[key] = g
+
+    if re.search(r"\b(?:undo|rollback|back)\b|撤销|回退|上一步", tl):
+        out["_undo"] = True
+    if re.search(r"重新选命令|重选命令|change\s+command|rechoose\s+command", tl):
+        out["_reset_command"] = True
 
     return out
 
@@ -664,6 +767,32 @@ class SessionState:
         self.params: Dict[str, Any] = {}
         self.confirmed: set = set()
         self.prefer_chinese: bool = False
+        self.snapshots: List[Dict[str, Any]] = []
+        self.pending_switch_subcommand: Optional[str] = None
+
+    def push_snapshot(self):
+        self.snapshots.append({
+            "task": self.task,
+            "subcommand": self.subcommand,
+            "params": deepcopy(self.params),
+            "confirmed": set(self.confirmed),
+            "prefer_chinese": self.prefer_chinese,
+            "pending_switch_subcommand": self.pending_switch_subcommand,
+        })
+        if len(self.snapshots) > 50:
+            self.snapshots = self.snapshots[-50:]
+
+    def rollback(self) -> bool:
+        if not self.snapshots:
+            return False
+        snap = self.snapshots.pop()
+        self.task = snap.get("task", "")
+        self.subcommand = snap.get("subcommand")
+        self.params = deepcopy(snap.get("params", {}))
+        self.confirmed = set(snap.get("confirmed", set()))
+        self.prefer_chinese = bool(snap.get("prefer_chinese", self.prefer_chinese))
+        self.pending_switch_subcommand = snap.get("pending_switch_subcommand")
+        return True
 
 
 SESSIONS: Dict[str, SessionState] = {}
@@ -691,6 +820,43 @@ def auto_confirm_filled_values(state: SessionState, extracted: Dict[str, Any], r
             state.confirmed.add(str(k).strip())
 
 
+def _detect_switch_candidate(text: str, current_subcommand: Optional[str], rules: Dict[str, Any]) -> Optional[str]:
+    if not text or not current_subcommand:
+        return None
+    tl = _normalize_text(text).lower()
+    for cmd in rules.keys():
+        if cmd == current_subcommand:
+            continue
+        if re.search(rf"\b{re.escape(cmd.lower())}\b", tl):
+            return cmd
+    return None
+
+
+def _state_summary_text(state: SessionState, merged: Dict[str, Any], missing: List[str], prefer_chinese: bool) -> str:
+    non_empty = []
+    for k in sorted(merged.keys()):
+        v = merged.get(k)
+        if v in (None, "", []):
+            continue
+        tag = " (默认)" if k in BUILTIN_OPTIONAL_DEFAULTS and state.params.get(k) in (None, "", []) else ""
+        non_empty.append(f"{k}={v}{tag}")
+    recognized = ", ".join(non_empty) if non_empty else ("无" if prefer_chinese else "none")
+    miss_show = ", ".join([m for m in missing if m != "__one_of_group"]) if missing else ("无" if prefer_chinese else "none")
+    if prefer_chinese:
+        return (
+            f"当前命令: iobrpy {state.subcommand}\n"
+            f"已识别: {recognized}\n"
+            f"缺失: {miss_show}\n"
+            "你可以继续补充参数，也可以说“把 threads 改成 16”“删除 project”“撤销上一条”“重新选命令”。"
+        )
+    return (
+        f"Current command: iobrpy {state.subcommand}\n"
+        f"Recognized: {recognized}\n"
+        f"Missing: {miss_show}\n"
+        "You can keep adding parameters, or say 'set threads to 16', 'remove project', 'undo', or 'change command'."
+    )
+
+
 def _resolve_iobrpy_pythonpath() -> Optional[str]:
     cands: List[str] = []
     if IOBRPY_SRC_DIR:
@@ -709,81 +875,135 @@ def tool_iobrpy_assistant(session_id: str, task: Optional[str] = None, answer_te
     rules = load_rules()
     state = get_session(session_id)
 
-    if task:
-        if _contains_cjk(task):
+    text = answer_text if answer_text is not None else task
+    if text:
+        if _contains_cjk(text):
             state.prefer_chinese = True
-        elif any(ch.isalpha() for ch in task):
+        elif any(ch.isalpha() for ch in text):
             state.prefer_chinese = False
 
+    # handle pending command switch confirmation
+    if state.pending_switch_subcommand and text:
+        if _is_positive_confirm_text(text):
+            target = state.pending_switch_subcommand
+            state.push_snapshot()
+            old_params = dict(state.params)
+            state.subcommand = target
+            allowed = set([k for k in allowed_keys_for(target, rules) if k != "confirm"])
+            state.params = {k: v for k, v in old_params.items() if k in allowed}
+            state.confirmed = set([k for k in state.confirmed if k in allowed])
+            state.pending_switch_subcommand = None
+        elif _is_negative_confirm_text(text):
+            state.pending_switch_subcommand = None
+            msg = "保持当前命令，继续补充参数。" if state.prefer_chinese else "Keep current command and continue filling parameters."
+            return {"status": "need_info", "question": msg, "needs": [], "prefer_chinese": state.prefer_chinese}
+
+    if text and _wants_undo(text):
+        ok = state.rollback()
+        msg = ("已撤销上一条。" if ok else "没有可撤销的历史。") if state.prefer_chinese else (("Undid last change." if ok else "No history to undo."))
+        if not state.subcommand:
+            return {"status": "need_info", "question": msg + (" 请描述你的需求。" if state.prefer_chinese else " Please describe your task."), "needs": ["task"], "prefer_chinese": state.prefer_chinese}
+
+    if text and _wants_reset_command(text):
+        state.push_snapshot()
+        state.subcommand = None
+        state.params = {}
+        state.confirmed = set()
+        state.pending_switch_subcommand = None
+        q = "已重置命令选择。请描述你要做什么。" if state.prefer_chinese else "Command selection reset. Please describe what you want to do."
+        return {"status": "need_info", "question": q, "needs": ["task"], "prefer_chinese": state.prefer_chinese}
+
     if answer_text:
-        if _contains_cjk(answer_text):
-            state.prefer_chinese = True
-        elif any(ch.isalpha() for ch in answer_text):
-            state.prefer_chinese = False
         atl = _normalize_text(answer_text).lower()
         if re.search(r"\b(restart|start over|new task|reset session)\b", atl):
+            state.push_snapshot()
             state.task = ""
             state.subcommand = None
             state.params = {}
             state.confirmed = set()
+            state.pending_switch_subcommand = None
             q = "请用自然语言描述你的需求。" if state.prefer_chinese else "Please describe what you want to do (natural language)."
             return {"status": "need_info", "question": q, "needs": ["task"], "prefer_chinese": state.prefer_chinese}
 
     if task:
+        state.push_snapshot()
         state.task = task
         if _is_function_discovery_query(task):
             return {"status": "need_info", "question": _compose_function_suggestions(task, rules, state.prefer_chinese), "needs": ["choose_function"], "prefer_chinese": state.prefer_chinese}
         state.subcommand = choose_subcommand(task, rules)
         state.params = {}
         state.confirmed = set()
-        allowed = allowed_keys_for(state.subcommand, rules)
-        extracted = extract_slots_multisource(task, _translate_to_english(task), allowed)
-        apply_confirmations(state, extracted)
-        auto_confirm_filled_values(state, extracted, rules)
-        for k, v in extracted.items():
-            if k not in ("confirm", "_reset") and k in allowed and v not in (None, "", []):
-                state.params[k] = v
 
-    if answer_text:
-        if not state.subcommand:
-            state.subcommand = choose_subcommand(answer_text, rules)
-            state.params = {}
-            state.confirmed = set()
-        allowed = allowed_keys_for(state.subcommand, rules)
-        extracted = extract_slots_multisource(answer_text, _translate_to_english(answer_text), allowed)
-        apply_confirmations(state, extracted)
-        auto_confirm_filled_values(state, extracted, rules)
-        resets = extracted.get("_reset")
-        if isinstance(resets, list):
-            for rk in resets:
-                state.params.pop(rk, None)
-                state.confirmed.discard(rk)
-        for k, v in extracted.items():
-            if k in ("confirm", "_reset"):
-                continue
-            if k in allowed and v not in (None, "", []):
-                state.params[k] = v
+    if answer_text and state.subcommand:
+        switch_cand = _detect_switch_candidate(answer_text, state.subcommand, rules)
+        if switch_cand:
+            state.pending_switch_subcommand = switch_cand
+            q = f"检测到你可能想切换到 {switch_cand}，是否切换？" if state.prefer_chinese else f"I detected you may want to switch to {switch_cand}. Switch now?"
+            return {"status": "need_info", "question": q, "needs": ["confirm_switch"], "prefer_chinese": state.prefer_chinese}
+
+    if answer_text and not state.subcommand:
+        state.push_snapshot()
+        state.subcommand = choose_subcommand(answer_text, rules)
+        state.params = {}
+        state.confirmed = set()
 
     if not state.subcommand:
         return {"status": "need_info", "question": ("请用自然语言描述你的需求。" if state.prefer_chinese else "Please describe what you want to do (natural language)."), "needs": ["task"], "prefer_chinese": state.prefer_chinese}
 
+    allowed = allowed_keys_for(state.subcommand, rules)
+    parse_text = text or ""
+    translated = _translate_to_english(parse_text) if parse_text else ""
+    extracted = extract_slots_multisource(parse_text, translated, allowed) if parse_text else {}
+
+    changed = False
+    if extracted:
+        state.push_snapshot()
+        changed = True
+    apply_confirmations(state, extracted)
+    auto_confirm_filled_values(state, extracted, rules)
+
+    resets = extracted.get("_reset")
+    if isinstance(resets, list):
+        for rk in resets:
+            if rk in allowed:
+                state.params.pop(rk, None)
+                state.confirmed.discard(rk)
+
+    for k, v in extracted.items():
+        if k in ("confirm", "_reset", "_undo", "_reset_command"):
+            continue
+        if k in allowed and v not in (None, "", []):
+            state.params[k] = v
+            state.confirmed.add(str(k).strip())
+
     merged = merge_defaults(state.params, state.subcommand, rules)
     missing, need_confirm = compute_needs(state.subcommand, rules, merged, state.confirmed)
+    # reduce rigid confirmations for default-only values
+    need_confirm = [k for k in need_confirm if state.params.get(k) not in (None, "", [])]
+
     draft_cmd, argv = build_command(state.subcommand, merged, rules)
 
     if missing or need_confirm:
+        q1 = compose_questions(state.subcommand, missing, need_confirm, merged, rules, prefer_chinese=state.prefer_chinese)
+        q2 = _state_summary_text(state, merged, missing, state.prefer_chinese)
         return {
             "status": "need_info",
             "subcommand": state.subcommand,
             "needs": missing + [f"confirm:{c}" for c in need_confirm],
-            "question": compose_questions(state.subcommand, missing, need_confirm, merged, rules, prefer_chinese=state.prefer_chinese),
+            "question": q1 + "\n\n" + q2,
             "draft_command": draft_cmd,
             "params": merged,
             "prefer_chinese": state.prefer_chinese,
         }
 
     if not run:
-        return {"status": "ready", "subcommand": state.subcommand, "draft_command": draft_cmd, "params": merged, "prefer_chinese": state.prefer_chinese}
+        return {
+            "status": "ready",
+            "subcommand": state.subcommand,
+            "draft_command": draft_cmd,
+            "params": merged,
+            "prefer_chinese": state.prefer_chinese,
+        }
 
     run_dir = os.getenv("IOBRPY_RUN_LOG_DIR", os.path.join(os.path.dirname(__file__), "mcp_runs"))
     os.makedirs(run_dir, exist_ok=True)

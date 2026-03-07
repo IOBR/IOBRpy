@@ -15,6 +15,18 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+try:
+    from prompt_toolkit import PromptSession  # type: ignore
+    from prompt_toolkit.history import InMemoryHistory  # type: ignore
+except Exception:
+    PromptSession = None
+    InMemoryHistory = None
+
+try:
+    import readline  # noqa: F401
+except Exception:
+    readline = None  # type: ignore
+
 
 @dataclass
 class ProviderProfile:
@@ -97,6 +109,41 @@ def _resolve_api_key(alias: str, api_key_arg: Optional[str]) -> str:
     if not key:
         raise ValueError(f"API key is required for --llm {alias}.")
     return key
+
+
+_PROMPT_SESSION: Optional[Any] = None
+
+
+def _init_prompt_session() -> Optional[Any]:
+    global _PROMPT_SESSION
+    if _PROMPT_SESSION is not None:
+        return _PROMPT_SESSION
+    if PromptSession is None or InMemoryHistory is None:
+        return None
+    try:
+        _PROMPT_SESSION = PromptSession(history=InMemoryHistory(), multiline=False)
+    except Exception:
+        _PROMPT_SESSION = None
+    return _PROMPT_SESSION
+
+
+def read_user_input(prompt_text: str) -> str:
+    session = _init_prompt_session()
+    if session is not None:
+        try:
+            return session.prompt(prompt_text)
+        except KeyboardInterrupt:
+            raise
+        except EOFError:
+            raise
+        except Exception:
+            pass
+    try:
+        return input(prompt_text)
+    except KeyboardInterrupt:
+        raise
+    except EOFError:
+        raise
 
 
 def _is_positive_confirm(text: str) -> bool:
@@ -201,7 +248,7 @@ def run_interactive(logdir: str, *, llm: str, api_key: Optional[str] = None, mod
 
     while True:
         try:
-            user_in = input("AI> ").strip()
+            user_in = read_user_input("AI> ").strip()
         except (EOFError, KeyboardInterrupt):
             print("\n" + _ui_text("bye", prefer_chinese))
             return
@@ -249,7 +296,7 @@ def run_interactive(logdir: str, *, llm: str, api_key: Optional[str] = None, mod
                 "params": dict(last.get("params") or {}),
                 "draft_command": last.get("draft_command"),
             }
-            confirm_in = input(_ui_text("confirm_run", prefer_chinese)).strip()
+            confirm_in = read_user_input(_ui_text("confirm_run", prefer_chinese)).strip()
             if _is_positive_confirm(confirm_in):
                 out = _run_iobrpy_current_env(
                     session_id=session_id,
