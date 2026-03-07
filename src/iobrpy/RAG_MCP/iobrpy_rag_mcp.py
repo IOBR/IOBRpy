@@ -138,6 +138,32 @@ def _contains_cjk(text: str) -> bool:
     return re.search(r"[\u4e00-\u9fff]", text or "") is not None
 
 
+def _has_explicit_switch_intent(user_text: str, pending_switch: bool = False) -> bool:
+    t = _normalize_text(user_text).lower()
+    if not t:
+        return False
+
+    if pending_switch and t in {"yes", "y", "ok", "okay", "sure", "confirm", "是", "好的", "确认", "切换"}:
+        return True
+
+    explicit_patterns = [
+        r"\bswitch\s+to\b",
+        r"\buse\b.+\binstead\b",
+        r"\bchange\s+to\b",
+        r"\bmove\s+to\b",
+        r"\bdon't\s+use\b",
+        r"\bdo\s+not\s+use\b",
+        r"改成",
+        r"换成",
+        r"切换到",
+        r"改用",
+        r"不用当前",
+        r"不要当前",
+        r"先不要",
+    ]
+    return any(re.search(p, t) for p in explicit_patterns)
+
+
 def _extract_json_block(text: str) -> Dict[str, Any]:
     if not text:
         return {}
@@ -505,7 +531,7 @@ def build_planner_prompt(state: "SessionState", user_text: str, catalog: Dict[st
     )
     return f"""
 You are the iobrpy planner assistant (not a generic chatbot).
-Your job: understand user intent, choose iobrpy command, update/remove parameters, ask clarification, support switch/undo, and decide execution readiness.
+Your job: be a normal helpful LLM for conversation, while keeping iobrpy execution planning safe and catalog-bound.
 
 Language policy (highest priority):
 - {language_policy}
@@ -513,10 +539,11 @@ Language policy (highest priority):
 Hard constraints:
 - Only use command names and parameter keys that exist in catalog.
 - Never invent command or parameter.
-- If user is greeting/help/thanks/chitchat: use action=reply_only.
+- For side questions (API usage, method/model differences, parameter meaning, workflow suggestions, external tools, principles): use action=reply_only with a direct helpful answer.
 - If intent is ambiguous: use action=clarify_intent.
 - If user modifies/removes parameters for selected command: use update_params/remove_params.
-- If user clearly wants another command while one is selected: use confirm_switch (or switch_command if already confirmed context).
+- Keep current selected_command by default. Do NOT switch command because user merely mentions another method/tool/command.
+- Only use switch_command/confirm_switch when user explicitly asks to replace current command (e.g. "switch to X", "改成X", "换成X", "use X instead").
 - If required inputs are missing: do NOT execute.
 - If user says run/execute but missing inputs exist: action=ask_missing_params.
 - If everything required is satisfied and user asks to run: action=execute.
@@ -604,7 +631,7 @@ def _convert_value_for_key(key: str, value: Any, rules: Dict[str, Any], subcomma
     return value
 
 
-def validate_planner_output(plan: Dict[str, Any], rules: Dict[str, Any], state: "SessionState") -> Dict[str, Any]:
+def validate_planner_output(plan: Dict[str, Any], rules: Dict[str, Any], state: "SessionState", user_text: str) -> Dict[str, Any]:
     if not isinstance(plan, dict):
         return {"action": "reply_only", "message": "I could not parse planner output.", "confidence": 0.0}
 
@@ -640,6 +667,16 @@ def validate_planner_output(plan: Dict[str, Any], rules: Dict[str, Any], state: 
         out["switch_to"] = None
         if out["action"] in {"switch_command", "confirm_switch"}:
             out["action"] = "clarify_intent"
+
+    # conservative switch guardrails: keep current selected command unless user explicitly asks to switch.
+    target = out.get("switch_to") or out.get("subcommand")
+    if state.selected_command and target and target != state.selected_command:
+        pending = bool(state.pending_switch and state.pending_switch.get("target") == target)
+        if not _has_explicit_switch_intent(user_text, pending_switch=pending):
+            if out["action"] in {"switch_command", "confirm_switch", "select_command"}:
+                out["action"] = "reply_only"
+                out["subcommand"] = None
+                out["switch_to"] = None
 
     # parameter guardrails
     target_cmd = state.selected_command or out.get("subcommand") or out.get("switch_to")
@@ -779,6 +816,9 @@ def _state_summary_text(state: SessionState, merged: Dict[str, Any], missing: Li
 def apply_planner_output(state: SessionState, plan: Dict[str, Any], rules: Dict[str, Any], user_text: str) -> Dict[str, Any]:
     action = plan.get("action", "reply_only")
     msg = enforce_output_language(plan.get("message") or "", state.prefer_chinese)
+    target = plan.get("switch_to") or plan.get("subcommand")
+    pending = bool(state.pending_switch and state.pending_switch.get("target") == target)
+    has_switch_intent = _has_explicit_switch_intent(user_text, pending_switch=pending)
 
     if action == "restart_session":
         state.snapshot()
@@ -795,7 +835,7 @@ def apply_planner_output(state: SessionState, plan: Dict[str, Any], rules: Dict[
         if not ok:
             return {"status": "need_info", "question": enforce_output_language(msg or ("没有可撤销的历史。" if state.prefer_chinese else "No history to undo."), state.prefer_chinese), "needs": []}
 
-    if state.pending_switch and action in {"confirm_switch", "switch_command", "select_command"}:
+    if state.pending_switch and action in {"confirm_switch", "switch_command", "select_command"} and has_switch_intent:
         # planner indicates user accepted switch
         target = plan.get("switch_to") or plan.get("subcommand") or state.pending_switch.get("target")
         if target and target in rules:
@@ -810,7 +850,7 @@ def apply_planner_output(state: SessionState, plan: Dict[str, Any], rules: Dict[
             state.phase = "collecting"
 
     # switch proposal
-    if action in {"switch_command", "confirm_switch"} and state.selected_command:
+    if action in {"switch_command", "confirm_switch"} and state.selected_command and has_switch_intent:
         target = plan.get("switch_to") or plan.get("subcommand")
         if target and target in rules and target != state.selected_command:
             state.pending_switch = {"from": state.selected_command, "target": target}
@@ -827,7 +867,9 @@ def apply_planner_output(state: SessionState, plan: Dict[str, Any], rules: Dict[
 
     if action == "select_command":
         sub = plan.get("subcommand")
-        if sub and sub in rules:
+        if state.selected_command and sub and sub != state.selected_command and not has_switch_intent:
+            action = "reply_only"
+        elif sub and sub in rules:
             state.snapshot()
             state.selected_command = sub
             state.params = {}
@@ -939,7 +981,7 @@ def tool_iobrpy_assistant(session_id: str, task: Optional[str] = None, answer_te
     else:
         plan = llm_plan_next_action(state, user_text, rules)
 
-    validated = validate_planner_output(plan, rules, state)
+    validated = validate_planner_output(plan, rules, state, user_text)
     dlog("phase_before", state.phase, "validated_action", validated.get("action"))
 
     state.last_plan = deepcopy(validated)
