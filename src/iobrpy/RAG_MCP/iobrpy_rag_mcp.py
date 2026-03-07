@@ -66,6 +66,15 @@ def log(*a):
     print(*a, file=sys.stderr, flush=True)
 
 
+def _debug_enabled() -> bool:
+    return os.getenv("IOBRPY_AI_DEBUG", "0").strip() in {"1", "true", "TRUE", "yes", "on"}
+
+
+def dlog(*a):
+    if _debug_enabled():
+        log("[ai-debug]", *a)
+
+
 def send(obj: Dict[str, Any]):
     sys.stdout.write(json.dumps(obj, ensure_ascii=False) + "\n")
     sys.stdout.flush()
@@ -417,11 +426,19 @@ def _regex_extract_slots(text: str, allowed: List[str]) -> Dict[str, Any]:
             out["mode"] = "star"
         elif re.search(r"改成\s*salmon|改为\s*salmon", t, flags=re.I):
             out["mode"] = "salmon"
+        elif re.search(r"改回\s*star", t, flags=re.I):
+            out["mode"] = "star"
+        elif re.search(r"改回\s*salmon", t, flags=re.I):
+            out["mode"] = "salmon"
     for key in ["index", "input", "output", "fastq", "outdir", "bam", "fqdir", "ru", "r1", "r2", "ref", "od"]:
         if key in allowed:
             m = re.search(rf"\b{re.escape(key)}\b\s*(?:is|=|:)?\s*(/[^ \t;,，；。]+)", t, flags=re.I)
             if m:
                 out[key] = _sanitize_path(m.group(1))
+                continue
+            m_cn_as = re.search(rf"用\s*(/[^ \t;,，；。]+)\s*作为\s*{re.escape(key)}", t, flags=re.I)
+            if m_cn_as:
+                out[key] = _sanitize_path(m_cn_as.group(1))
 
     for key in ["threads", "batch_size", "t", "k"]:
         if key in allowed:
@@ -628,12 +645,16 @@ def classify_user_input(text: str, state: "SessionState") -> Dict[str, Any]:
     if any(x in tl for x in chitchat):
         return {"category": "chit_chat", "confidence": 0.9, "normalized_text": t}
 
-    execute_words = ["执行", "run", "execute", "开始", "现在开始", "确认运行"]
+    switch_task_markers = ["runall", "trust4", "spechla", "hla typing", "hla_typing", "extract_hla_read"]
+    if any(x in tl for x in switch_task_markers) and any(x in tl for x in ["改成", "改为", "换", "不做", "change", "switch"]):
+        return {"category": "task_description", "confidence": 0.9, "normalized_text": t}
+
+    execute_words = ["执行", "run", "execute", "开始", "现在开始", "确认运行", "现在运行", "确认执行"]
     if any(x == tl for x in execute_words):
         return {"category": "execute", "confidence": 0.95, "normalized_text": t}
 
     has_slot_tokens = bool(re.search(r"\b\w+\s*=\s*[^\s]+", t)) or bool(
-        re.search(r"reset|clear|unset|remove|change|modify|update|set|删除|去掉|清空|重置|改成|改为|修改", tl)
+        re.search(r"reset|clear|unset|remove|change\s+\w+|modify\s+\w+|update\s+\w+|set\s+\w+|删除\s*[A-Za-z_]|去掉\s*[A-Za-z_]|清空\s*[A-Za-z_]|重置\s*[A-Za-z_]|改成\s*(star|salmon)|改为\s*(star|salmon)", tl)
     )
     if has_slot_tokens:
         return {"category": "slot_update", "confidence": 0.85, "normalized_text": t}
@@ -875,6 +896,8 @@ def merge_defaults(params: Dict[str, Any], subcommand: str, rules: Dict[str, Any
     allowed_set = set([k for k in allowed_keys_for(subcommand, rules) if k != "confirm"])
     out = {}
     for k in allowed_set:
+        if k in params and params[k] in (None, "", []):
+            continue
         if k in rule_defaults and rule_defaults[k] not in (None, "", []):
             out[k] = rule_defaults[k]
         elif k in BUILTIN_OPTIONAL_DEFAULTS:
@@ -884,6 +907,8 @@ def merge_defaults(params: Dict[str, Any], subcommand: str, rules: Dict[str, Any
     for k, v in params.items():
         if k in allowed_set and v not in (None, "", []):
             out[k] = v
+        elif k in allowed_set and v in (None, "", []) and k in out:
+            out.pop(k, None)
     return out
 
 
@@ -974,11 +999,29 @@ def _detect_switch_candidate(text: str, current_subcommand: Optional[str], rules
     if not text or not current_subcommand:
         return None
     tl = _normalize_text(text).lower()
+    # explicit phrasing: "switch/change to ..."
+    mapped = [
+        ("hla_typing", ["hla typing", "hla分型", "做 hla", "换 hla"]),
+        ("spechla", ["spechla", "换 spechla", "做 spechla"]),
+        ("trust4", ["trust4", "tcr", "bcr", "vdj"]),
+        ("runall", ["runall", "bulk rna", "rna-seq", "workflow", "pipeline"]),
+    ]
+    for cmd, kws in mapped:
+        if cmd == current_subcommand or cmd not in rules:
+            continue
+        if any(k in tl for k in kws):
+            return cmd
+
     for cmd in rules.keys():
         if cmd == current_subcommand:
             continue
         if re.search(rf"\b{re.escape(cmd.lower())}\b", tl):
             return cmd
+    # fallback: high-confidence re-routing signal
+    sel = choose_subcommand_with_confidence(text, rules)
+    top1 = sel.get("top1")
+    if isinstance(top1, str) and top1 != current_subcommand:
+        return top1
     return None
 
 
@@ -1024,10 +1067,12 @@ def _resolve_iobrpy_pythonpath() -> Optional[str]:
 def tool_iobrpy_assistant(session_id: str, task: Optional[str] = None, answer_text: Optional[str] = None, run: bool = False) -> Dict[str, Any]:
     rules = load_rules()
     state = get_session(session_id)
+    phase_before = state.phase
 
     text = answer_text if answer_text is not None else task
     cls = classify_user_input(text or "", state)
     state.last_user_intent = cls.get("category")
+    dlog("input_category=", cls.get("category"), "confidence=", cls.get("confidence"), "phase_before=", phase_before)
 
     if text:
         if _contains_cjk(text):
@@ -1075,7 +1120,23 @@ def tool_iobrpy_assistant(session_id: str, task: Optional[str] = None, answer_te
         msg = ("已撤销上一条。" if ok else "没有可撤销的历史。") if state.prefer_chinese else ("Undid last change." if ok else "No history to undo.")
         if not state.subcommand:
             state.phase = "idle"
+            dlog("phase_after=", state.phase, "undo_ok=", ok)
             return {"status": "need_info", "question": msg, "needs": ["task"], "prefer_chinese": state.prefer_chinese, "phase": state.phase, "intent_category": cls["category"]}
+        merged_u = merge_defaults(state.params, state.subcommand, rules)
+        missing_u, need_confirm_u = compute_needs(state.subcommand, rules, merged_u, state.confirmed)
+        summary_u = _state_summary_text(state, merged_u, missing_u, state.prefer_chinese)
+        state.phase = "parameter_filling" if (missing_u or need_confirm_u) else "ready_to_run"
+        dlog("phase_after=", state.phase, "undo_ok=", ok)
+        return {
+            "status": "need_info" if state.phase == "parameter_filling" else "ready",
+            "subcommand": state.subcommand,
+            "question": msg + "\n\n" + summary_u,
+            "draft_command": build_command(state.subcommand, merged_u, rules)[0],
+            "params": merged_u,
+            "prefer_chinese": state.prefer_chinese,
+            "phase": state.phase,
+            "intent_category": cls["category"],
+        }
 
     if cls["category"] == "reset_command":
         state.push_snapshot()
@@ -1110,6 +1171,7 @@ def tool_iobrpy_assistant(session_id: str, task: Optional[str] = None, answer_te
     if not state.subcommand:
         if cls["category"] == "task_description":
             sel = choose_subcommand_with_confidence(text or "", rules)
+            dlog("subcommand_candidates=", sel.get("candidates"), "top1_score=", sel.get("top1_score"), "top2_score=", sel.get("top2_score"))
             state.pending_candidates = list(sel.get("candidates") or [])
             state.subcommand_confidence = sel.get("top1_score")
             if not sel.get("is_clear"):
@@ -1138,9 +1200,23 @@ def tool_iobrpy_assistant(session_id: str, task: Optional[str] = None, answer_te
             state.phase = "command_selected"
             state.params = {}
             state.confirmed = set()
+            dlog("state transition -> command_selected", "subcommand=", state.subcommand)
         elif cls["category"] in ("slot_update", "execute", "unknown", "confirm_yes", "confirm_no"):
             state.phase = "idle"
-            q = "请先告诉我你要执行哪类分析任务。" if state.prefer_chinese else "Please first tell me what analysis task you want to run."
+            mkey = re.search(r"\b([A-Za-z_][A-Za-z0-9_]*)\b\s*=", text or "") if text else None
+            key_hint = mkey.group(1) if mkey else None
+            if state.prefer_chinese:
+                q = (
+                    f"请先告诉我你想运行哪个功能，我再帮你设置 {key_hint}。"
+                    if key_hint
+                    else "请先告诉我你要执行哪类分析任务。"
+                )
+            else:
+                q = (
+                    f"Please tell me which function you want to run first, then I can set {key_hint}."
+                    if key_hint
+                    else "Please first tell me what analysis task you want to run."
+                )
             return {"status": "need_info", "question": q, "needs": ["task"], "prefer_chinese": state.prefer_chinese, "phase": state.phase, "intent_category": cls["category"]}
 
     # lightweight switch detection only for task-like new description
@@ -1149,6 +1225,7 @@ def tool_iobrpy_assistant(session_id: str, task: Optional[str] = None, answer_te
         if switch_cand:
             state.pending_switch_subcommand = switch_cand
             state.pending_switch_candidates = [switch_cand]
+            dlog("switch_candidate=", switch_cand, "current=", state.subcommand)
             q = f"检测到你可能想切换到 {switch_cand}，是否切换？" if state.prefer_chinese else f"I detected you may want to switch to {switch_cand}. Switch now?"
             return {"status": "need_info", "question": q, "needs": ["confirm_switch"], "prefer_chinese": state.prefer_chinese, "phase": state.phase, "intent_category": cls["category"]}
 
@@ -1171,7 +1248,7 @@ def tool_iobrpy_assistant(session_id: str, task: Optional[str] = None, answer_te
     if isinstance(resets, list):
         for rk in resets:
             if rk in allowed:
-                state.params.pop(rk, None)
+                state.params[rk] = None
                 state.confirmed.discard(rk)
 
     for k, v in extracted.items():
@@ -1198,6 +1275,7 @@ def tool_iobrpy_assistant(session_id: str, task: Optional[str] = None, answer_te
         return {"status": "need_info", "subcommand": state.subcommand, "needs": missing + [f"confirm:{c}" for c in need_confirm], "question": q1 + "\n\n" + q2, "draft_command": draft_cmd, "params": merged, "prefer_chinese": state.prefer_chinese, "phase": state.phase, "intent_category": cls["category"]}
 
     state.phase = "ready_to_run"
+    dlog("phase_after=", state.phase, "missing=", missing, "need_confirm=", need_confirm)
     if not run:
         return {"status": "ready", "subcommand": state.subcommand, "draft_command": draft_cmd, "params": merged, "prefer_chinese": state.prefer_chinese, "phase": state.phase, "intent_category": cls["category"]}
 

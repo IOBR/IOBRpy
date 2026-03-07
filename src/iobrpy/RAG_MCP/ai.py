@@ -172,6 +172,10 @@ def should_show_draft(assistant_result: Dict[str, Any]) -> bool:
     return False
 
 
+def _debug_enabled() -> bool:
+    return os.getenv("IOBRPY_AI_DEBUG", "0").strip() in {"1", "true", "TRUE", "yes", "on"}
+
+
 def _should_show_state_summary(assistant_result: Dict[str, Any]) -> bool:
     phase = str(assistant_result.get("phase") or "")
     return phase in {"parameter_filling", "ready_to_run"}
@@ -184,6 +188,8 @@ def _print_state(obj: Dict[str, Any], prefer_chinese: bool) -> None:
         q = obj.get("question") or ""
         if q:
             print(q)
+        if _debug_enabled():
+            print(f"[ai-debug] intent_category={obj.get('intent_category')} phase={phase} should_show_draft={should_show_draft(obj)}")
         if phase == "command_selected" and obj.get("subcommand"):
             if prefer_chinese:
                 print(f"已识别命令: {obj.get('subcommand')}")
