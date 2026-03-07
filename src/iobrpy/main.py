@@ -451,12 +451,13 @@ def main():
         ),
     )
 
-    p_ai = subparsers.add_parser('ai', help='Interactive AI assistant (embedded RAG-MCP)')
+    p_ai = subparsers.add_parser('ai', help='Interactive AI assistant (BYOK cloud LLM planner + local execution)')
     p_ai.add_argument('--logdir', required=True, help='Directory to store AI logs and defaults')
 
-    p_ai.add_argument('--ollama-host', default=None, help='Override Ollama host, e.g. http://127.0.0.1:11434')
-    p_ai.add_argument('--chat-model', default=None, help='Override chat model, e.g. qwen3:8b')
-    p_ai.add_argument('--embed-model', default=None, help='Override embedding model, e.g. qwen3-embedding:8b')
+    p_ai.add_argument('--llm', required=True, choices=['qwen','kimi','deepseek','glm','openai','claude','gemini'], help='LLM provider alias')
+    p_ai.add_argument('--api-key', default=None, help='BYOK API key; if omitted, reads env then hidden prompt')
+    p_ai.add_argument('--model', default=None, help='Override model name')
+    p_ai.add_argument('--base-url', default=None, help='Override provider base URL')
 
     args, unknown = parser.parse_known_args()
 
@@ -924,9 +925,10 @@ def main():
         from iobrpy.RAG_MCP.ai import run_interactive
         run_interactive(
             args.logdir,
-            ollama_host=args.ollama_host,
-            chat_model=args.chat_model,
-            embed_model=args.embed_model,
+            llm=args.llm,
+            api_key=args.api_key,
+            model=args.model,
+            base_url=args.base_url,
         )
         return
 
