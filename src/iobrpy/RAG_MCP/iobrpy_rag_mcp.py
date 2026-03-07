@@ -258,6 +258,22 @@ Text: {text}
     return text
 
 
+def enforce_output_language(text: str, prefer_chinese: bool) -> str:
+    """Best-effort output language guardrail for assistant-facing text."""
+    safe_en = "Please describe your task."
+    if not text:
+        return ""
+    if prefer_chinese:
+        return text
+    if not _contains_cjk(text):
+        return text
+
+    translated = _translate_to_english(text)
+    if translated and not _contains_cjk(translated):
+        return translated
+    return safe_en
+
+
 DEFAULT_INTENT_KEYWORDS: Dict[str, List[str]] = {
     "runall": ["fastq", "workflow", "pipeline", "bulk", "rna-seq"],
     "trust4": ["tcr", "bcr", "vdj", "repertoire", "clonotype"],
@@ -482,9 +498,17 @@ PLANNER_SCHEMA = {
 
 
 def build_planner_prompt(state: "SessionState", user_text: str, catalog: Dict[str, Any], merged_params: Dict[str, Any], missing: List[str], draft_command: Optional[str]) -> str:
+    language_policy = (
+        "Respond in Chinese."
+        if state.prefer_chinese
+        else "Respond in English only. Do not output Chinese unless the user has already used Chinese in this session."
+    )
     return f"""
 You are the iobrpy planner assistant (not a generic chatbot).
 Your job: understand user intent, choose iobrpy command, update/remove parameters, ask clarification, support switch/undo, and decide execution readiness.
+
+Language policy (highest priority):
+- {language_policy}
 
 Hard constraints:
 - Only use command names and parameter keys that exist in catalog.
@@ -601,6 +625,8 @@ def validate_planner_output(plan: Dict[str, Any], rules: Dict[str, Any], state: 
         "confidence": float(plan.get("confidence") or 0.0),
         "reason": str(plan.get("reason") or ""),
     }
+
+    out["message"] = enforce_output_language(out["message"], state.prefer_chinese)
 
     # command guardrails
     if out["subcommand"] is not None and out["subcommand"] not in rules:
@@ -752,7 +778,7 @@ def _state_summary_text(state: SessionState, merged: Dict[str, Any], missing: Li
 
 def apply_planner_output(state: SessionState, plan: Dict[str, Any], rules: Dict[str, Any], user_text: str) -> Dict[str, Any]:
     action = plan.get("action", "reply_only")
-    msg = plan.get("message") or ""
+    msg = enforce_output_language(plan.get("message") or "", state.prefer_chinese)
 
     if action == "restart_session":
         state.snapshot()
@@ -762,12 +788,12 @@ def apply_planner_output(state: SessionState, plan: Dict[str, Any], rules: Dict[
         state.pending_confirmation = None
         state.pending_switch = None
         state.phase = "idle"
-        return {"status": "need_info", "question": msg or ("请描述你的任务。" if state.prefer_chinese else "Please describe your task."), "needs": ["task"]}
+        return {"status": "need_info", "question": enforce_output_language(msg or ("请描述你的任务。" if state.prefer_chinese else "Please describe your task."), state.prefer_chinese), "needs": ["task"]}
 
     if action == "undo":
         ok = state.undo()
         if not ok:
-            return {"status": "need_info", "question": msg or ("没有可撤销的历史。" if state.prefer_chinese else "No history to undo."), "needs": []}
+            return {"status": "need_info", "question": enforce_output_language(msg or ("没有可撤销的历史。" if state.prefer_chinese else "No history to undo."), state.prefer_chinese), "needs": []}
 
     if state.pending_switch and action in {"confirm_switch", "switch_command", "select_command"}:
         # planner indicates user accepted switch
@@ -791,11 +817,11 @@ def apply_planner_output(state: SessionState, plan: Dict[str, Any], rules: Dict[
             state.phase = "clarifying"
             return {
                 "status": "need_info",
-                "question": msg or (
+                "question": enforce_output_language(msg or (
                     f"检测到你可能想从 {state.selected_command} 切换到 {target}，是否切换？"
                     if state.prefer_chinese
                     else f"I detected you may want to switch from {state.selected_command} to {target}. Switch now?"
-                ),
+                ), state.prefer_chinese),
                 "needs": ["confirm_switch"],
             }
 
@@ -809,19 +835,19 @@ def apply_planner_output(state: SessionState, plan: Dict[str, Any], rules: Dict[
             state.phase = "collecting"
         else:
             state.phase = "clarifying"
-            return {"status": "need_info", "question": msg or ("我还不确定你要哪个功能，请再描述。" if state.prefer_chinese else "I am not sure which command you need yet. Please clarify."), "needs": ["clarify_intent"]}
+            return {"status": "need_info", "question": enforce_output_language(msg or ("我还不确定你要哪个功能，请再描述。" if state.prefer_chinese else "I am not sure which command you need yet. Please clarify."), state.prefer_chinese), "needs": ["clarify_intent"]}
 
     if action == "clarify_intent":
         state.phase = "clarifying"
-        return {"status": "need_info", "question": msg or ("请再具体描述你的分析目标。" if state.prefer_chinese else "Please describe your analysis goal more specifically."), "needs": ["clarify_intent"]}
+        return {"status": "need_info", "question": enforce_output_language(msg or ("请再具体描述你的分析目标。" if state.prefer_chinese else "Please describe your analysis goal more specifically."), state.prefer_chinese), "needs": ["clarify_intent"]}
 
     if action == "reply_only":
         state.phase = "idle" if not state.selected_command else state.phase
-        return {"status": "need_info", "question": msg or ("请继续告诉我你的任务。" if state.prefer_chinese else "Please continue with your task details."), "needs": ["task"] if not state.selected_command else []}
+        return {"status": "need_info", "question": enforce_output_language(msg or ("请继续告诉我你的任务。" if state.prefer_chinese else "Please continue with your task details."), state.prefer_chinese), "needs": ["task"] if not state.selected_command else []}
 
     if action == "update_params":
         if not state.selected_command:
-            return {"status": "need_info", "question": msg or ("请先告诉我要运行哪个功能。" if state.prefer_chinese else "Please tell me which command you want first."), "needs": ["task"]}
+            return {"status": "need_info", "question": enforce_output_language(msg or ("请先告诉我要运行哪个功能。" if state.prefer_chinese else "Please tell me which command you want first."), state.prefer_chinese), "needs": ["task"]}
         if plan.get("param_updates"):
             state.snapshot()
             for k, v in plan.get("param_updates", {}).items():
@@ -831,7 +857,7 @@ def apply_planner_output(state: SessionState, plan: Dict[str, Any], rules: Dict[
 
     if action == "remove_params":
         if not state.selected_command:
-            return {"status": "need_info", "question": msg or ("请先告诉我要运行哪个功能。" if state.prefer_chinese else "Please tell me which command you want first."), "needs": ["task"]}
+            return {"status": "need_info", "question": enforce_output_language(msg or ("请先告诉我要运行哪个功能。" if state.prefer_chinese else "Please tell me which command you want first."), state.prefer_chinese), "needs": ["task"]}
         if plan.get("param_removals"):
             state.snapshot()
             for k in plan.get("param_removals", []):
@@ -851,7 +877,7 @@ def apply_planner_output(state: SessionState, plan: Dict[str, Any], rules: Dict[
     # compute final guarded status
     if not state.selected_command:
         state.phase = "idle"
-        return {"status": "need_info", "question": msg or ("请先告诉我你想运行的分析功能。" if state.prefer_chinese else "Please first tell me which analysis command you want."), "needs": ["task"]}
+        return {"status": "need_info", "question": enforce_output_language(msg or ("请先告诉我你想运行的分析功能。" if state.prefer_chinese else "Please first tell me which analysis command you want."), state.prefer_chinese), "needs": ["task"]}
 
     merged, sources = merge_defaults(state.params, state.selected_command, rules)
     missing, need_confirm = compute_needs(state.selected_command, rules, merged)
@@ -864,6 +890,7 @@ def apply_planner_output(state: SessionState, plan: Dict[str, Any], rules: Dict[
         state.phase = "collecting"
         q = msg or ("还不能执行，参数尚未完整。" if state.prefer_chinese else "Cannot execute yet, parameters are incomplete.")
         q += "\n\n" + _state_summary_text(state, merged, missing, sources, state.prefer_chinese)
+        q = enforce_output_language(q, state.prefer_chinese)
         return {
             "status": "need_info",
             "subcommand": state.selected_command,
@@ -879,7 +906,7 @@ def apply_planner_output(state: SessionState, plan: Dict[str, Any], rules: Dict[
         return {
             "status": "ready",
             "subcommand": state.selected_command,
-            "question": msg or ("已准备好执行。" if state.prefer_chinese else "Ready to execute."),
+            "question": enforce_output_language(msg or ("已准备好执行。" if state.prefer_chinese else "Ready to execute."), state.prefer_chinese),
             "draft_command": draft_cmd,
             "params": merged,
         }
@@ -887,7 +914,7 @@ def apply_planner_output(state: SessionState, plan: Dict[str, Any], rules: Dict[
     return {
         "status": "ready",
         "subcommand": state.selected_command,
-        "question": msg or ("参数已满足，可以执行。" if state.prefer_chinese else "All required parameters are satisfied. Ready to run."),
+        "question": enforce_output_language(msg or ("参数已满足，可以执行。" if state.prefer_chinese else "All required parameters are satisfied. Ready to run."), state.prefer_chinese),
         "draft_command": draft_cmd,
         "params": merged,
     }
