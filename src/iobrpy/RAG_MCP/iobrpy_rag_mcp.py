@@ -382,18 +382,89 @@ FLAG_MAP = {
     "fastq": "--fastq", "outdir": "--outdir", "mode": "--mode", "index": "--index", "threads": "--threads",
     "batch_size": "--batch_size", "project": "--project", "input": "--input", "output": "--output", "bam": "-b",
     "r1": "-1", "r2": "-2", "ru": "-u", "fqdir": "--fqdir", "f": "-f", "ref": "--ref", "o": "-o",
-    "od": "--od", "t": "-t", "k": "-k",
+    "od": "--od", "t": "-t", "k": "-k", "bam_dir": "--bam-dir", "use_exon": "--use-exon",
+    "sample": "--sample", "name": "--name", "read1": "--read1", "read2": "--read2",
 }
 BOOL_FLAGS = {
     "repseq": "--repseq", "skipMateExtension": "--skipMateExtension", "abnormalUnmapFlag": "--abnormalUnmapFlag",
     "assembleWithRef": "--assembleWithRef", "noExtraction": "--noExtraction", "outputReadAssignment": "--outputReadAssignment",
+    "no_auto_install": "--no-auto-install",
 }
+
+
+
+CLI_FLAGS_BY_COMMAND: Dict[str, set] = {
+    "hla_typing": {"-b", "--bam-dir", "-r", "--ref", "-o", "--outdir", "-j", "--threads", "-u", "--use-exon"},
+    "spechla": {"-n", "--name", "-1", "--read1", "-2", "--read2", "-o", "--outdir", "-j", "--threads", "-u", "--use-exon"},
+    "extract_hla_read": {"-s", "--sample", "-b", "--bam", "-r", "--ref", "-o", "--outdir", "--no-auto-install"},
+    "runall": {"--mode", "--outdir", "--fastq", "--resume", "--dry_run", "--index", "--threads", "--batch_size", "--project"},
+    "tme_profile": {"-i", "--input", "-o", "--output", "--threads"},
+    "trust4": {
+        "-b", "-1", "-2", "-u", "--fqdir", "-o", "--od", "-t", "-f", "-k",
+        "--repseq", "--skipMateExtension", "--abnormalUnmapFlag", "--assembleWithRef", "--noExtraction", "--outputReadAssignment",
+    },
+}
+
+
+def _default_cli_flag_for_key(key: str) -> Optional[str]:
+    if not isinstance(key, str) or not key:
+        return None
+    if re.fullmatch(r"[A-Za-z0-9_]+", key) is None:
+        return None
+    return "--" + key
+
+
+def _resolve_cli_flag(key: str, is_bool: bool = False) -> Optional[str]:
+    if is_bool:
+        return BOOL_FLAGS.get(key) or _default_cli_flag_for_key(key)
+    return FLAG_MAP.get(key) or _default_cli_flag_for_key(key)
+
+
+def _unsupported_serialized_flags(subcommand: str, argv: List[str]) -> List[str]:
+    allowed = CLI_FLAGS_BY_COMMAND.get(subcommand)
+    if not allowed:
+        return []
+    used = [a for a in argv[1:] if isinstance(a, str) and a.startswith("-")]
+    return sorted({f for f in used if f not in allowed})
+
+
+def audit_parameter_link_consistency(rules: Dict[str, Any]) -> Dict[str, Any]:
+    report: Dict[str, Any] = {}
+    for cmd, rule in rules.items():
+        if not isinstance(rule, dict):
+            continue
+        required = rule.get("required", []) if isinstance(rule.get("required", []), list) else []
+        optional = rule.get("optional", []) if isinstance(rule.get("optional", []), list) else []
+        required_unserializable: List[str] = []
+        optional_unserializable: List[str] = []
+        for k in required:
+            if _resolve_cli_flag(k, False) is None:
+                required_unserializable.append(k)
+        for k in optional:
+            if _resolve_cli_flag(k, False) is None and _resolve_cli_flag(k, True) is None:
+                optional_unserializable.append(k)
+        report[cmd] = {
+            "required_unserializable": required_unserializable,
+            "optional_unserializable": optional_unserializable,
+        }
+    return report
+
+
+def _required_without_serializable_flag(subcommand: str, rules: Dict[str, Any]) -> List[str]:
+    rule = rules.get(subcommand, {}) if isinstance(rules.get(subcommand, {}), dict) else {}
+    required = rule.get("required", []) if isinstance(rule.get("required", []), list) else []
+    return [k for k in required if _resolve_cli_flag(k, False) is None and _resolve_cli_flag(k, True) is None]
 
 
 def build_command(subcommand: str, params: Dict[str, Any], rules: Dict[str, Any]) -> Tuple[str, List[str]]:
     allowed_set = set([k for k in allowed_keys_for(subcommand, rules) if k != "confirm"])
     argv = [subcommand]
     rule = rules.get(subcommand, {}) if isinstance(rules.get(subcommand, {}), dict) else {}
+    unserializable_required = _required_without_serializable_flag(subcommand, rules)
+    if unserializable_required:
+        raise ValueError(
+            f"Required params missing CLI flag mapping for '{subcommand}': {', '.join(unserializable_required)}"
+        )
     ordered = list(rule.get("required", [])) + [k for k in rule.get("optional", []) if k not in rule.get("required", [])]
     for k in ordered:
         if k not in allowed_set or k not in params:
@@ -402,13 +473,20 @@ def build_command(subcommand: str, params: Dict[str, Any], rules: Dict[str, Any]
         if v in (None, "", []):
             continue
         if isinstance(v, bool):
-            bf = BOOL_FLAGS.get(k)
+            bf = _resolve_cli_flag(k, is_bool=True)
             if bf and v:
                 argv.append(bf)
             continue
-        flag = FLAG_MAP.get(k)
-        if flag:
-            argv.extend([flag, str(v)])
+        flag = _resolve_cli_flag(k, is_bool=False)
+        if not flag:
+            raise ValueError(f"Parameter '{k}' for '{subcommand}' cannot be serialized to a CLI flag")
+        argv.extend([flag, str(v)])
+
+    unsupported_flags = _unsupported_serialized_flags(subcommand, argv)
+    if unsupported_flags:
+        raise ValueError(
+            f"Serialized flags not supported by CLI for '{subcommand}': {', '.join(unsupported_flags)}"
+        )
     return "iobrpy " + " ".join([_shell_quote(a) for a in argv]), argv
 
 
@@ -593,7 +671,10 @@ def llm_plan_next_action(state: "SessionState", user_text: str, rules: Dict[str,
     sub = state.selected_command or ""
     merged, _ = merge_defaults(state.params, sub, rules) if sub else ({}, {})
     missing, _ = compute_needs(sub, rules, merged) if sub else ([], [])
-    draft = build_command(sub, merged, rules)[0] if sub else None
+    try:
+        draft = build_command(sub, merged, rules)[0] if sub else None
+    except ValueError:
+        draft = None
     prompt = build_planner_prompt(state, user_text, catalog, merged, missing, draft)
 
     try:
@@ -932,7 +1013,31 @@ def apply_planner_output(state: SessionState, plan: Dict[str, Any], rules: Dict[
 
     merged, sources = merge_defaults(state.params, state.selected_command, rules)
     missing, need_confirm = compute_needs(state.selected_command, rules, merged)
-    draft_cmd, _ = build_command(state.selected_command, merged, rules)
+    mapping_errors = _required_without_serializable_flag(state.selected_command, rules)
+    try:
+        draft_cmd, _ = build_command(state.selected_command, merged, rules)
+    except ValueError:
+        draft_cmd = None
+
+    if mapping_errors:
+        state.phase = "collecting"
+        q = msg or (
+            "无法执行：命令参数映射配置不完整，请补齐以下必填参数的CLI flag映射："
+            if state.prefer_chinese
+            else "Cannot execute: command mapping is incomplete. Missing CLI flag mappings for required parameters:"
+        )
+        q = f"{q} {', '.join(mapping_errors)}"
+        return {
+            "status": "need_info",
+            "subcommand": state.selected_command,
+            "question": enforce_output_language(q, state.prefer_chinese),
+            "needs": mapping_errors,
+            "draft_command": draft_cmd,
+            "params": merged,
+        }
+
+    consistency = audit_parameter_link_consistency(rules).get(state.selected_command, {})
+    optional_unserializable = consistency.get("optional_unserializable", []) if isinstance(consistency, dict) else []
 
     if action == "execute" and (missing or need_confirm):
         action = "ask_missing_params"
@@ -949,6 +1054,7 @@ def apply_planner_output(state: SessionState, plan: Dict[str, Any], rules: Dict[
             "needs": missing,
             "draft_command": draft_cmd,
             "params": merged,
+            "warnings": optional_unserializable,
         }
 
     # ready gate
@@ -960,6 +1066,7 @@ def apply_planner_output(state: SessionState, plan: Dict[str, Any], rules: Dict[
             "question": enforce_output_language(msg or ("已准备好执行。" if state.prefer_chinese else "Ready to execute."), state.prefer_chinese),
             "draft_command": draft_cmd,
             "params": merged,
+            "warnings": optional_unserializable,
         }
 
     return {
@@ -968,6 +1075,7 @@ def apply_planner_output(state: SessionState, plan: Dict[str, Any], rules: Dict[
         "question": enforce_output_language(msg or ("参数已满足，可以执行。" if state.prefer_chinese else "All required parameters are satisfied. Ready to run."), state.prefer_chinese),
         "draft_command": draft_cmd,
         "params": merged,
+        "warnings": optional_unserializable,
     }
 
 
@@ -1006,7 +1114,15 @@ def tool_iobrpy_assistant(session_id: str, task: Optional[str] = None, answer_te
     if out.get("status") == "ready" and run:
         sub = out.get("subcommand")
         params = out.get("params") or {}
-        draft_cmd, argv = build_command(str(sub), dict(params), rules)
+        try:
+            draft_cmd, argv = build_command(str(sub), dict(params), rules)
+        except ValueError as e:
+            return {
+                "status": "error",
+                "error": str(e),
+                "subcommand": sub,
+                "params": params,
+            }
 
         run_dir = os.getenv("IOBRPY_RUN_LOG_DIR", os.path.join(os.path.dirname(__file__), "mcp_runs"))
         os.makedirs(run_dir, exist_ok=True)

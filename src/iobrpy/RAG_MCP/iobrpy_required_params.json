@@ -1381,8 +1381,8 @@
         "en": "Number of CPU threads."
       },
       "use_exon": {
-        "zh": "参数 use_exon 的说明。",
-        "en": "Description for parameter 'use_exon'."
+        "zh": "-u：选择全长或外显子分型 [0|1]。0 表示全长，1 表示外显子，默认 1。对于 Exome 或 RNA 数据，必须选择 1（即外显子分型）。",
+        "en": "-u: Choose full-length or exon typing [0|1]. 0 indicates full-length, 1 means exon, default is 1. With Exome or RNA data, must select 1 (i.e., exon typing)."
       }
     },
     "optional_defaults": {
@@ -1395,7 +1395,8 @@
     },
     "notes": {
       "zh": "对一个BAM目录执行完整的批量HLA分型流程。该功能会为每个样本先提取HLA相关reads，再运行SpecHLA，保存各样本结果，支持基于完成标记的断点续跑/跳过，并最终生成合并结果表hla_result_merged.txt。",
-      "en": "Runs a complete batch HLA typing workflow over a BAM directory. For each sample, it first extracts HLA-related reads and then runs SpecHLA, stores per-sample outputs, supports resume/skip based on completion markers, and finally generates a merged table hla_result_merged.txt."
+      "en": "Runs a complete batch HLA typing workflow over a BAM directory. For each sample, it first extracts HLA-related reads and then runs SpecHLA, stores per-sample outputs, supports resume/skip based on completion markers, and finally generates a merged table hla_result_merged.txt.",
+      "use_exon": "-u: Choose full-length or exon typing [0|1]. 0 indicates full-length, 1 means exon, default is 1. With Exome or RNA data, must select 1 (i.e., exon typing)."
     }
   },
   "tme_profile": {
