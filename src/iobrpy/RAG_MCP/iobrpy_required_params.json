@@ -1261,6 +1261,14 @@
     "optional_defaults": {
       "threads": 1,
       "use_exon": 1
+    },
+    "function_summary": {
+      "zh": "使用SpecHLA基于配对HLA FASTQ进行高分辨率HLA分型。",
+      "en": "Runs SpecHLA on paired HLA FASTQ reads for high-resolution HLA typing."
+    },
+    "notes": {
+      "zh": "对单个样本运行SpecHLA，使用提取后的配对FASTQ进行高分辨率HLA分型，输出主要HLA位点的等位基因结果，可用于后续免疫相关分析。",
+      "en": "Runs SpecHLA for a single sample using extracted paired FASTQ reads to perform high-resolution HLA typing, and outputs allele calls at major HLA loci for downstream immune-related analyses."
     }
   },
   "extract_hla_read": {
@@ -1313,6 +1321,14 @@
     },
     "optional_defaults": {
       "no_auto_install": false
+    },
+    "function_summary": {
+      "zh": "从BAM/CRAM提取HLA相关reads，并转换为后续HLA分型使用的FASTQ。",
+      "en": "Extracts HLA-related reads from BAM/CRAM and converts them to FASTQ for downstream HLA typing."
+    },
+    "notes": {
+      "zh": "用于HLA分型前处理：从比对后的BAM/CRAM文件中提取HLA区域相关reads，并导出成配对FASTQ文件，供后续SpecHLA分型使用。该步骤本身不执行最终HLA分型。",
+      "en": "Preprocessing step before HLA typing: extracts HLA-region reads from aligned BAM/CRAM files and exports paired FASTQ files for downstream SpecHLA typing. This step does not perform final HLA typing by itself."
     }
   },
   "hla_typing": {
@@ -1372,6 +1388,14 @@
     "optional_defaults": {
       "threads": 1,
       "use_exon": 1
+    },
+    "function_summary": {
+      "zh": "对BAM目录执行批量端到端HLA流程：提取HLA reads、逐样本运行SpecHLA，并合并结果。",
+      "en": "Batch end-to-end HLA typing wrapper for a BAM directory: extract HLA reads, run SpecHLA per sample, and merge results."
+    },
+    "notes": {
+      "zh": "对一个BAM目录执行完整的批量HLA分型流程。该功能会为每个样本先提取HLA相关reads，再运行SpecHLA，保存各样本结果，支持基于完成标记的断点续跑/跳过，并最终生成合并结果表hla_result_merged.txt。",
+      "en": "Runs a complete batch HLA typing workflow over a BAM directory. For each sample, it first extracts HLA-related reads and then runs SpecHLA, stores per-sample outputs, supports resume/skip based on completion markers, and finally generates a merged table hla_result_merged.txt."
     }
   },
   "tme_profile": {
@@ -1409,6 +1433,14 @@
     },
     "optional_defaults": {
       "threads": 1
+    },
+    "function_summary": {
+      "zh": "基于TPM矩阵的一体化TME流程：包含signature评分、6种免疫反卷积、LR评分及反卷积结果合并。",
+      "en": "Integrated TPM-based TME profiling wrapper: signature scoring, six immune deconvolution methods, LR scoring, and merged deconvolution outputs."
+    },
+    "notes": {
+      "zh": "使用一个命令完成基于TPM的TME profiling流程。该功能会串联运行calculate_sig_score、cibersort、IPS、estimate、mcpcounter、quantiseq、epic和LR_cal，生成标准化输出目录（signature、TME deconvolution、LR scoring），并将6种反卷积结果合并为一个总表。该流程不包含deside、bayesprism、tme_cluster或nmf。",
+      "en": "Runs an end-to-end TPM-based TME profiling workflow in one command by chaining calculate_sig_score, cibersort, IPS, estimate, mcpcounter, quantiseq, epic, and LR_cal. Produces a standardized output structure (signature, TME deconvolution, LR scoring) and merges six deconvolution outputs into one summary table. This workflow does not include deside, bayesprism, tme_cluster, or nmf."
     }
   },
   "bayesprism": {
