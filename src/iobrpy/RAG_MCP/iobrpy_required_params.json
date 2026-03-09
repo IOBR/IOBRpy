@@ -1272,6 +1272,43 @@
     },
     "cli_flags": {
       "use_exon": "-u"
+    },
+    "param_aliases": {
+      "name": [
+        "name",
+        "sample_name"
+      ],
+      "read1": [
+        "read1",
+        "read_1",
+        "r1"
+      ],
+      "read2": [
+        "read2",
+        "read_2",
+        "r2"
+      ],
+      "outdir": [
+        "outdir",
+        "out-dir"
+      ],
+      "threads": [
+        "threads",
+        "thread"
+      ],
+      "use_exon": [
+        "use_exon",
+        "use-exon",
+        "u"
+      ]
+    },
+    "param_types": {
+      "name": "string",
+      "read1": "path",
+      "read2": "path",
+      "outdir": "path",
+      "threads": "int",
+      "use_exon": "choice"
     }
   },
   "extract_hla_read": {
@@ -1332,6 +1369,34 @@
     "notes": {
       "zh": "用于HLA分型前处理：从比对后的BAM/CRAM文件中提取HLA区域相关reads，并导出成配对FASTQ文件，供后续SpecHLA分型使用。该步骤本身不执行最终HLA分型。",
       "en": "Preprocessing step before HLA typing: extracts HLA-region reads from aligned BAM/CRAM files and exports paired FASTQ files for downstream SpecHLA typing. This step does not perform final HLA typing by itself."
+    },
+    "param_aliases": {
+      "sample": [
+        "sample",
+        "name"
+      ],
+      "bam": [
+        "bam",
+        "bam_file"
+      ],
+      "ref": [
+        "ref"
+      ],
+      "outdir": [
+        "outdir",
+        "out-dir"
+      ],
+      "no_auto_install": [
+        "no_auto_install",
+        "no-auto-install"
+      ]
+    },
+    "param_types": {
+      "sample": "string",
+      "bam": "path",
+      "ref": "choice",
+      "outdir": "path",
+      "no_auto_install": "bool"
     }
   },
   "hla_typing": {
@@ -1403,6 +1468,36 @@
     },
     "cli_flags": {
       "use_exon": "-u"
+    },
+    "param_aliases": {
+      "bam_dir": [
+        "bam_dir",
+        "bam-dir",
+        "bam"
+      ],
+      "ref": [
+        "ref"
+      ],
+      "outdir": [
+        "outdir",
+        "out-dir"
+      ],
+      "threads": [
+        "threads",
+        "thread"
+      ],
+      "use_exon": [
+        "use_exon",
+        "use-exon",
+        "u"
+      ]
+    },
+    "param_types": {
+      "bam_dir": "path",
+      "ref": "choice",
+      "outdir": "path",
+      "threads": "int",
+      "use_exon": "choice"
     }
   },
   "tme_profile": {

@@ -313,6 +313,8 @@ def load_rules() -> Dict[str, Any]:
         notes = v.get("notes", {}) if isinstance(v.get("notes", {}), dict) else {}
         optional_defaults = v.get("optional_defaults", {}) if isinstance(v.get("optional_defaults", {}), dict) else {}
         cli_flags = v.get("cli_flags", {}) if isinstance(v.get("cli_flags", {}), dict) else {}
+        param_aliases = v.get("param_aliases", {}) if isinstance(v.get("param_aliases", {}), dict) else {}
+        param_types = v.get("param_types", {}) if isinstance(v.get("param_types", {}), dict) else {}
         intent_keywords = v.get("intent_keywords", [])
         param_hints = v.get("param_hints", {}) if isinstance(v.get("param_hints", {}), dict) else {}
         function_summary = v.get("function_summary", "")
@@ -329,6 +331,8 @@ def load_rules() -> Dict[str, Any]:
             "notes": notes,
             "optional_defaults": optional_defaults,
             "cli_flags": cli_flags,
+            "param_aliases": param_aliases,
+            "param_types": param_types,
             "intent_keywords": intent_keywords,
             "param_hints": param_hints,
             "function_summary": function_summary,
@@ -702,6 +706,205 @@ def llm_plan_next_action(state: "SessionState", user_text: str, rules: Dict[str,
 
     dlog("planner_raw_plan", plan)
     return plan
+
+
+def _normalize_identifier(text: str) -> str:
+    t = (text or "").strip().lower()
+    t = re.sub(r"[^a-z0-9_-]", "", t)
+    return t
+
+
+def _param_type_for_key(subcommand: str, key: str, rules: Dict[str, Any]) -> str:
+    rule = rules.get(subcommand, {}) if isinstance(rules.get(subcommand, {}), dict) else {}
+    param_types = rule.get("param_types", {}) if isinstance(rule.get("param_types", {}), dict) else {}
+    if isinstance(param_types.get(key), str) and param_types.get(key):
+        return str(param_types[key]).strip().lower()
+    choices = rule.get("choices", {}) if isinstance(rule.get("choices", {}), dict) else {}
+    if key in choices:
+        return "choice"
+    if key in {"threads", "batch_size", "t", "k"}:
+        return "int"
+    if key.startswith("no_"):
+        return "bool"
+    if key in {"index", "input", "output", "fastq", "outdir", "bam", "fqdir", "ru", "r1", "r2", "ref", "od", "bam_dir", "read1", "read2"}:
+        return "path"
+    return "string"
+
+
+def _is_path_like_value(val: str) -> bool:
+    if not isinstance(val, str):
+        return False
+    v = val.strip()
+    return bool(v) and (
+        v.startswith("/") or
+        v.startswith("./") or
+        v.startswith("../") or
+        bool(re.search(r"[A-Za-z0-9._-]+/[A-Za-z0-9._/-]+", v))
+    )
+
+
+def _truthy_bool_text(val: str) -> Optional[bool]:
+    if not isinstance(val, str):
+        return None
+    t = val.strip().lower()
+    if t in {"1", "true", "yes", "y", "on"}:
+        return True
+    if t in {"0", "false", "no", "n", "off"}:
+        return False
+    return None
+
+
+def _build_alias_map(subcommand: str, rules: Dict[str, Any]) -> Dict[str, str]:
+    aliases: Dict[str, str] = {}
+    allowed = [k for k in allowed_keys_for(subcommand, rules) if k != "confirm"]
+    rule = rules.get(subcommand, {}) if isinstance(rules.get(subcommand, {}), dict) else {}
+    cfg = rule.get("param_aliases", {}) if isinstance(rule.get("param_aliases", {}), dict) else {}
+    for key in allowed:
+        aliases[_normalize_identifier(key)] = key
+        aliases[_normalize_identifier(key.replace("_", "-"))] = key
+        for a in cfg.get(key, []) if isinstance(cfg.get(key, []), list) else []:
+            if isinstance(a, str) and a.strip():
+                aliases[_normalize_identifier(a)] = key
+    return aliases
+
+
+def _split_structured_segments(text: str) -> List[str]:
+    s = _normalize_text(text or "")
+    if not s:
+        return []
+    return [x.strip() for x in re.split(r"[,;，；、]+", s) if x.strip()]
+
+
+def _infer_unkeyed_param(candidates: List[str], value: str, subcommand: str, rules: Dict[str, Any], missing: List[str]) -> Optional[str]:
+    if not candidates:
+        return None
+    rule = rules.get(subcommand, {}) if isinstance(rules.get(subcommand, {}), dict) else {}
+    choices = rule.get("choices", {}) if isinstance(rule.get("choices", {}), dict) else {}
+    v = value.strip()
+
+    choice_keys = [k for k in candidates if isinstance(choices.get(k), list) and v in choices.get(k, [])]
+    if len(choice_keys) == 1:
+        return choice_keys[0]
+
+    if re.fullmatch(r"\d+", v):
+        int_keys = [k for k in candidates if _param_type_for_key(subcommand, k, rules) == "int"]
+        if len(int_keys) == 1:
+            return int_keys[0]
+
+    if _is_path_like_value(v):
+        path_keys = [k for k in candidates if _param_type_for_key(subcommand, k, rules) == "path"]
+        if len(path_keys) == 1:
+            return path_keys[0]
+
+    if len(missing) == 1 and missing[0] in candidates:
+        return missing[0]
+    return None
+
+
+def extract_param_updates_from_text(
+    user_text: str,
+    subcommand: Optional[str],
+    rules: Dict[str, Any],
+    current_params: Dict[str, Any],
+    missing_params: List[str],
+) -> Dict[str, Any]:
+    if not subcommand or subcommand not in rules:
+        return {}
+
+    allowed = [k for k in allowed_keys_for(subcommand, rules) if k != "confirm"]
+    if not allowed:
+        return {}
+
+    alias_map = _build_alias_map(subcommand, rules)
+    segments = _split_structured_segments(user_text)
+    if not segments:
+        return {}
+
+    updates: Dict[str, Any] = {}
+    rule = rules.get(subcommand, {}) if isinstance(rules.get(subcommand, {}), dict) else {}
+    choices = rule.get("choices", {}) if isinstance(rule.get("choices", {}), dict) else {}
+
+    for seg in segments:
+        m = re.match(r"^\s*([A-Za-z0-9_\-]+)\s*(=|:)\s*(.+?)\s*$", seg)
+        key = None
+        raw_val = None
+        if m:
+            key = alias_map.get(_normalize_identifier(m.group(1)))
+            raw_val = m.group(3).strip()
+        else:
+            m2 = re.match(r"^\s*([A-Za-z0-9_\-]+)\s+(.+?)\s*$", seg)
+            if m2:
+                key = alias_map.get(_normalize_identifier(m2.group(1)))
+                raw_val = m2.group(2).strip()
+
+        if key and raw_val is not None:
+            val = raw_val.strip().strip('"').strip("'")
+            try:
+                updates[key] = _convert_value_for_key(key, val, rules, subcommand)
+            except Exception:
+                pass
+            continue
+
+        # unkeyed inference with strong schema constraints
+        tokens = [t.strip("\"'") for t in re.findall(r"[A-Za-z0-9_./\-]+", seg)]
+        unresolved = [k for k in allowed if k not in updates]
+        used_tokens = set()
+
+        alias_hits = [alias_map.get(_normalize_identifier(tok)) for tok in tokens]
+        alias_keys = [k for k in alias_hits if k]
+        alias_keys = list(dict.fromkeys(alias_keys))
+        if len(alias_keys) == 1:
+            alias_key = alias_keys[0]
+            expected_type = _param_type_for_key(subcommand, alias_key, rules)
+            value_tokens = [t for t in tokens if alias_map.get(_normalize_identifier(t)) != alias_key]
+            if not value_tokens:
+                value_tokens = [t for t in tokens if not alias_map.get(_normalize_identifier(t))]
+            for candidate in value_tokens:
+                if expected_type == "path" and not _is_path_like_value(candidate):
+                    continue
+                if expected_type == "int" and not re.fullmatch(r"\d+", candidate):
+                    continue
+                if expected_type == "choice":
+                    opts = choices.get(alias_key, []) if isinstance(choices.get(alias_key, []), list) else []
+                    if candidate not in opts:
+                        continue
+                try:
+                    updates[alias_key] = _convert_value_for_key(alias_key, candidate, rules, subcommand)
+                    used_tokens.add(candidate)
+                    unresolved = [k for k in unresolved if k != alias_key]
+                    break
+                except Exception:
+                    continue
+
+        ambiguous_choice_keys = set()
+        for k in unresolved:
+            opts = choices.get(k, []) if isinstance(choices.get(k, []), list) else []
+            if not opts:
+                continue
+            matched = {tok for tok in tokens if tok in opts}
+            if len(matched) > 1:
+                ambiguous_choice_keys.add(k)
+
+        for tok in tokens:
+            if not tok or tok in used_tokens:
+                continue
+            inferred_key = _infer_unkeyed_param(
+                [k for k in unresolved if k not in ambiguous_choice_keys],
+                tok,
+                subcommand,
+                rules,
+                missing_params,
+            )
+            if not inferred_key:
+                continue
+            try:
+                updates[inferred_key] = _convert_value_for_key(inferred_key, tok, rules, subcommand)
+                used_tokens.add(tok)
+                unresolved = [k for k in unresolved if k != inferred_key]
+            except Exception:
+                continue
+
+    return updates
 
 
 def _convert_value_for_key(key: str, value: Any, rules: Dict[str, Any], subcommand: str) -> Any:
@@ -1163,7 +1366,44 @@ def tool_iobrpy_assistant(session_id: str, task: Optional[str] = None, answer_te
         plan = llm_plan_next_action(state, user_text, rules)
 
     validated = validate_planner_output(plan, rules, state)
-    dlog("phase_before", state.phase, "validated_action", validated.get("action"))
+
+    fallback_triggered = False
+    fallback_updates: Dict[str, Any] = {}
+    if state.selected_command:
+        merged_now, _ = merge_defaults(state.params, state.selected_command, rules)
+        missing_now, _ = compute_needs(state.selected_command, rules, merged_now)
+        planner_updates = validated.get("param_updates") if isinstance(validated.get("param_updates"), dict) else {}
+
+        should_fallback = (
+            (validated.get("action") != "update_params" and validated.get("action") != "remove_params") or
+            (not planner_updates)
+        )
+        if should_fallback:
+            fallback_updates = extract_param_updates_from_text(
+                user_text=user_text,
+                subcommand=state.selected_command,
+                rules=rules,
+                current_params=merged_now,
+                missing_params=missing_now,
+            )
+            if fallback_updates:
+                fallback_triggered = True
+                merged_updates = dict(planner_updates)
+                merged_updates.update(fallback_updates)
+                validated["param_updates"] = merged_updates
+                validated["action"] = "update_params"
+                validated["is_side_question"] = False
+                validated["keep_current_command"] = True
+
+    dlog(
+        "phase_before", state.phase,
+        "planner_action", plan.get("action"),
+        "planner_param_updates", plan.get("param_updates"),
+        "validated_action", validated.get("action"),
+        "validated_param_updates", validated.get("param_updates"),
+        "fallback_triggered", fallback_triggered,
+        "fallback_updates", fallback_updates,
+    )
 
     state.last_plan = deepcopy(validated)
     state.last_message = user_text
