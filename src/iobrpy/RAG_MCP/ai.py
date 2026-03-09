@@ -78,7 +78,7 @@ def _ui_text(key: str, prefer_chinese: bool, **kwargs: Any) -> str:
         "commands": "命令: :exit  :quit  :restart",
         "bye": "再见",
         "ready": "就绪。草稿命令: {draft}",
-        "confirm_run": "现在执行这个命令吗？[y/N] ",
+        "confirm_run": "现在执行这个命令吗？[y/n] ",
         "cancelled": "已取消执行。你可以继续修改参数，或输入“执行”来运行。",
         "done": "[完成] rc={rc}",
         "error": "[失败] rc={rc}",
@@ -89,7 +89,7 @@ def _ui_text(key: str, prefer_chinese: bool, **kwargs: Any) -> str:
         "commands": "Commands: :exit  :quit  :restart",
         "bye": "bye",
         "ready": "Ready. Draft: {draft}",
-        "confirm_run": "Execute this command now? [y/N] ",
+        "confirm_run": "Execute this command now? [y/n] ",
         "cancelled": "Execution cancelled. You can keep editing parameters, or reply 'run' to execute.",
         "done": "[done] rc={rc}",
         "error": "[error] rc={rc}",
@@ -159,15 +159,27 @@ def _is_negative_confirm(text: str) -> bool:
 
 
 def should_show_draft(assistant_result: Dict[str, Any]) -> bool:
+    status = str(assistant_result.get("status") or "")
     phase = str(assistant_result.get("phase") or "")
     category = str(assistant_result.get("intent_category") or "")
+    has_context = bool(assistant_result.get("subcommand") and assistant_result.get("draft_command"))
+
+    if not has_context:
+        return False
     if category in {"greeting", "help", "chit_chat"}:
         return False
-    if phase in {"idle", "clarifying", "intent_clarification", "command_selected"}:
+
+    if status in {"need_info", "ready"}:
+        return True
+    if status in {"done", "error"}:
+        return True
+
+    if phase in {"collecting", "ready", "executing"}:
+        return True
+    if phase in {"idle", "clarifying"} and not has_context:
         return False
-    if phase in {"collecting", "parameter_filling", "ready", "ready_to_run"}:
-        return bool(assistant_result.get("subcommand") and assistant_result.get("draft_command"))
-    return False
+
+    return has_context
 
 
 def _debug_enabled() -> bool:
@@ -175,8 +187,10 @@ def _debug_enabled() -> bool:
 
 
 def _should_show_state_summary(assistant_result: Dict[str, Any]) -> bool:
+    if assistant_result.get("state_summary"):
+        return True
     phase = str(assistant_result.get("phase") or "")
-    return phase in {"parameter_filling", "ready_to_run"}
+    return phase in {"collecting", "ready"}
 
 def _print_state(obj: Dict[str, Any], prefer_chinese: bool) -> None:
     status = obj.get("status")
@@ -186,14 +200,25 @@ def _print_state(obj: Dict[str, Any], prefer_chinese: bool) -> None:
         q = obj.get("question") or ""
         if q:
             print(q)
+        if _should_show_state_summary(obj):
+            summary = obj.get("state_summary")
+            if summary:
+                print("\n" + str(summary))
+        show_draft = should_show_draft(obj)
         if _debug_enabled():
-            print(f"[ai-debug] intent_category={obj.get('intent_category')} phase={phase} should_show_draft={should_show_draft(obj)}")
+            print(
+                "[ai-debug] "
+                f"status={status} phase={phase} "
+                f"has_subcommand={bool(obj.get('subcommand'))} "
+                f"has_draft={bool(obj.get('draft_command'))} "
+                f"should_show_draft={show_draft}"
+            )
         if phase == "command_selected" and obj.get("subcommand"):
             if prefer_chinese:
                 print(f"已识别命令: {obj.get('subcommand')}")
             else:
                 print(f"Recognized command: {obj.get('subcommand')}")
-        if should_show_draft(obj):
+        if show_draft:
             print(f"\nDraft: {obj.get('draft_command')}")
         return
 
@@ -216,11 +241,13 @@ def _print_state(obj: Dict[str, Any], prefer_chinese: bool) -> None:
     print(obj)
 
 
-def _run_iobrpy_current_env(*, session_id: str, subcommand: str, params: Dict[str, Any], server: Any, logdir: Path) -> Dict[str, Any]:
+def _run_iobrpy_current_env(*, session_id: str, subcommand: str, params: Dict[str, Any], server: Any, logdir: Path, prefer_chinese: bool = False) -> Dict[str, Any]:
     rules = server.load_rules()
     draft_cmd, argv = server.build_command(subcommand, params, rules)
     log_path = logdir / f"{session_id}_{subcommand}.log"
     cmd = [sys.executable, "-m", "iobrpy.main"] + argv
+
+    print(("日志文件: " if prefer_chinese else "Log file: ") + str(log_path))
 
     try:
         with log_path.open("w", encoding="utf-8") as f:
@@ -234,7 +261,8 @@ def _run_iobrpy_current_env(*, session_id: str, subcommand: str, params: Dict[st
     tail = ""
     try:
         lines = log_path.read_text(encoding="utf-8", errors="replace").splitlines(True)
-        tail = "".join(lines[-80:])
+        tail_lines = 30 if rc == 0 else 80
+        tail = "".join(lines[-tail_lines:])
     except Exception:
         pass
     return {"status": "done" if rc == 0 else "error", "returncode": rc, "draft_command": draft_cmd, "log_path": str(log_path), "tail": tail}
@@ -312,6 +340,7 @@ def run_interactive(logdir: str, *, llm: str, api_key: Optional[str] = None, mod
                 params=dict(pending_ready_plan.get("params") or {}),
                 server=server,
                 logdir=logdir_p,
+                prefer_chinese=prefer_chinese,
             )
             _print_state(out, prefer_chinese)
             pending_ready_plan = None
@@ -337,6 +366,7 @@ def run_interactive(logdir: str, *, llm: str, api_key: Optional[str] = None, mod
                     params=dict(pending_ready_plan.get("params") or {}),
                     server=server,
                     logdir=logdir_p,
+                    prefer_chinese=prefer_chinese,
                 )
                 _print_state(out, prefer_chinese)
                 pending_ready_plan = None
