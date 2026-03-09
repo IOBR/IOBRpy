@@ -78,7 +78,7 @@ def _ui_text(key: str, prefer_chinese: bool, **kwargs: Any) -> str:
         "commands": "命令: :exit  :quit  :restart",
         "bye": "再见",
         "ready": "就绪。草稿命令: {draft}",
-        "confirm_run": "现在执行这个命令吗？[y/N] ",
+        "confirm_run": "现在执行这个命令吗？[y/n] ",
         "cancelled": "已取消执行。你可以继续修改参数，或输入“执行”来运行。",
         "done": "[完成] rc={rc}",
         "error": "[失败] rc={rc}",
@@ -89,7 +89,7 @@ def _ui_text(key: str, prefer_chinese: bool, **kwargs: Any) -> str:
         "commands": "Commands: :exit  :quit  :restart",
         "bye": "bye",
         "ready": "Ready. Draft: {draft}",
-        "confirm_run": "Execute this command now? [y/N] ",
+        "confirm_run": "Execute this command now? [y/n] ",
         "cancelled": "Execution cancelled. You can keep editing parameters, or reply 'run' to execute.",
         "done": "[done] rc={rc}",
         "error": "[error] rc={rc}",
@@ -241,11 +241,13 @@ def _print_state(obj: Dict[str, Any], prefer_chinese: bool) -> None:
     print(obj)
 
 
-def _run_iobrpy_current_env(*, session_id: str, subcommand: str, params: Dict[str, Any], server: Any, logdir: Path) -> Dict[str, Any]:
+def _run_iobrpy_current_env(*, session_id: str, subcommand: str, params: Dict[str, Any], server: Any, logdir: Path, prefer_chinese: bool = False) -> Dict[str, Any]:
     rules = server.load_rules()
     draft_cmd, argv = server.build_command(subcommand, params, rules)
     log_path = logdir / f"{session_id}_{subcommand}.log"
     cmd = [sys.executable, "-m", "iobrpy.main"] + argv
+
+    print(("日志文件: " if prefer_chinese else "Log file: ") + str(log_path))
 
     try:
         with log_path.open("w", encoding="utf-8") as f:
@@ -259,7 +261,8 @@ def _run_iobrpy_current_env(*, session_id: str, subcommand: str, params: Dict[st
     tail = ""
     try:
         lines = log_path.read_text(encoding="utf-8", errors="replace").splitlines(True)
-        tail = "".join(lines[-80:])
+        tail_lines = 30 if rc == 0 else 80
+        tail = "".join(lines[-tail_lines:])
     except Exception:
         pass
     return {"status": "done" if rc == 0 else "error", "returncode": rc, "draft_command": draft_cmd, "log_path": str(log_path), "tail": tail}
@@ -337,6 +340,7 @@ def run_interactive(logdir: str, *, llm: str, api_key: Optional[str] = None, mod
                 params=dict(pending_ready_plan.get("params") or {}),
                 server=server,
                 logdir=logdir_p,
+                prefer_chinese=prefer_chinese,
             )
             _print_state(out, prefer_chinese)
             pending_ready_plan = None
@@ -362,6 +366,7 @@ def run_interactive(logdir: str, *, llm: str, api_key: Optional[str] = None, mod
                     params=dict(pending_ready_plan.get("params") or {}),
                     server=server,
                     logdir=logdir_p,
+                    prefer_chinese=prefer_chinese,
                 )
                 _print_state(out, prefer_chinese)
                 pending_ready_plan = None

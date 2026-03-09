@@ -1449,7 +1449,8 @@ def tool_iobrpy_assistant(session_id: str, task: Optional[str] = None, answer_te
         tail = ""
         try:
             with open(log_path, "r", encoding="utf-8") as f:
-                tail = "".join(f.readlines()[-80:])
+                tail_lines = 30 if rc == 0 else 80
+                tail = "".join(f.readlines()[-tail_lines:])
         except Exception:
             pass
 
