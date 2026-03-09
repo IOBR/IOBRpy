@@ -1120,21 +1120,20 @@
     }
   },
   "trust4": {
-    "required": [],
+    "required": ["o","t"],
     "optional": [
       "bam",
       "r1",
       "r2",
       "ru",
-      "fqdir",
-      "o",
-      "od",
-      "t"
+      "fqdir"
     ],
     "notes": {
-      "input_mode": "trust4 requires one of: -b <bam|bam_dir> OR -1/-2 OR -u OR --fqdir; this is conditional and cannot be represented by a flat required list.",
-      "o": "-o is required in batch modes (--fqdir or -b <DIR>) but optional in single-run mode.",
-      "required_one_of": "For trust4, provide one input mode: -b <BAM|DIR> OR -1/-2 OR -u OR --fqdir."
+      "input_mode": "trust4 input mode must be one of: -b <bam|bam_dir> OR -1/-2 OR -u OR --fqdir.",
+      "o": "-o is the output root directory for both single-run and batch modes.",
+      "required_one_of": "For trust4, provide one input mode: -b <BAM|DIR> OR -1/-2 OR -u OR --fqdir.",
+      "batch_o": "In batch mode (--fqdir or -b pointing to a directory), -o must be provided as output root directory.",
+      "single_o": "In single-run mode, -o is also treated as output root directory."
     },
     "required_one_of": [
       [
@@ -1188,16 +1187,12 @@
         "en": "FASTQ directory for batch processing."
       },
       "o": {
-        "zh": "输出前缀或输出文件名基名。",
-        "en": "Output prefix or output basename."
-      },
-      "od": {
-        "zh": "输出目录路径。",
-        "en": "Output directory path."
+        "zh": "-o：输出根目录（单样本与 batch 模式一致）。",
+        "en": "-o: output root directory (same semantics for single-run and batch modes)."
       },
       "t": {
-        "zh": "该命令的线程数。",
-        "en": "Thread count for this command."
+        "zh": "-t：线程数。",
+        "en": "-t: number of threads."
       }
     },
     "optional_defaults": {
@@ -1207,9 +1202,36 @@
       "ru": null,
       "fqdir": null,
       "o": null,
-      "od": null,
       "t": null
-    }
+    },
+    "cli_flags": {
+      "o": "-o",
+      "t": "-t"
+    },
+    "param_aliases": {
+      "o": [
+        "o",
+        "out",
+        "outdir",
+        "output",
+        "output_dir",
+        "output-root",
+        "output_root"
+      ],
+      "t": [
+        "t",
+        "thread",
+        "threads"
+      ]
+    },
+    "param_types": {
+      "o": "path",
+      "t": "int"
+    },
+    "confirm": [
+      "o",
+      "t"
+    ]
   },
   "spechla": {
     "required": [
