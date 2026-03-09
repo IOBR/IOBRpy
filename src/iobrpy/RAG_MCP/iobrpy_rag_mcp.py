@@ -664,6 +664,77 @@ Return JSON only.
 """.strip()
 
 
+
+
+def build_selector_catalog(rules: Dict[str, Any]) -> Dict[str, Any]:
+    commands: List[Dict[str, Any]] = []
+    for cmd, r in rules.items():
+        if not isinstance(r, dict):
+            continue
+        summary = r.get("function_summary", "")
+        if isinstance(summary, dict):
+            summary_txt = summary.get("zh") or summary.get("en") or ""
+        else:
+            summary_txt = summary or ""
+        commands.append(
+            {
+                "name": cmd,
+                "summary": summary_txt,
+                "required": r.get("required", []),
+                "optional": r.get("optional", []),
+                "cli_flags": r.get("cli_flags", {}),
+            }
+        )
+    return {"commands": commands}
+
+
+def llm_select_command_from_catalog(
+    user_text: str,
+    rules: Dict[str, Any],
+    current_command: Optional[str] = None,
+    prefer_chinese: bool = False,
+) -> Dict[str, Any]:
+    catalog = build_selector_catalog(rules)
+    prompt = f"""
+You are an iobrpy command selector, not a chatbot.
+Task: choose the single best matching command from catalog.commands for the user request.
+If uncertain, return subcommand as null.
+Never invent command names.
+Only output JSON in this exact shape:
+{{"subcommand": null, "confidence": 0.0, "reason": "..."}}
+
+current_command:
+{json.dumps(current_command, ensure_ascii=False)}
+
+catalog:
+{json.dumps(catalog, ensure_ascii=False)}
+
+user_text:
+{json.dumps(user_text, ensure_ascii=False)}
+""".strip()
+
+    try:
+        out = _llm_generate_json(prompt)
+    except Exception:
+        return {"subcommand": None, "confidence": 0.0, "reason": "selector_call_failed"}
+
+    if not isinstance(out, dict):
+        return {"subcommand": None, "confidence": 0.0, "reason": "selector_invalid_output"}
+
+    sub = out.get("subcommand")
+    conf_raw = out.get("confidence", 0.0)
+    try:
+        conf = max(0.0, min(1.0, float(conf_raw)))
+    except Exception:
+        conf = 0.0
+
+    if sub not in rules:
+        sub = None
+        conf = 0.0
+
+    reason = str(out.get("reason") or "")
+    return {"subcommand": sub, "confidence": conf, "reason": reason}
+
 def _safe_fallback_plan(state: "SessionState", user_text: str) -> Dict[str, Any]:
     default_msg = "Please continue." if not state.prefer_chinese else "请继续。"
     return {
@@ -928,6 +999,23 @@ def _text_has_parameter_shape(user_text: str, subcommand: str, rules: Dict[str, 
             if isinstance(v, str) and re.search(rf"\b{re.escape(v)}\b", text):
                 return True
     return False
+
+
+def _should_try_command_selector(user_text: str, validated: Dict[str, Any]) -> bool:
+    if not _normalize_text(user_text):
+        return False
+
+    action = str(validated.get("action") or "")
+    intent_type = str(validated.get("intent_type") or "")
+    if action in {"restart_session", "undo", "select_command", "switch_command", "confirm_switch", "execute"}:
+        return False
+    if validated.get("subcommand"):
+        return False
+    if bool(validated.get("is_side_question", False)):
+        return False
+    if intent_type in {"side_question", "control"}:
+        return False
+    return action in {"reply_only", "clarify_intent", "ask_missing_params", "ready_to_run", "update_params"}
 
 
 def llm_extract_param_updates(
@@ -1471,6 +1559,42 @@ def tool_iobrpy_assistant(session_id: str, task: Optional[str] = None, answer_te
 
     validated = validate_planner_output(plan, rules, state)
 
+    selector_fallback_used = False
+    selector_out: Dict[str, Any] = {"subcommand": None, "confidence": 0.0, "reason": ""}
+    selector_threshold = float(os.getenv("IOBRPY_SELECTOR_CONFIDENCE", "0.7"))
+    if state.selected_command is None and _should_try_command_selector(user_text, validated):
+        selector_out = llm_select_command_from_catalog(
+            user_text=user_text,
+            rules=rules,
+            current_command=state.selected_command,
+            prefer_chinese=state.prefer_chinese,
+        )
+        selected = selector_out.get("subcommand")
+        conf = float(selector_out.get("confidence") or 0.0)
+        if selected in rules and conf >= selector_threshold:
+            selector_fallback_used = True
+            validated = validate_planner_output(
+                {
+                    "action": "select_command",
+                    "intent_type": "execution_request",
+                    "is_side_question": False,
+                    "keep_current_command": False,
+                    "switch_intent_strength": 1.0,
+                    "needs_confirmation": False,
+                    "message": "",
+                    "subcommand": selected,
+                    "param_updates": {},
+                    "param_removals": [],
+                    "switch_to": None,
+                    "ask_for": [],
+                    "confirm": None,
+                    "confidence": conf,
+                    "reason": "catalog_selector_fallback",
+                },
+                rules,
+                state,
+            )
+
     fallback_triggered = False
     schema_updates: Dict[str, Any] = {}
     fallback_updates: Dict[str, Any] = {}
@@ -1522,6 +1646,8 @@ def tool_iobrpy_assistant(session_id: str, task: Optional[str] = None, answer_te
         "planner_param_updates", plan.get("param_updates"),
         "validated_action", validated.get("action"),
         "validated_param_updates", validated.get("param_updates"),
+        "selector_fallback_used", selector_fallback_used,
+        "selector_out", selector_out,
         "fallback_triggered", fallback_triggered,
         "schema_updates", schema_updates,
         "fallback_updates", fallback_updates,

@@ -90,6 +90,44 @@ class RagMcpRegressionTests(unittest.TestCase):
         self.assertEqual(out.get("needs"), [])
         self.assertIn("iobrpy runall", out.get("draft_command") or "")
 
+    def test_first_turn_selector_fallback_sets_runall_when_planner_has_no_command(self):
+        planner_no_command = make_planner_output(
+            action="reply_only",
+            intent_type="execution_request",
+            keep_current_command=False,
+            subcommand=None,
+            reason="planner_miss",
+        )
+
+        with patch.object(mcp, "llm_plan_next_action", side_effect=planner_sequence(planner_no_command)), patch.object(
+            mcp,
+            "llm_select_command_from_catalog",
+            return_value={"subcommand": "runall", "confidence": 0.9, "reason": "selector_match"},
+        ):
+            out = mcp.tool_iobrpy_assistant("s_selector_ok", answer_text="turn_1", run=False)
+
+        self.assertEqual(out.get("subcommand"), "runall")
+        self.assertTrue(out.get("draft_command"))
+        self.assertEqual(mcp.get_session("s_selector_ok").selected_command, "runall")
+
+    def test_selector_low_confidence_does_not_force_command_selection(self):
+        planner_no_command = make_planner_output(
+            action="clarify_intent",
+            intent_type="clarification",
+            subcommand=None,
+            reason="planner_uncertain",
+        )
+
+        with patch.object(mcp, "llm_plan_next_action", side_effect=planner_sequence(planner_no_command)), patch.object(
+            mcp,
+            "llm_select_command_from_catalog",
+            return_value={"subcommand": None, "confidence": 0.3, "reason": "low_confidence"},
+        ):
+            out = mcp.tool_iobrpy_assistant("s_selector_low", answer_text="turn_1", run=False)
+
+        self.assertNotEqual(out.get("subcommand"), "runall")
+        self.assertIsNone(mcp.get_session("s_selector_low").selected_command)
+
     def test_selected_command_context_always_returns_draft(self):
         plan = make_planner_output(
             action="select_command",
