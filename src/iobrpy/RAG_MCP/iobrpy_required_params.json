@@ -1269,6 +1269,46 @@
     "notes": {
       "zh": "对单个样本运行SpecHLA，使用提取后的配对FASTQ进行高分辨率HLA分型，输出主要HLA位点的等位基因结果，可用于后续免疫相关分析。",
       "en": "Runs SpecHLA for a single sample using extracted paired FASTQ reads to perform high-resolution HLA typing, and outputs allele calls at major HLA loci for downstream immune-related analyses."
+    },
+    "cli_flags": {
+      "use_exon": "-u"
+    },
+    "param_aliases": {
+      "name": [
+        "name",
+        "sample_name"
+      ],
+      "read1": [
+        "read1",
+        "read_1",
+        "r1"
+      ],
+      "read2": [
+        "read2",
+        "read_2",
+        "r2"
+      ],
+      "outdir": [
+        "outdir",
+        "out-dir"
+      ],
+      "threads": [
+        "threads",
+        "thread"
+      ],
+      "use_exon": [
+        "use_exon",
+        "use-exon",
+        "u"
+      ]
+    },
+    "param_types": {
+      "name": "string",
+      "read1": "path",
+      "read2": "path",
+      "outdir": "path",
+      "threads": "int",
+      "use_exon": "choice"
     }
   },
   "extract_hla_read": {
@@ -1329,6 +1369,34 @@
     "notes": {
       "zh": "用于HLA分型前处理：从比对后的BAM/CRAM文件中提取HLA区域相关reads，并导出成配对FASTQ文件，供后续SpecHLA分型使用。该步骤本身不执行最终HLA分型。",
       "en": "Preprocessing step before HLA typing: extracts HLA-region reads from aligned BAM/CRAM files and exports paired FASTQ files for downstream SpecHLA typing. This step does not perform final HLA typing by itself."
+    },
+    "param_aliases": {
+      "sample": [
+        "sample",
+        "name"
+      ],
+      "bam": [
+        "bam",
+        "bam_file"
+      ],
+      "ref": [
+        "ref"
+      ],
+      "outdir": [
+        "outdir",
+        "out-dir"
+      ],
+      "no_auto_install": [
+        "no_auto_install",
+        "no-auto-install"
+      ]
+    },
+    "param_types": {
+      "sample": "string",
+      "bam": "path",
+      "ref": "choice",
+      "outdir": "path",
+      "no_auto_install": "bool"
     }
   },
   "hla_typing": {
@@ -1397,6 +1465,39 @@
       "zh": "对一个BAM目录执行完整的批量HLA分型流程。该功能会为每个样本先提取HLA相关reads，再运行SpecHLA，保存各样本结果，支持基于完成标记的断点续跑/跳过，并最终生成合并结果表hla_result_merged.txt。",
       "en": "Runs a complete batch HLA typing workflow over a BAM directory. For each sample, it first extracts HLA-related reads and then runs SpecHLA, stores per-sample outputs, supports resume/skip based on completion markers, and finally generates a merged table hla_result_merged.txt.",
       "use_exon": "-u: Choose full-length or exon typing [0|1]. 0 indicates full-length, 1 means exon, default is 1. With Exome or RNA data, must select 1 (i.e., exon typing)."
+    },
+    "cli_flags": {
+      "use_exon": "-u"
+    },
+    "param_aliases": {
+      "bam_dir": [
+        "bam_dir",
+        "bam-dir",
+        "bam"
+      ],
+      "ref": [
+        "ref"
+      ],
+      "outdir": [
+        "outdir",
+        "out-dir"
+      ],
+      "threads": [
+        "threads",
+        "thread"
+      ],
+      "use_exon": [
+        "use_exon",
+        "use-exon",
+        "u"
+      ]
+    },
+    "param_types": {
+      "bam_dir": "path",
+      "ref": "choice",
+      "outdir": "path",
+      "threads": "int",
+      "use_exon": "choice"
     }
   },
   "tme_profile": {

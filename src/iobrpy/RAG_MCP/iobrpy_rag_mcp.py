@@ -312,6 +312,9 @@ def load_rules() -> Dict[str, Any]:
         req_one = v.get("required_one_of", []) if isinstance(v.get("required_one_of", []), list) else []
         notes = v.get("notes", {}) if isinstance(v.get("notes", {}), dict) else {}
         optional_defaults = v.get("optional_defaults", {}) if isinstance(v.get("optional_defaults", {}), dict) else {}
+        cli_flags = v.get("cli_flags", {}) if isinstance(v.get("cli_flags", {}), dict) else {}
+        param_aliases = v.get("param_aliases", {}) if isinstance(v.get("param_aliases", {}), dict) else {}
+        param_types = v.get("param_types", {}) if isinstance(v.get("param_types", {}), dict) else {}
         intent_keywords = v.get("intent_keywords", [])
         param_hints = v.get("param_hints", {}) if isinstance(v.get("param_hints", {}), dict) else {}
         function_summary = v.get("function_summary", "")
@@ -327,6 +330,9 @@ def load_rules() -> Dict[str, Any]:
             "required_one_of": req_one,
             "notes": notes,
             "optional_defaults": optional_defaults,
+            "cli_flags": cli_flags,
+            "param_aliases": param_aliases,
+            "param_types": param_types,
             "intent_keywords": intent_keywords,
             "param_hints": param_hints,
             "function_summary": function_summary,
@@ -385,11 +391,16 @@ FLAG_MAP = {
     "od": "--od", "t": "-t", "k": "-k", "bam_dir": "--bam-dir", "use_exon": "--use-exon",
     "sample": "--sample", "name": "--name", "read1": "--read1", "read2": "--read2",
 }
+
+PARAM_FLAGS_BY_COMMAND: Dict[str, Dict[str, str]] = {}
+
 BOOL_FLAGS = {
     "repseq": "--repseq", "skipMateExtension": "--skipMateExtension", "abnormalUnmapFlag": "--abnormalUnmapFlag",
     "assembleWithRef": "--assembleWithRef", "noExtraction": "--noExtraction", "outputReadAssignment": "--outputReadAssignment",
     "no_auto_install": "--no-auto-install",
 }
+
+BOOL_FLAGS_BY_COMMAND: Dict[str, Dict[str, str]] = {}
 
 
 
@@ -414,7 +425,15 @@ def _default_cli_flag_for_key(key: str) -> Optional[str]:
     return "--" + key
 
 
-def _resolve_cli_flag(key: str, is_bool: bool = False) -> Optional[str]:
+def _resolve_cli_flag(subcommand: str, key: str, rules: Dict[str, Any], is_bool: bool = False) -> Optional[str]:
+    rule = rules.get(subcommand, {}) if isinstance(rules.get(subcommand, {}), dict) else {}
+    cli_flags = rule.get("cli_flags", {}) if isinstance(rule.get("cli_flags", {}), dict) else {}
+    if key in cli_flags and isinstance(cli_flags.get(key), str) and cli_flags.get(key):
+        return str(cli_flags[key])
+
+    per_command = (BOOL_FLAGS_BY_COMMAND if is_bool else PARAM_FLAGS_BY_COMMAND).get(subcommand, {})
+    if key in per_command:
+        return per_command[key]
     if is_bool:
         return BOOL_FLAGS.get(key) or _default_cli_flag_for_key(key)
     return FLAG_MAP.get(key) or _default_cli_flag_for_key(key)
@@ -438,10 +457,10 @@ def audit_parameter_link_consistency(rules: Dict[str, Any]) -> Dict[str, Any]:
         required_unserializable: List[str] = []
         optional_unserializable: List[str] = []
         for k in required:
-            if _resolve_cli_flag(k, False) is None:
+            if _resolve_cli_flag(cmd, k, rules, False) is None:
                 required_unserializable.append(k)
         for k in optional:
-            if _resolve_cli_flag(k, False) is None and _resolve_cli_flag(k, True) is None:
+            if _resolve_cli_flag(cmd, k, rules, False) is None and _resolve_cli_flag(cmd, k, rules, True) is None:
                 optional_unserializable.append(k)
         report[cmd] = {
             "required_unserializable": required_unserializable,
@@ -453,7 +472,7 @@ def audit_parameter_link_consistency(rules: Dict[str, Any]) -> Dict[str, Any]:
 def _required_without_serializable_flag(subcommand: str, rules: Dict[str, Any]) -> List[str]:
     rule = rules.get(subcommand, {}) if isinstance(rules.get(subcommand, {}), dict) else {}
     required = rule.get("required", []) if isinstance(rule.get("required", []), list) else []
-    return [k for k in required if _resolve_cli_flag(k, False) is None and _resolve_cli_flag(k, True) is None]
+    return [k for k in required if _resolve_cli_flag(subcommand, k, rules, False) is None and _resolve_cli_flag(subcommand, k, rules, True) is None]
 
 
 def build_command(subcommand: str, params: Dict[str, Any], rules: Dict[str, Any]) -> Tuple[str, List[str]]:
@@ -473,11 +492,11 @@ def build_command(subcommand: str, params: Dict[str, Any], rules: Dict[str, Any]
         if v in (None, "", []):
             continue
         if isinstance(v, bool):
-            bf = _resolve_cli_flag(k, is_bool=True)
+            bf = _resolve_cli_flag(subcommand, k, rules, is_bool=True)
             if bf and v:
                 argv.append(bf)
             continue
-        flag = _resolve_cli_flag(k, is_bool=False)
+        flag = _resolve_cli_flag(subcommand, k, rules, is_bool=False)
         if not flag:
             raise ValueError(f"Parameter '{k}' for '{subcommand}' cannot be serialized to a CLI flag")
         argv.extend([flag, str(v)])
@@ -689,6 +708,205 @@ def llm_plan_next_action(state: "SessionState", user_text: str, rules: Dict[str,
     return plan
 
 
+def _normalize_identifier(text: str) -> str:
+    t = (text or "").strip().lower()
+    t = re.sub(r"[^a-z0-9_-]", "", t)
+    return t
+
+
+def _param_type_for_key(subcommand: str, key: str, rules: Dict[str, Any]) -> str:
+    rule = rules.get(subcommand, {}) if isinstance(rules.get(subcommand, {}), dict) else {}
+    param_types = rule.get("param_types", {}) if isinstance(rule.get("param_types", {}), dict) else {}
+    if isinstance(param_types.get(key), str) and param_types.get(key):
+        return str(param_types[key]).strip().lower()
+    choices = rule.get("choices", {}) if isinstance(rule.get("choices", {}), dict) else {}
+    if key in choices:
+        return "choice"
+    if key in {"threads", "batch_size", "t", "k"}:
+        return "int"
+    if key.startswith("no_"):
+        return "bool"
+    if key in {"index", "input", "output", "fastq", "outdir", "bam", "fqdir", "ru", "r1", "r2", "ref", "od", "bam_dir", "read1", "read2"}:
+        return "path"
+    return "string"
+
+
+def _is_path_like_value(val: str) -> bool:
+    if not isinstance(val, str):
+        return False
+    v = val.strip()
+    return bool(v) and (
+        v.startswith("/") or
+        v.startswith("./") or
+        v.startswith("../") or
+        bool(re.search(r"[A-Za-z0-9._-]+/[A-Za-z0-9._/-]+", v))
+    )
+
+
+def _truthy_bool_text(val: str) -> Optional[bool]:
+    if not isinstance(val, str):
+        return None
+    t = val.strip().lower()
+    if t in {"1", "true", "yes", "y", "on"}:
+        return True
+    if t in {"0", "false", "no", "n", "off"}:
+        return False
+    return None
+
+
+def _build_alias_map(subcommand: str, rules: Dict[str, Any]) -> Dict[str, str]:
+    aliases: Dict[str, str] = {}
+    allowed = [k for k in allowed_keys_for(subcommand, rules) if k != "confirm"]
+    rule = rules.get(subcommand, {}) if isinstance(rules.get(subcommand, {}), dict) else {}
+    cfg = rule.get("param_aliases", {}) if isinstance(rule.get("param_aliases", {}), dict) else {}
+    for key in allowed:
+        aliases[_normalize_identifier(key)] = key
+        aliases[_normalize_identifier(key.replace("_", "-"))] = key
+        for a in cfg.get(key, []) if isinstance(cfg.get(key, []), list) else []:
+            if isinstance(a, str) and a.strip():
+                aliases[_normalize_identifier(a)] = key
+    return aliases
+
+
+def _split_structured_segments(text: str) -> List[str]:
+    s = _normalize_text(text or "")
+    if not s:
+        return []
+    return [x.strip() for x in re.split(r"[,;，；、]+", s) if x.strip()]
+
+
+def _infer_unkeyed_param(candidates: List[str], value: str, subcommand: str, rules: Dict[str, Any], missing: List[str]) -> Optional[str]:
+    if not candidates:
+        return None
+    rule = rules.get(subcommand, {}) if isinstance(rules.get(subcommand, {}), dict) else {}
+    choices = rule.get("choices", {}) if isinstance(rule.get("choices", {}), dict) else {}
+    v = value.strip()
+
+    choice_keys = [k for k in candidates if isinstance(choices.get(k), list) and v in choices.get(k, [])]
+    if len(choice_keys) == 1:
+        return choice_keys[0]
+
+    if re.fullmatch(r"\d+", v):
+        int_keys = [k for k in candidates if _param_type_for_key(subcommand, k, rules) == "int"]
+        if len(int_keys) == 1:
+            return int_keys[0]
+
+    if _is_path_like_value(v):
+        path_keys = [k for k in candidates if _param_type_for_key(subcommand, k, rules) == "path"]
+        if len(path_keys) == 1:
+            return path_keys[0]
+
+    if len(missing) == 1 and missing[0] in candidates:
+        return missing[0]
+    return None
+
+
+def extract_param_updates_from_text(
+    user_text: str,
+    subcommand: Optional[str],
+    rules: Dict[str, Any],
+    current_params: Dict[str, Any],
+    missing_params: List[str],
+) -> Dict[str, Any]:
+    if not subcommand or subcommand not in rules:
+        return {}
+
+    allowed = [k for k in allowed_keys_for(subcommand, rules) if k != "confirm"]
+    if not allowed:
+        return {}
+
+    alias_map = _build_alias_map(subcommand, rules)
+    segments = _split_structured_segments(user_text)
+    if not segments:
+        return {}
+
+    updates: Dict[str, Any] = {}
+    rule = rules.get(subcommand, {}) if isinstance(rules.get(subcommand, {}), dict) else {}
+    choices = rule.get("choices", {}) if isinstance(rule.get("choices", {}), dict) else {}
+
+    for seg in segments:
+        m = re.match(r"^\s*([A-Za-z0-9_\-]+)\s*(=|:)\s*(.+?)\s*$", seg)
+        key = None
+        raw_val = None
+        if m:
+            key = alias_map.get(_normalize_identifier(m.group(1)))
+            raw_val = m.group(3).strip()
+        else:
+            m2 = re.match(r"^\s*([A-Za-z0-9_\-]+)\s+(.+?)\s*$", seg)
+            if m2:
+                key = alias_map.get(_normalize_identifier(m2.group(1)))
+                raw_val = m2.group(2).strip()
+
+        if key and raw_val is not None:
+            val = raw_val.strip().strip('"').strip("'")
+            try:
+                updates[key] = _convert_value_for_key(key, val, rules, subcommand)
+            except Exception:
+                pass
+            continue
+
+        # unkeyed inference with strong schema constraints
+        tokens = [t.strip("\"'") for t in re.findall(r"[A-Za-z0-9_./\-]+", seg)]
+        unresolved = [k for k in allowed if k not in updates]
+        used_tokens = set()
+
+        alias_hits = [alias_map.get(_normalize_identifier(tok)) for tok in tokens]
+        alias_keys = [k for k in alias_hits if k]
+        alias_keys = list(dict.fromkeys(alias_keys))
+        if len(alias_keys) == 1:
+            alias_key = alias_keys[0]
+            expected_type = _param_type_for_key(subcommand, alias_key, rules)
+            value_tokens = [t for t in tokens if alias_map.get(_normalize_identifier(t)) != alias_key]
+            if not value_tokens:
+                value_tokens = [t for t in tokens if not alias_map.get(_normalize_identifier(t))]
+            for candidate in value_tokens:
+                if expected_type == "path" and not _is_path_like_value(candidate):
+                    continue
+                if expected_type == "int" and not re.fullmatch(r"\d+", candidate):
+                    continue
+                if expected_type == "choice":
+                    opts = choices.get(alias_key, []) if isinstance(choices.get(alias_key, []), list) else []
+                    if candidate not in opts:
+                        continue
+                try:
+                    updates[alias_key] = _convert_value_for_key(alias_key, candidate, rules, subcommand)
+                    used_tokens.add(candidate)
+                    unresolved = [k for k in unresolved if k != alias_key]
+                    break
+                except Exception:
+                    continue
+
+        ambiguous_choice_keys = set()
+        for k in unresolved:
+            opts = choices.get(k, []) if isinstance(choices.get(k, []), list) else []
+            if not opts:
+                continue
+            matched = {tok for tok in tokens if tok in opts}
+            if len(matched) > 1:
+                ambiguous_choice_keys.add(k)
+
+        for tok in tokens:
+            if not tok or tok in used_tokens:
+                continue
+            inferred_key = _infer_unkeyed_param(
+                [k for k in unresolved if k not in ambiguous_choice_keys],
+                tok,
+                subcommand,
+                rules,
+                missing_params,
+            )
+            if not inferred_key:
+                continue
+            try:
+                updates[inferred_key] = _convert_value_for_key(inferred_key, tok, rules, subcommand)
+                used_tokens.add(tok)
+                unresolved = [k for k in unresolved if k != inferred_key]
+            except Exception:
+                continue
+
+    return updates
+
+
 def _convert_value_for_key(key: str, value: Any, rules: Dict[str, Any], subcommand: str) -> Any:
     rule = rules.get(subcommand, {}) if isinstance(rules.get(subcommand, {}), dict) else {}
     choices = rule.get("choices", {}) if isinstance(rule.get("choices", {}), dict) else {}
@@ -890,6 +1108,34 @@ def _state_summary_text(state: SessionState, merged: Dict[str, Any], missing: Li
     return f"Current command: iobrpy {state.selected_command}\nRecognized: {recognized}\nMissing: {missing_txt}"
 
 
+def _current_command_context(state: SessionState, rules: Dict[str, Any], message: str, needs: Optional[List[str]] = None) -> Dict[str, Any]:
+    out: Dict[str, Any] = {
+        "status": "need_info",
+        "question": enforce_output_language(message, state.prefer_chinese),
+        "needs": needs or [],
+    }
+    if not state.selected_command:
+        return out
+
+    merged, sources = merge_defaults(state.params, state.selected_command, rules)
+    missing, _ = compute_needs(state.selected_command, rules, merged)
+    try:
+        draft_cmd, _ = build_command(state.selected_command, merged, rules)
+    except ValueError:
+        draft_cmd = None
+
+    out.update(
+        {
+            "subcommand": state.selected_command,
+            "draft_command": draft_cmd,
+            "params": merged,
+            "needs": missing if needs is None else needs,
+            "state_summary": _state_summary_text(state, merged, missing, sources, state.prefer_chinese),
+        }
+    )
+    return out
+
+
 def apply_planner_output(state: SessionState, plan: Dict[str, Any], rules: Dict[str, Any], user_text: str) -> Dict[str, Any]:
     action = plan.get("action", "reply_only")
     msg = enforce_output_language(plan.get("message") or "", state.prefer_chinese)
@@ -914,8 +1160,15 @@ def apply_planner_output(state: SessionState, plan: Dict[str, Any], rules: Dict[
             return {"status": "need_info", "question": enforce_output_language(msg or ("没有可撤销的历史。" if state.prefer_chinese else "No history to undo."), state.prefer_chinese), "needs": []}
 
     if is_side_question or (action == "reply_only" and keep_current):
-        state.phase = "idle" if not state.selected_command else state.phase
-        return {"status": "need_info", "question": enforce_output_language(msg or ("请继续告诉我你的任务。" if state.prefer_chinese else "Please continue with your task details."), state.prefer_chinese), "needs": []}
+        if state.selected_command:
+            state.phase = "collecting" if state.phase in {"idle", "clarifying"} else state.phase
+        else:
+            state.phase = "idle"
+        return _current_command_context(
+            state,
+            rules,
+            msg or ("请继续告诉我你的任务。" if state.prefer_chinese else "Please continue with your task details."),
+        )
 
     if state.pending_switch and action == "confirm_switch":
         target = plan.get("switch_to") or plan.get("subcommand") or state.pending_switch.get("target")
@@ -974,8 +1227,15 @@ def apply_planner_output(state: SessionState, plan: Dict[str, Any], rules: Dict[
         return {"status": "need_info", "question": enforce_output_language(msg or ("请再具体描述你的分析目标。" if state.prefer_chinese else "Please describe your analysis goal more specifically."), state.prefer_chinese), "needs": ["clarify_intent"]}
 
     if action == "reply_only":
-        state.phase = "idle" if not state.selected_command else state.phase
-        return {"status": "need_info", "question": enforce_output_language(msg or ("请继续告诉我你的任务。" if state.prefer_chinese else "Please continue with your task details."), state.prefer_chinese), "needs": []}
+        if state.selected_command:
+            state.phase = "collecting" if state.phase in {"idle", "clarifying"} else state.phase
+        else:
+            state.phase = "idle"
+        return _current_command_context(
+            state,
+            rules,
+            msg or ("请继续告诉我你的任务。" if state.prefer_chinese else "Please continue with your task details."),
+        )
 
     if action == "update_params":
         if not state.selected_command:
@@ -1034,6 +1294,7 @@ def apply_planner_output(state: SessionState, plan: Dict[str, Any], rules: Dict[
             "needs": mapping_errors,
             "draft_command": draft_cmd,
             "params": merged,
+            "state_summary": _state_summary_text(state, merged, missing, sources, state.prefer_chinese),
         }
 
     consistency = audit_parameter_link_consistency(rules).get(state.selected_command, {})
@@ -1044,9 +1305,10 @@ def apply_planner_output(state: SessionState, plan: Dict[str, Any], rules: Dict[
 
     if missing or action == "ask_missing_params":
         state.phase = "collecting"
-        q = msg or ("还不能执行，参数尚未完整。" if state.prefer_chinese else "Cannot execute yet, parameters are incomplete.")
-        q += "\n\n" + _state_summary_text(state, merged, missing, sources, state.prefer_chinese)
-        q = enforce_output_language(q, state.prefer_chinese)
+        q = enforce_output_language(
+            msg or ("还不能执行，参数尚未完整。" if state.prefer_chinese else "Cannot execute yet, parameters are incomplete."),
+            state.prefer_chinese,
+        )
         return {
             "status": "need_info",
             "subcommand": state.selected_command,
@@ -1055,6 +1317,7 @@ def apply_planner_output(state: SessionState, plan: Dict[str, Any], rules: Dict[
             "draft_command": draft_cmd,
             "params": merged,
             "warnings": optional_unserializable,
+            "state_summary": _state_summary_text(state, merged, missing, sources, state.prefer_chinese),
         }
 
     # ready gate
@@ -1066,7 +1329,9 @@ def apply_planner_output(state: SessionState, plan: Dict[str, Any], rules: Dict[
             "question": enforce_output_language(msg or ("已准备好执行。" if state.prefer_chinese else "Ready to execute."), state.prefer_chinese),
             "draft_command": draft_cmd,
             "params": merged,
+            "needs": missing,
             "warnings": optional_unserializable,
+            "state_summary": _state_summary_text(state, merged, missing, sources, state.prefer_chinese),
         }
 
     return {
@@ -1075,7 +1340,9 @@ def apply_planner_output(state: SessionState, plan: Dict[str, Any], rules: Dict[
         "question": enforce_output_language(msg or ("参数已满足，可以执行。" if state.prefer_chinese else "All required parameters are satisfied. Ready to run."), state.prefer_chinese),
         "draft_command": draft_cmd,
         "params": merged,
+        "needs": missing,
         "warnings": optional_unserializable,
+        "state_summary": _state_summary_text(state, merged, missing, sources, state.prefer_chinese),
     }
 
 
@@ -1099,7 +1366,44 @@ def tool_iobrpy_assistant(session_id: str, task: Optional[str] = None, answer_te
         plan = llm_plan_next_action(state, user_text, rules)
 
     validated = validate_planner_output(plan, rules, state)
-    dlog("phase_before", state.phase, "validated_action", validated.get("action"))
+
+    fallback_triggered = False
+    fallback_updates: Dict[str, Any] = {}
+    if state.selected_command:
+        merged_now, _ = merge_defaults(state.params, state.selected_command, rules)
+        missing_now, _ = compute_needs(state.selected_command, rules, merged_now)
+        planner_updates = validated.get("param_updates") if isinstance(validated.get("param_updates"), dict) else {}
+
+        should_fallback = (
+            (validated.get("action") != "update_params" and validated.get("action") != "remove_params") or
+            (not planner_updates)
+        )
+        if should_fallback:
+            fallback_updates = extract_param_updates_from_text(
+                user_text=user_text,
+                subcommand=state.selected_command,
+                rules=rules,
+                current_params=merged_now,
+                missing_params=missing_now,
+            )
+            if fallback_updates:
+                fallback_triggered = True
+                merged_updates = dict(planner_updates)
+                merged_updates.update(fallback_updates)
+                validated["param_updates"] = merged_updates
+                validated["action"] = "update_params"
+                validated["is_side_question"] = False
+                validated["keep_current_command"] = True
+
+    dlog(
+        "phase_before", state.phase,
+        "planner_action", plan.get("action"),
+        "planner_param_updates", plan.get("param_updates"),
+        "validated_action", validated.get("action"),
+        "validated_param_updates", validated.get("param_updates"),
+        "fallback_triggered", fallback_triggered,
+        "fallback_updates", fallback_updates,
+    )
 
     state.last_plan = deepcopy(validated)
     state.last_message = user_text
@@ -1145,7 +1449,8 @@ def tool_iobrpy_assistant(session_id: str, task: Optional[str] = None, answer_te
         tail = ""
         try:
             with open(log_path, "r", encoding="utf-8") as f:
-                tail = "".join(f.readlines()[-80:])
+                tail_lines = 30 if rc == 0 else 80
+                tail = "".join(f.readlines()[-tail_lines:])
         except Exception:
             pass
 
