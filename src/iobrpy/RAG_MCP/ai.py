@@ -13,13 +13,15 @@ import time
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 try:
     from prompt_toolkit import PromptSession  # type: ignore
+    from prompt_toolkit.key_binding import KeyBindings  # type: ignore
     from prompt_toolkit.history import InMemoryHistory  # type: ignore
 except Exception:
     PromptSession = None
+    KeyBindings = None
     InMemoryHistory = None
 
 try:
@@ -111,24 +113,112 @@ def _resolve_api_key(alias: str, api_key_arg: Optional[str]) -> str:
     return key
 
 
-_PROMPT_SESSION: Optional[Any] = None
+_MAIN_PROMPT_SESSION: Optional[Any] = None
+_CONFIRM_PROMPT_SESSION: Optional[Any] = None
 
 
-def _init_prompt_session() -> Optional[Any]:
-    global _PROMPT_SESSION
-    if _PROMPT_SESSION is not None:
-        return _PROMPT_SESSION
+def _build_main_key_bindings() -> Optional[Any]:
+    if KeyBindings is None:
+        return None
+    kb = KeyBindings()
+
+    @kb.add("c-j")
+    def _(event) -> None:  # type: ignore
+        event.current_buffer.insert_text("\n")
+
+    @kb.add("escape", "enter")
+    @kb.add("c-s")
+    def _(event) -> None:  # type: ignore
+        event.current_buffer.validate_and_handle()
+
+    return kb
+
+
+def apply_newline_to_text(text: str, cursor_pos: int) -> Tuple[str, int]:
+    left = text[:cursor_pos]
+    right = text[cursor_pos:]
+    out = left + "\n" + right
+    return out, cursor_pos + 1
+
+
+def classify_main_shortcut(shortcut: str) -> str:
+    s = (shortcut or "").strip().lower()
+    if s in {"c-j", "enter"}:
+        return "newline"
+    if s in {"escape+enter", "c-s"}:
+        return "submit"
+    return "unknown"
+
+
+def build_main_prompt_session() -> Optional[Any]:
+    global _MAIN_PROMPT_SESSION
+    if _MAIN_PROMPT_SESSION is not None:
+        return _MAIN_PROMPT_SESSION
     if PromptSession is None or InMemoryHistory is None:
         return None
     try:
-        _PROMPT_SESSION = PromptSession(history=InMemoryHistory(), multiline=False)
+        _MAIN_PROMPT_SESSION = PromptSession(
+            history=InMemoryHistory(),
+            multiline=True,
+            key_bindings=_build_main_key_bindings(),
+            enable_history_search=True,
+        )
     except Exception:
-        _PROMPT_SESSION = None
-    return _PROMPT_SESSION
+        _MAIN_PROMPT_SESSION = None
+    return _MAIN_PROMPT_SESSION
 
 
-def read_user_input(prompt_text: str) -> str:
-    session = _init_prompt_session()
+def build_confirmation_prompt(prefer_chinese: bool) -> str:
+    return _ui_text("confirm_run", prefer_chinese)
+
+
+def build_confirmation_prompt_session() -> Optional[Any]:
+    global _CONFIRM_PROMPT_SESSION
+    if _CONFIRM_PROMPT_SESSION is not None:
+        return _CONFIRM_PROMPT_SESSION
+    if PromptSession is None or InMemoryHistory is None:
+        return None
+    try:
+        _CONFIRM_PROMPT_SESSION = PromptSession(history=InMemoryHistory(), multiline=False)
+    except Exception:
+        _CONFIRM_PROMPT_SESSION = None
+    return _CONFIRM_PROMPT_SESSION
+
+
+def _fallback_multiline_input(prompt_text: str) -> str:
+    print(prompt_text, end="", flush=True)
+    first = input()
+    lines = [first]
+    while True:
+        try:
+            nxt = input("... ")
+        except EOFError:
+            break
+        if nxt.strip() == ".":
+            break
+        lines.append(nxt)
+    return "\n".join(lines)
+
+
+def read_main_user_input(prompt_text: str = "AI> ", session: Optional[Any] = None) -> str:
+    session = session or build_main_prompt_session()
+    if session is not None:
+        try:
+            return session.prompt(
+                prompt_text,
+                prompt_continuation=lambda width, line_no, is_soft_wrap: "... ",
+            )
+        except KeyboardInterrupt:
+            raise
+        except EOFError:
+            raise
+        except Exception:
+            pass
+    return _fallback_multiline_input(prompt_text)
+
+
+def read_confirmation_input(prompt_text: str, session: Optional[Any] = None) -> str:
+    session = session or build_confirmation_prompt_session()
     if session is not None:
         try:
             return session.prompt(prompt_text)
@@ -146,14 +236,41 @@ def read_user_input(prompt_text: str) -> str:
         raise
 
 
-def _is_positive_confirm(text: str) -> bool:
+def classify_confirmation_input(text: str) -> str:
     t = (text or "").strip().lower()
-    return t in {"y", "yes", "confirm", "run", "execute", "ok", "确认", "执行", "是"}
+    if t in {"y", "yes", "confirm", "run", "execute", "ok", "确认", "执行", "是"}:
+        return "yes"
+    if t in {"n", "no", "cancel", "stop", "取消", "不执行", "否"}:
+        return "no"
+    return "other_text"
 
 
-def _is_negative_confirm(text: str) -> bool:
-    t = (text or "").strip().lower()
-    return t in {"n", "no", "cancel", "stop", "取消", "不执行", "否"}
+def _handle_confirmation_response(
+    confirm_in: str,
+    *,
+    pending_ready_plan: Dict[str, Any],
+    session_id: str,
+    server: Any,
+    logdir_p: Path,
+    prefer_chinese: bool,
+    call_fn: Any,
+) -> Tuple[Optional[Dict[str, Any]], Optional[Dict[str, Any]], bool]:
+    cls = classify_confirmation_input(confirm_in)
+    if cls == "yes":
+        out = _run_iobrpy_current_env(
+            session_id=session_id,
+            subcommand=str(pending_ready_plan.get("subcommand")),
+            params=dict(pending_ready_plan.get("params") or {}),
+            server=server,
+            logdir=logdir_p,
+            prefer_chinese=prefer_chinese,
+        )
+        return None, out, True
+    if cls == "no":
+        print(_ui_text("cancelled", prefer_chinese))
+        return None, None, True
+    out = call_fn(confirm_in)
+    return pending_ready_plan, out, False
 
 
 
@@ -287,6 +404,7 @@ def run_interactive(logdir: str, *, llm: str, api_key: Optional[str] = None, mod
     print(f"model  : {resolved_model}")
     print(_ui_text("type_request", prefer_chinese))
     print(_ui_text("commands", prefer_chinese) + "\n")
+    print("Multi-line input enabled: Enter=newline, Esc+Enter or Ctrl+S=submit, Ctrl+J=newline.")
 
     def call(answer: Optional[str] = None) -> Dict[str, Any]:
         return server.tool_iobrpy_assistant(session_id, task=None, answer_text=answer, run=False)
@@ -297,7 +415,7 @@ def run_interactive(logdir: str, *, llm: str, api_key: Optional[str] = None, mod
 
     while True:
         try:
-            user_in = read_user_input("AI> ").strip()
+            user_in = read_main_user_input("AI> ").strip()
         except (EOFError, KeyboardInterrupt):
             print("\n" + _ui_text("bye", prefer_chinese))
             return
@@ -320,21 +438,41 @@ def run_interactive(logdir: str, *, llm: str, api_key: Optional[str] = None, mod
             _print_state(last, prefer_chinese)
             continue
 
-        if pending_ready_plan is not None and _is_positive_confirm(user_in):
-            out = _run_iobrpy_current_env(
+        if pending_ready_plan is not None:
+            pending_ready_plan, out, handled = _handle_confirmation_response(
+                user_in,
+                pending_ready_plan=pending_ready_plan,
                 session_id=session_id,
-                subcommand=str(pending_ready_plan.get("subcommand")),
-                params=dict(pending_ready_plan.get("params") or {}),
                 server=server,
-                logdir=logdir_p,
+                logdir_p=logdir_p,
                 prefer_chinese=prefer_chinese,
+                call_fn=call,
             )
-            _print_state(out, prefer_chinese)
-            pending_ready_plan = None
-            continue
-        if pending_ready_plan is not None and _is_negative_confirm(user_in):
-            print(_ui_text("cancelled", prefer_chinese))
-            continue
+            if out is not None:
+                prefer_chinese = bool(out.get("prefer_chinese", prefer_chinese))
+                _print_state(out, prefer_chinese)
+                if out.get("status") == "ready":
+                    pending_ready_plan = {
+                        "subcommand": out.get("subcommand"),
+                        "params": dict(out.get("params") or {}),
+                        "draft_command": out.get("draft_command"),
+                    }
+                    confirm_in = read_confirmation_input(build_confirmation_prompt(prefer_chinese)).strip()
+                    pending_ready_plan, out2, _ = _handle_confirmation_response(
+                        confirm_in,
+                        pending_ready_plan=pending_ready_plan,
+                        session_id=session_id,
+                        server=server,
+                        logdir_p=logdir_p,
+                        prefer_chinese=prefer_chinese,
+                        call_fn=call,
+                    )
+                    if out2 is not None:
+                        prefer_chinese = bool(out2.get("prefer_chinese", prefer_chinese))
+                        _print_state(out2, prefer_chinese)
+                continue
+            if handled:
+                continue
 
         last = call(user_in)
         prefer_chinese = bool(last.get("prefer_chinese", prefer_chinese))
@@ -345,20 +483,19 @@ def run_interactive(logdir: str, *, llm: str, api_key: Optional[str] = None, mod
                 "params": dict(last.get("params") or {}),
                 "draft_command": last.get("draft_command"),
             }
-            confirm_in = read_user_input(_ui_text("confirm_run", prefer_chinese)).strip()
-            if _is_positive_confirm(confirm_in):
-                out = _run_iobrpy_current_env(
-                    session_id=session_id,
-                    subcommand=str(pending_ready_plan.get("subcommand")),
-                    params=dict(pending_ready_plan.get("params") or {}),
-                    server=server,
-                    logdir=logdir_p,
-                    prefer_chinese=prefer_chinese,
-                )
+            confirm_in = read_confirmation_input(build_confirmation_prompt(prefer_chinese)).strip()
+            pending_ready_plan, out, _ = _handle_confirmation_response(
+                confirm_in,
+                pending_ready_plan=pending_ready_plan,
+                session_id=session_id,
+                server=server,
+                logdir_p=logdir_p,
+                prefer_chinese=prefer_chinese,
+                call_fn=call,
+            )
+            if out is not None:
+                prefer_chinese = bool(out.get("prefer_chinese", prefer_chinese))
                 _print_state(out, prefer_chinese)
-                pending_ready_plan = None
-            else:
-                print(_ui_text("cancelled", prefer_chinese))
 
 
 def main(argv: Optional[list[str]] = None) -> None:
