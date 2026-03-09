@@ -312,6 +312,7 @@ def load_rules() -> Dict[str, Any]:
         req_one = v.get("required_one_of", []) if isinstance(v.get("required_one_of", []), list) else []
         notes = v.get("notes", {}) if isinstance(v.get("notes", {}), dict) else {}
         optional_defaults = v.get("optional_defaults", {}) if isinstance(v.get("optional_defaults", {}), dict) else {}
+        cli_flags = v.get("cli_flags", {}) if isinstance(v.get("cli_flags", {}), dict) else {}
         intent_keywords = v.get("intent_keywords", [])
         param_hints = v.get("param_hints", {}) if isinstance(v.get("param_hints", {}), dict) else {}
         function_summary = v.get("function_summary", "")
@@ -327,6 +328,7 @@ def load_rules() -> Dict[str, Any]:
             "required_one_of": req_one,
             "notes": notes,
             "optional_defaults": optional_defaults,
+            "cli_flags": cli_flags,
             "intent_keywords": intent_keywords,
             "param_hints": param_hints,
             "function_summary": function_summary,
@@ -386,14 +388,7 @@ FLAG_MAP = {
     "sample": "--sample", "name": "--name", "read1": "--read1", "read2": "--read2",
 }
 
-PARAM_FLAGS_BY_COMMAND: Dict[str, Dict[str, str]] = {
-    "hla_typing": {
-        "use_exon": "-u",
-    },
-    "spechla": {
-        "use_exon": "-u",
-    },
-}
+PARAM_FLAGS_BY_COMMAND: Dict[str, Dict[str, str]] = {}
 
 BOOL_FLAGS = {
     "repseq": "--repseq", "skipMateExtension": "--skipMateExtension", "abnormalUnmapFlag": "--abnormalUnmapFlag",
@@ -426,7 +421,12 @@ def _default_cli_flag_for_key(key: str) -> Optional[str]:
     return "--" + key
 
 
-def _resolve_cli_flag(subcommand: str, key: str, is_bool: bool = False) -> Optional[str]:
+def _resolve_cli_flag(subcommand: str, key: str, rules: Dict[str, Any], is_bool: bool = False) -> Optional[str]:
+    rule = rules.get(subcommand, {}) if isinstance(rules.get(subcommand, {}), dict) else {}
+    cli_flags = rule.get("cli_flags", {}) if isinstance(rule.get("cli_flags", {}), dict) else {}
+    if key in cli_flags and isinstance(cli_flags.get(key), str) and cli_flags.get(key):
+        return str(cli_flags[key])
+
     per_command = (BOOL_FLAGS_BY_COMMAND if is_bool else PARAM_FLAGS_BY_COMMAND).get(subcommand, {})
     if key in per_command:
         return per_command[key]
@@ -453,10 +453,10 @@ def audit_parameter_link_consistency(rules: Dict[str, Any]) -> Dict[str, Any]:
         required_unserializable: List[str] = []
         optional_unserializable: List[str] = []
         for k in required:
-            if _resolve_cli_flag(cmd, k, False) is None:
+            if _resolve_cli_flag(cmd, k, rules, False) is None:
                 required_unserializable.append(k)
         for k in optional:
-            if _resolve_cli_flag(cmd, k, False) is None and _resolve_cli_flag(cmd, k, True) is None:
+            if _resolve_cli_flag(cmd, k, rules, False) is None and _resolve_cli_flag(cmd, k, rules, True) is None:
                 optional_unserializable.append(k)
         report[cmd] = {
             "required_unserializable": required_unserializable,
@@ -468,7 +468,7 @@ def audit_parameter_link_consistency(rules: Dict[str, Any]) -> Dict[str, Any]:
 def _required_without_serializable_flag(subcommand: str, rules: Dict[str, Any]) -> List[str]:
     rule = rules.get(subcommand, {}) if isinstance(rules.get(subcommand, {}), dict) else {}
     required = rule.get("required", []) if isinstance(rule.get("required", []), list) else []
-    return [k for k in required if _resolve_cli_flag(subcommand, k, False) is None and _resolve_cli_flag(subcommand, k, True) is None]
+    return [k for k in required if _resolve_cli_flag(subcommand, k, rules, False) is None and _resolve_cli_flag(subcommand, k, rules, True) is None]
 
 
 def build_command(subcommand: str, params: Dict[str, Any], rules: Dict[str, Any]) -> Tuple[str, List[str]]:
@@ -488,11 +488,11 @@ def build_command(subcommand: str, params: Dict[str, Any], rules: Dict[str, Any]
         if v in (None, "", []):
             continue
         if isinstance(v, bool):
-            bf = _resolve_cli_flag(subcommand, k, is_bool=True)
+            bf = _resolve_cli_flag(subcommand, k, rules, is_bool=True)
             if bf and v:
                 argv.append(bf)
             continue
-        flag = _resolve_cli_flag(subcommand, k, is_bool=False)
+        flag = _resolve_cli_flag(subcommand, k, rules, is_bool=False)
         if not flag:
             raise ValueError(f"Parameter '{k}' for '{subcommand}' cannot be serialized to a CLI flag")
         argv.extend([flag, str(v)])
