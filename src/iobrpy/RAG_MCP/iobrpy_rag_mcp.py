@@ -907,6 +907,104 @@ def extract_param_updates_from_text(
     return updates
 
 
+def _text_has_parameter_shape(user_text: str, subcommand: str, rules: Dict[str, Any]) -> bool:
+    text = _normalize_text(user_text or "")
+    if not text:
+        return False
+
+    if re.search(r"\s[\w\-]+\s*[=:]\s*\S+", text):
+        return True
+    if re.search(r"(?:^|\s)/[^\s,;]+", text):
+        return True
+    if re.search(r"\b\d+\b", text):
+        return True
+
+    rule = rules.get(subcommand, {}) if isinstance(rules.get(subcommand, {}), dict) else {}
+    choices = rule.get("choices", {}) if isinstance(rule.get("choices", {}), dict) else {}
+    for vals in choices.values():
+        if not isinstance(vals, list):
+            continue
+        for v in vals:
+            if isinstance(v, str) and re.search(rf"\b{re.escape(v)}\b", text):
+                return True
+    return False
+
+
+def llm_extract_param_updates(
+    user_text: str,
+    subcommand: str,
+    rules: Dict[str, Any],
+    current_params: Dict[str, Any],
+    missing_params: List[str],
+) -> Dict[str, Any]:
+    if not subcommand or subcommand not in rules:
+        return {}
+
+    rule = rules.get(subcommand, {}) if isinstance(rules.get(subcommand, {}), dict) else {}
+    allowed = [k for k in allowed_keys_for(subcommand, rules) if k != "confirm"]
+    if not allowed:
+        return {}
+
+    constrained_rule = {
+        "required": rule.get("required", []),
+        "optional": rule.get("optional", []),
+        "choices": rule.get("choices", {}),
+        "param_types": rule.get("param_types", {}),
+        "param_hints": rule.get("param_hints", {}),
+        "param_aliases": rule.get("param_aliases", {}),
+    }
+
+    prompt = f"""
+You are an iobrpy parameter extractor, not a chatbot.
+Current command: {subcommand}
+You MUST only extract keys from allowed_keys.
+Use only the provided command schema.
+Do not invent parameters.
+Do not include explanations in param_updates values.
+If unsure, return empty param_updates.
+
+Return JSON only in this exact shape:
+{{"param_updates": {{}}, "confidence": 0.0, "reason": "..."}}
+
+allowed_keys:
+{json.dumps(allowed, ensure_ascii=False)}
+
+command_schema:
+{json.dumps(constrained_rule, ensure_ascii=False)}
+
+current_params:
+{json.dumps(current_params, ensure_ascii=False)}
+
+missing_params:
+{json.dumps(missing_params, ensure_ascii=False)}
+
+user_text:
+{json.dumps(user_text, ensure_ascii=False)}
+""".strip()
+
+    try:
+        out = _llm_generate_json(prompt)
+    except Exception:
+        return {}
+    if not isinstance(out, dict):
+        return {}
+
+    raw_updates = out.get("param_updates") if isinstance(out.get("param_updates"), dict) else {}
+    if not raw_updates:
+        return {}
+
+    safe: Dict[str, Any] = {}
+    allowed_set = set(allowed)
+    for k, v in raw_updates.items():
+        if k not in allowed_set:
+            continue
+        try:
+            safe[k] = _convert_value_for_key(k, v, rules, subcommand)
+        except Exception:
+            continue
+    return safe
+
+
 def _convert_value_for_key(key: str, value: Any, rules: Dict[str, Any], subcommand: str) -> Any:
     rule = rules.get(subcommand, {}) if isinstance(rules.get(subcommand, {}), dict) else {}
     choices = rule.get("choices", {}) if isinstance(rule.get("choices", {}), dict) else {}
@@ -1191,15 +1289,16 @@ def apply_planner_output(state: SessionState, plan: Dict[str, Any], rules: Dict[
             elif needs_confirmation or switch_strength < 0.75:
                 state.pending_switch = {"from": state.selected_command, "target": target}
                 state.phase = "clarifying"
-                return {
-                    "status": "need_info",
-                    "question": enforce_output_language(msg or (
+                return _current_command_context(
+                    state,
+                    rules,
+                    msg or (
                         f"检测到你可能想从 {state.selected_command} 切换到 {target}，是否切换？"
                         if state.prefer_chinese
                         else f"I detected you may want to switch from {state.selected_command} to {target}. Switch now?"
-                    ), state.prefer_chinese),
-                    "needs": ["confirm_switch"],
-                }
+                    ),
+                    needs=["confirm_switch"],
+                )
             elif target in rules:
                 state.snapshot()
                 old_params = deepcopy(state.params)
@@ -1224,7 +1323,12 @@ def apply_planner_output(state: SessionState, plan: Dict[str, Any], rules: Dict[
 
     if action == "clarify_intent":
         state.phase = "clarifying"
-        return {"status": "need_info", "question": enforce_output_language(msg or ("请再具体描述你的分析目标。" if state.prefer_chinese else "Please describe your analysis goal more specifically."), state.prefer_chinese), "needs": ["clarify_intent"]}
+        return _current_command_context(
+            state,
+            rules,
+            msg or ("请再具体描述你的分析目标。" if state.prefer_chinese else "Please describe your analysis goal more specifically."),
+            needs=["clarify_intent"],
+        )
 
     if action == "reply_only":
         if state.selected_command:
@@ -1368,17 +1472,31 @@ def tool_iobrpy_assistant(session_id: str, task: Optional[str] = None, answer_te
     validated = validate_planner_output(plan, rules, state)
 
     fallback_triggered = False
+    schema_updates: Dict[str, Any] = {}
     fallback_updates: Dict[str, Any] = {}
     if state.selected_command:
         merged_now, _ = merge_defaults(state.params, state.selected_command, rules)
         missing_now, _ = compute_needs(state.selected_command, rules, merged_now)
         planner_updates = validated.get("param_updates") if isinstance(validated.get("param_updates"), dict) else {}
-
-        should_fallback = (
-            (validated.get("action") != "update_params" and validated.get("action") != "remove_params") or
-            (not planner_updates)
+        looks_like_backfill = (
+            validated.get("intent_type") != "side_question"
+            and _text_has_parameter_shape(user_text, state.selected_command, rules)
         )
-        if should_fallback:
+
+        if looks_like_backfill:
+            planner_needs_help = (
+                validated.get("action") != "update_params"
+                or not planner_updates
+            )
+            if planner_needs_help:
+                schema_updates = llm_extract_param_updates(
+                    user_text=user_text,
+                    subcommand=state.selected_command,
+                    rules=rules,
+                    current_params=merged_now,
+                    missing_params=missing_now,
+                )
+
             fallback_updates = extract_param_updates_from_text(
                 user_text=user_text,
                 subcommand=state.selected_command,
@@ -1386,14 +1504,17 @@ def tool_iobrpy_assistant(session_id: str, task: Optional[str] = None, answer_te
                 current_params=merged_now,
                 missing_params=missing_now,
             )
-            if fallback_updates:
-                fallback_triggered = True
-                merged_updates = dict(planner_updates)
-                merged_updates.update(fallback_updates)
+
+            merged_updates = dict(planner_updates)
+            merged_updates.update(schema_updates)
+            merged_updates.update(fallback_updates)
+            if merged_updates:
+                fallback_triggered = bool(schema_updates or fallback_updates)
                 validated["param_updates"] = merged_updates
                 validated["action"] = "update_params"
                 validated["is_side_question"] = False
                 validated["keep_current_command"] = True
+                validated = validate_planner_output(validated, rules, state)
 
     dlog(
         "phase_before", state.phase,
@@ -1402,6 +1523,7 @@ def tool_iobrpy_assistant(session_id: str, task: Optional[str] = None, answer_te
         "validated_action", validated.get("action"),
         "validated_param_updates", validated.get("param_updates"),
         "fallback_triggered", fallback_triggered,
+        "schema_updates", schema_updates,
         "fallback_updates", fallback_updates,
     )
 
@@ -1409,6 +1531,17 @@ def tool_iobrpy_assistant(session_id: str, task: Optional[str] = None, answer_te
     state.last_message = user_text
 
     out = apply_planner_output(state, validated, rules, user_text)
+
+    if state.selected_command and out.get("status") not in {"done", "error"}:
+        ctx = _current_command_context(
+            state,
+            rules,
+            out.get("question") or "",
+            needs=out.get("needs") if isinstance(out.get("needs"), list) else None,
+        )
+        for k in ["subcommand", "params", "draft_command", "state_summary", "needs"]:
+            if k in ctx and (out.get(k) is None or k not in out):
+                out[k] = ctx[k]
 
     out["prefer_chinese"] = state.prefer_chinese
     out["phase"] = state.phase

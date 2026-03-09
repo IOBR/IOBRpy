@@ -159,8 +159,6 @@ def _is_negative_confirm(text: str) -> bool:
 
 
 def should_show_draft(assistant_result: Dict[str, Any]) -> bool:
-    status = str(assistant_result.get("status") or "")
-    phase = str(assistant_result.get("phase") or "")
     category = str(assistant_result.get("intent_category") or "")
     has_context = bool(assistant_result.get("subcommand") and assistant_result.get("draft_command"))
 
@@ -168,18 +166,7 @@ def should_show_draft(assistant_result: Dict[str, Any]) -> bool:
         return False
     if category in {"greeting", "help", "chit_chat"}:
         return False
-
-    if status in {"need_info", "ready"}:
-        return True
-    if status in {"done", "error"}:
-        return True
-
-    if phase in {"collecting", "ready", "executing"}:
-        return True
-    if phase in {"idle", "clarifying"} and not has_context:
-        return False
-
-    return has_context
+    return True
 
 
 def _debug_enabled() -> bool:
