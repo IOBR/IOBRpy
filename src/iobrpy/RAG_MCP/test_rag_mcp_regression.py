@@ -90,6 +90,49 @@ class RagMcpRegressionTests(unittest.TestCase):
         self.assertEqual(out.get("needs"), [])
         self.assertIn("iobrpy runall", out.get("draft_command") or "")
 
+    def test_planner_subcommand_reply_only_is_normalized_and_committed(self):
+        planner_out = make_planner_output(
+            action="reply_only",
+            intent_type="execution_request",
+            is_side_question=False,
+            keep_current_command=False,
+            subcommand="runall",
+            message="planner_message",
+            reason="planner_has_subcommand_but_non_commit_action",
+        )
+
+        with patch.object(mcp, "llm_plan_next_action", side_effect=planner_sequence(planner_out)), patch.object(
+            mcp,
+            "llm_select_command_from_catalog",
+            side_effect=AssertionError("selector should not run when normalization can commit"),
+        ):
+            out = mcp.tool_iobrpy_assistant("s_norm_commit", answer_text="turn_1", run=False)
+
+        self.assertEqual(mcp.get_session("s_norm_commit").selected_command, "runall")
+        self.assertEqual(out.get("subcommand"), "runall")
+        self.assertTrue(out.get("draft_command"))
+        self.assertTrue(out.get("state_summary"))
+
+    def test_side_question_with_subcommand_does_not_commit_when_no_selected_command(self):
+        planner_out = make_planner_output(
+            action="reply_only",
+            intent_type="side_question",
+            is_side_question=True,
+            keep_current_command=True,
+            subcommand="runall",
+            reason="side_question_with_subcommand",
+        )
+
+        with patch.object(mcp, "llm_plan_next_action", side_effect=planner_sequence(planner_out)), patch.object(
+            mcp,
+            "llm_select_command_from_catalog",
+            return_value={"subcommand": None, "confidence": 0.0, "reason": "not_applicable"},
+        ):
+            out = mcp.tool_iobrpy_assistant("s_side_no_commit", answer_text="turn_1", run=False)
+
+        self.assertIsNone(mcp.get_session("s_side_no_commit").selected_command)
+        self.assertNotEqual(out.get("subcommand"), "runall")
+
     def test_first_turn_selector_fallback_sets_runall_when_planner_has_no_command(self):
         planner_no_command = make_planner_output(
             action="reply_only",

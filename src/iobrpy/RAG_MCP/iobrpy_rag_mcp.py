@@ -1001,15 +1001,59 @@ def _text_has_parameter_shape(user_text: str, subcommand: str, rules: Dict[str, 
     return False
 
 
-def _should_try_command_selector(user_text: str, validated: Dict[str, Any]) -> bool:
+def _can_commit_command_from_plan(validated: Dict[str, Any], rules: Dict[str, Any]) -> bool:
+    action = str(validated.get("action") or "")
+    sub = validated.get("subcommand")
+    switch_to = validated.get("switch_to")
+
+    if action == "select_command" and sub in rules:
+        return True
+    if action in {"switch_command", "confirm_switch"} and (switch_to in rules or sub in rules):
+        return True
+    return False
+
+
+def normalize_command_commit(validated: Dict[str, Any], state: "SessionState", rules: Dict[str, Any]) -> Dict[str, Any]:
+    if state.selected_command is not None:
+        return validated
+    if _can_commit_command_from_plan(validated, rules):
+        return validated
+
+    sub = validated.get("subcommand")
+    if sub not in rules:
+        return validated
+
+    action = str(validated.get("action") or "")
+    intent_type = str(validated.get("intent_type") or "")
+    is_side_question = bool(validated.get("is_side_question", False))
+    keep_current = bool(validated.get("keep_current_command", False))
+
+    if action in {"execute", "undo", "restart_session"}:
+        return validated
+    if is_side_question:
+        return validated
+
+    if intent_type in {"execution_request", "switch_request"} or (not keep_current and intent_type != "side_question"):
+        out = dict(validated)
+        out["action"] = "select_command"
+        out["switch_to"] = None
+        out["is_side_question"] = False
+        out["keep_current_command"] = False
+        out["reason"] = "normalized_select_command_from_planner_subcommand"
+        return out
+
+    return validated
+
+
+def _should_try_command_selector(user_text: str, validated: Dict[str, Any], rules: Dict[str, Any]) -> bool:
     if not _normalize_text(user_text):
         return False
 
     action = str(validated.get("action") or "")
     intent_type = str(validated.get("intent_type") or "")
-    if action in {"restart_session", "undo", "select_command", "switch_command", "confirm_switch", "execute"}:
+    if action in {"restart_session", "undo", "execute"}:
         return False
-    if validated.get("subcommand"):
+    if _can_commit_command_from_plan(validated, rules):
         return False
     if bool(validated.get("is_side_question", False)):
         return False
@@ -1558,11 +1602,12 @@ def tool_iobrpy_assistant(session_id: str, task: Optional[str] = None, answer_te
         plan = llm_plan_next_action(state, user_text, rules)
 
     validated = validate_planner_output(plan, rules, state)
+    validated = normalize_command_commit(validated, state, rules)
 
     selector_fallback_used = False
     selector_out: Dict[str, Any] = {"subcommand": None, "confidence": 0.0, "reason": ""}
     selector_threshold = float(os.getenv("IOBRPY_SELECTOR_CONFIDENCE", "0.7"))
-    if state.selected_command is None and _should_try_command_selector(user_text, validated):
+    if state.selected_command is None and _should_try_command_selector(user_text, validated, rules):
         selector_out = llm_select_command_from_catalog(
             user_text=user_text,
             rules=rules,
@@ -1594,6 +1639,7 @@ def tool_iobrpy_assistant(session_id: str, task: Optional[str] = None, answer_te
                 rules,
                 state,
             )
+            validated = normalize_command_commit(validated, state, rules)
 
     fallback_triggered = False
     schema_updates: Dict[str, Any] = {}
