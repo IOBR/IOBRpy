@@ -385,11 +385,23 @@ FLAG_MAP = {
     "od": "--od", "t": "-t", "k": "-k", "bam_dir": "--bam-dir", "use_exon": "--use-exon",
     "sample": "--sample", "name": "--name", "read1": "--read1", "read2": "--read2",
 }
+
+PARAM_FLAGS_BY_COMMAND: Dict[str, Dict[str, str]] = {
+    "hla_typing": {
+        "use_exon": "-u",
+    },
+    "spechla": {
+        "use_exon": "-u",
+    },
+}
+
 BOOL_FLAGS = {
     "repseq": "--repseq", "skipMateExtension": "--skipMateExtension", "abnormalUnmapFlag": "--abnormalUnmapFlag",
     "assembleWithRef": "--assembleWithRef", "noExtraction": "--noExtraction", "outputReadAssignment": "--outputReadAssignment",
     "no_auto_install": "--no-auto-install",
 }
+
+BOOL_FLAGS_BY_COMMAND: Dict[str, Dict[str, str]] = {}
 
 
 
@@ -414,7 +426,10 @@ def _default_cli_flag_for_key(key: str) -> Optional[str]:
     return "--" + key
 
 
-def _resolve_cli_flag(key: str, is_bool: bool = False) -> Optional[str]:
+def _resolve_cli_flag(subcommand: str, key: str, is_bool: bool = False) -> Optional[str]:
+    per_command = (BOOL_FLAGS_BY_COMMAND if is_bool else PARAM_FLAGS_BY_COMMAND).get(subcommand, {})
+    if key in per_command:
+        return per_command[key]
     if is_bool:
         return BOOL_FLAGS.get(key) or _default_cli_flag_for_key(key)
     return FLAG_MAP.get(key) or _default_cli_flag_for_key(key)
@@ -438,10 +453,10 @@ def audit_parameter_link_consistency(rules: Dict[str, Any]) -> Dict[str, Any]:
         required_unserializable: List[str] = []
         optional_unserializable: List[str] = []
         for k in required:
-            if _resolve_cli_flag(k, False) is None:
+            if _resolve_cli_flag(cmd, k, False) is None:
                 required_unserializable.append(k)
         for k in optional:
-            if _resolve_cli_flag(k, False) is None and _resolve_cli_flag(k, True) is None:
+            if _resolve_cli_flag(cmd, k, False) is None and _resolve_cli_flag(cmd, k, True) is None:
                 optional_unserializable.append(k)
         report[cmd] = {
             "required_unserializable": required_unserializable,
@@ -453,7 +468,7 @@ def audit_parameter_link_consistency(rules: Dict[str, Any]) -> Dict[str, Any]:
 def _required_without_serializable_flag(subcommand: str, rules: Dict[str, Any]) -> List[str]:
     rule = rules.get(subcommand, {}) if isinstance(rules.get(subcommand, {}), dict) else {}
     required = rule.get("required", []) if isinstance(rule.get("required", []), list) else []
-    return [k for k in required if _resolve_cli_flag(k, False) is None and _resolve_cli_flag(k, True) is None]
+    return [k for k in required if _resolve_cli_flag(subcommand, k, False) is None and _resolve_cli_flag(subcommand, k, True) is None]
 
 
 def build_command(subcommand: str, params: Dict[str, Any], rules: Dict[str, Any]) -> Tuple[str, List[str]]:
@@ -473,11 +488,11 @@ def build_command(subcommand: str, params: Dict[str, Any], rules: Dict[str, Any]
         if v in (None, "", []):
             continue
         if isinstance(v, bool):
-            bf = _resolve_cli_flag(k, is_bool=True)
+            bf = _resolve_cli_flag(subcommand, k, is_bool=True)
             if bf and v:
                 argv.append(bf)
             continue
-        flag = _resolve_cli_flag(k, is_bool=False)
+        flag = _resolve_cli_flag(subcommand, k, is_bool=False)
         if not flag:
             raise ValueError(f"Parameter '{k}' for '{subcommand}' cannot be serialized to a CLI flag")
         argv.extend([flag, str(v)])
@@ -890,6 +905,34 @@ def _state_summary_text(state: SessionState, merged: Dict[str, Any], missing: Li
     return f"Current command: iobrpy {state.selected_command}\nRecognized: {recognized}\nMissing: {missing_txt}"
 
 
+def _current_command_context(state: SessionState, rules: Dict[str, Any], message: str, needs: Optional[List[str]] = None) -> Dict[str, Any]:
+    out: Dict[str, Any] = {
+        "status": "need_info",
+        "question": enforce_output_language(message, state.prefer_chinese),
+        "needs": needs or [],
+    }
+    if not state.selected_command:
+        return out
+
+    merged, sources = merge_defaults(state.params, state.selected_command, rules)
+    missing, _ = compute_needs(state.selected_command, rules, merged)
+    try:
+        draft_cmd, _ = build_command(state.selected_command, merged, rules)
+    except ValueError:
+        draft_cmd = None
+
+    out.update(
+        {
+            "subcommand": state.selected_command,
+            "draft_command": draft_cmd,
+            "params": merged,
+            "needs": missing if needs is None else needs,
+            "state_summary": _state_summary_text(state, merged, missing, sources, state.prefer_chinese),
+        }
+    )
+    return out
+
+
 def apply_planner_output(state: SessionState, plan: Dict[str, Any], rules: Dict[str, Any], user_text: str) -> Dict[str, Any]:
     action = plan.get("action", "reply_only")
     msg = enforce_output_language(plan.get("message") or "", state.prefer_chinese)
@@ -914,8 +957,15 @@ def apply_planner_output(state: SessionState, plan: Dict[str, Any], rules: Dict[
             return {"status": "need_info", "question": enforce_output_language(msg or ("没有可撤销的历史。" if state.prefer_chinese else "No history to undo."), state.prefer_chinese), "needs": []}
 
     if is_side_question or (action == "reply_only" and keep_current):
-        state.phase = "idle" if not state.selected_command else state.phase
-        return {"status": "need_info", "question": enforce_output_language(msg or ("请继续告诉我你的任务。" if state.prefer_chinese else "Please continue with your task details."), state.prefer_chinese), "needs": []}
+        if state.selected_command:
+            state.phase = "collecting" if state.phase in {"idle", "clarifying"} else state.phase
+        else:
+            state.phase = "idle"
+        return _current_command_context(
+            state,
+            rules,
+            msg or ("请继续告诉我你的任务。" if state.prefer_chinese else "Please continue with your task details."),
+        )
 
     if state.pending_switch and action == "confirm_switch":
         target = plan.get("switch_to") or plan.get("subcommand") or state.pending_switch.get("target")
@@ -974,8 +1024,15 @@ def apply_planner_output(state: SessionState, plan: Dict[str, Any], rules: Dict[
         return {"status": "need_info", "question": enforce_output_language(msg or ("请再具体描述你的分析目标。" if state.prefer_chinese else "Please describe your analysis goal more specifically."), state.prefer_chinese), "needs": ["clarify_intent"]}
 
     if action == "reply_only":
-        state.phase = "idle" if not state.selected_command else state.phase
-        return {"status": "need_info", "question": enforce_output_language(msg or ("请继续告诉我你的任务。" if state.prefer_chinese else "Please continue with your task details."), state.prefer_chinese), "needs": []}
+        if state.selected_command:
+            state.phase = "collecting" if state.phase in {"idle", "clarifying"} else state.phase
+        else:
+            state.phase = "idle"
+        return _current_command_context(
+            state,
+            rules,
+            msg or ("请继续告诉我你的任务。" if state.prefer_chinese else "Please continue with your task details."),
+        )
 
     if action == "update_params":
         if not state.selected_command:
