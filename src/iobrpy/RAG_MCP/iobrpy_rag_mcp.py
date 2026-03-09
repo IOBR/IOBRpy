@@ -1091,6 +1091,7 @@ def apply_planner_output(state: SessionState, plan: Dict[str, Any], rules: Dict[
             "needs": mapping_errors,
             "draft_command": draft_cmd,
             "params": merged,
+            "state_summary": _state_summary_text(state, merged, missing, sources, state.prefer_chinese),
         }
 
     consistency = audit_parameter_link_consistency(rules).get(state.selected_command, {})
@@ -1101,9 +1102,10 @@ def apply_planner_output(state: SessionState, plan: Dict[str, Any], rules: Dict[
 
     if missing or action == "ask_missing_params":
         state.phase = "collecting"
-        q = msg or ("还不能执行，参数尚未完整。" if state.prefer_chinese else "Cannot execute yet, parameters are incomplete.")
-        q += "\n\n" + _state_summary_text(state, merged, missing, sources, state.prefer_chinese)
-        q = enforce_output_language(q, state.prefer_chinese)
+        q = enforce_output_language(
+            msg or ("还不能执行，参数尚未完整。" if state.prefer_chinese else "Cannot execute yet, parameters are incomplete."),
+            state.prefer_chinese,
+        )
         return {
             "status": "need_info",
             "subcommand": state.selected_command,
@@ -1112,6 +1114,7 @@ def apply_planner_output(state: SessionState, plan: Dict[str, Any], rules: Dict[
             "draft_command": draft_cmd,
             "params": merged,
             "warnings": optional_unserializable,
+            "state_summary": _state_summary_text(state, merged, missing, sources, state.prefer_chinese),
         }
 
     # ready gate
@@ -1123,7 +1126,9 @@ def apply_planner_output(state: SessionState, plan: Dict[str, Any], rules: Dict[
             "question": enforce_output_language(msg or ("已准备好执行。" if state.prefer_chinese else "Ready to execute."), state.prefer_chinese),
             "draft_command": draft_cmd,
             "params": merged,
+            "needs": missing,
             "warnings": optional_unserializable,
+            "state_summary": _state_summary_text(state, merged, missing, sources, state.prefer_chinese),
         }
 
     return {
@@ -1132,7 +1137,9 @@ def apply_planner_output(state: SessionState, plan: Dict[str, Any], rules: Dict[
         "question": enforce_output_language(msg or ("参数已满足，可以执行。" if state.prefer_chinese else "All required parameters are satisfied. Ready to run."), state.prefer_chinese),
         "draft_command": draft_cmd,
         "params": merged,
+        "needs": missing,
         "warnings": optional_unserializable,
+        "state_summary": _state_summary_text(state, merged, missing, sources, state.prefer_chinese),
     }
 
 
