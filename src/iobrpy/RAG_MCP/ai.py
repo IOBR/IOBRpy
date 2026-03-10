@@ -122,14 +122,15 @@ def _build_main_key_bindings() -> Optional[Any]:
         return None
     kb = KeyBindings()
 
-    @kb.add("c-j")
-    def _(event) -> None:  # type: ignore
-        event.current_buffer.insert_text("\n")
-
-    @kb.add("escape", "enter")
+    @kb.add("enter")
     @kb.add("c-s")
     def _(event) -> None:  # type: ignore
         event.current_buffer.validate_and_handle()
+
+    @kb.add("c-j")
+    @kb.add("escape", "enter")
+    def _(event) -> None:  # type: ignore
+        event.current_buffer.insert_text("\n")
 
     return kb
 
@@ -143,11 +144,15 @@ def apply_newline_to_text(text: str, cursor_pos: int) -> Tuple[str, int]:
 
 def classify_main_shortcut(shortcut: str) -> str:
     s = (shortcut or "").strip().lower()
-    if s in {"c-j", "enter"}:
+    if s in {"c-j", "escape+enter"}:
         return "newline"
-    if s in {"escape+enter", "c-s"}:
+    if s in {"enter", "c-s"}:
         return "submit"
     return "unknown"
+
+
+def build_main_input_help_text() -> str:
+    return "Multi-line input enabled: Enter=submit, Ctrl+J=newline, Esc+Enter=newline."
 
 
 def build_main_prompt_session() -> Optional[Any]:
@@ -404,7 +409,7 @@ def run_interactive(logdir: str, *, llm: str, api_key: Optional[str] = None, mod
     print(f"model  : {resolved_model}")
     print(_ui_text("type_request", prefer_chinese))
     print(_ui_text("commands", prefer_chinese) + "\n")
-    print("Multi-line input enabled: Enter=newline, Esc+Enter or Ctrl+S=submit, Ctrl+J=newline.")
+    print(build_main_input_help_text())
 
     def call(answer: Optional[str] = None) -> Dict[str, Any]:
         return server.tool_iobrpy_assistant(session_id, task=None, answer_text=answer, run=False)

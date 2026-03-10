@@ -22,14 +22,20 @@ class AICliInputTests(unittest.TestCase):
         self.assertEqual(out, payload)
 
     def test_main_shortcut_submit_classification(self):
-        self.assertEqual(ai.classify_main_shortcut("escape+enter"), "submit")
+        self.assertEqual(ai.classify_main_shortcut("enter"), "submit")
         self.assertEqual(ai.classify_main_shortcut("c-s"), "submit")
 
     def test_main_shortcut_newline_inserts_newline_not_submit(self):
         self.assertEqual(ai.classify_main_shortcut("c-j"), "newline")
+        self.assertEqual(ai.classify_main_shortcut("escape+enter"), "newline")
         text, pos = ai.apply_newline_to_text("abc", 1)
         self.assertEqual(text, "a\nbc")
         self.assertEqual(pos, 2)
+
+    def test_main_input_help_text_matches_enter_submit_contract(self):
+        help_text = ai.build_main_input_help_text()
+        self.assertIn("Enter=submit", help_text)
+        self.assertIn("Ctrl+J=newline", help_text)
 
     def test_confirmation_other_text_routes_back_to_main_flow(self):
         calls = []
