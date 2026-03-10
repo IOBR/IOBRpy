@@ -17,10 +17,22 @@ from typing import Any, Dict, Optional, Tuple
 
 try:
     from prompt_toolkit import PromptSession  # type: ignore
+    from prompt_toolkit.application import Application  # type: ignore
+    from prompt_toolkit.buffer import Buffer  # type: ignore
+    from prompt_toolkit.layout import Layout  # type: ignore
+    from prompt_toolkit.layout.containers import HSplit, Window  # type: ignore
+    from prompt_toolkit.layout.controls import BufferControl, FormattedTextControl  # type: ignore
     from prompt_toolkit.key_binding import KeyBindings  # type: ignore
     from prompt_toolkit.history import InMemoryHistory  # type: ignore
 except Exception:
     PromptSession = None
+    Application = None
+    Buffer = None
+    Layout = None
+    HSplit = None
+    Window = None
+    BufferControl = None
+    FormattedTextControl = None
     KeyBindings = None
     InMemoryHistory = None
 
@@ -117,19 +129,37 @@ _MAIN_PROMPT_SESSION: Optional[Any] = None
 _CONFIRM_PROMPT_SESSION: Optional[Any] = None
 
 
-def _build_main_key_bindings() -> Optional[Any]:
+def main_input_supports_shift_enter() -> bool:
+    """Most VT terminals send Enter and Shift+Enter as the same key sequence."""
+    return False
+
+
+class MainComposer:
+    def __init__(self, *, app: Any, buffer: Any, supports_shift_enter: bool):
+        self.app = app
+        self.buffer = buffer
+        self.supports_shift_enter = supports_shift_enter
+
+    def run(self) -> str:
+        return str(self.app.run())
+
+
+def _build_main_key_bindings(*, supports_shift_enter: bool) -> Optional[Any]:
     if KeyBindings is None:
         return None
     kb = KeyBindings()
 
-    @kb.add("enter")
+    @kb.add("enter", eager=True)
+    @kb.add("c-m", eager=True)
     def _(event) -> None:  # type: ignore
         event.current_buffer.validate_and_handle()
+        if not event.app.is_done:
+            event.app.exit(result=event.current_buffer.text)
 
-    # Shift+Enter may be terminal-dependent; bind when supported by input stream.
-    @kb.add("s-enter")
-    def _(event) -> None:  # type: ignore
-        event.current_buffer.insert_text("\n")
+    if supports_shift_enter:
+        @kb.add("s-enter", eager=True)
+        def _(event) -> None:  # type: ignore
+            event.current_buffer.insert_text("\n")
 
     return kb
 
@@ -158,7 +188,9 @@ def classify_main_shortcut(shortcut: str) -> str:
 
 
 def build_main_input_help_text() -> str:
-    return "Composer mode: Enter=submit, Shift+Enter=newline (terminal support may vary)."
+    if main_input_supports_shift_enter():
+        return "Composer mode: Enter=submit, Shift+Enter=newline."
+    return "Composer mode: Enter=submit. Note: standard terminals usually cannot distinguish Shift+Enter from Enter."
 
 
 def build_main_prompt_prefix() -> str:
@@ -167,6 +199,37 @@ def build_main_prompt_prefix() -> str:
 
 def build_main_continuation_prefix() -> str:
     return "... "
+
+
+def create_main_buffer() -> Optional[Any]:
+    if Buffer is None:
+        return None
+    return Buffer(multiline=True)
+
+
+def build_main_composer(*, input_obj: Optional[Any] = None, output_obj: Optional[Any] = None) -> Optional[MainComposer]:
+    if any(obj is None for obj in (Application, BufferControl, Layout, HSplit, Window, FormattedTextControl)):
+        return None
+    buf = create_main_buffer()
+    if buf is None:
+        return None
+
+    prefix_win = Window(
+        FormattedTextControl(text=build_main_prompt_prefix()),
+        height=1,
+        dont_extend_height=True,
+    )
+    buffer_control = BufferControl(buffer=buf, focusable=True)
+    composer_win = Window(content=buffer_control, wrap_lines=False)
+    layout = Layout(HSplit([prefix_win, composer_win]), focused_element=buffer_control)
+    app = Application(
+        layout=layout,
+        key_bindings=_build_main_key_bindings(supports_shift_enter=main_input_supports_shift_enter()),
+        full_screen=False,
+        input=input_obj,
+        output=output_obj,
+    )
+    return MainComposer(app=app, buffer=buf, supports_shift_enter=main_input_supports_shift_enter())
 
 
 def build_main_prompt_session() -> Optional[Any]:
@@ -179,7 +242,7 @@ def build_main_prompt_session() -> Optional[Any]:
         _MAIN_PROMPT_SESSION = PromptSession(
             history=InMemoryHistory(),
             multiline=True,
-            key_bindings=_build_main_key_bindings(),
+            key_bindings=_build_main_key_bindings(supports_shift_enter=main_input_supports_shift_enter()),
             enable_history_search=True,
         )
     except Exception:
@@ -221,6 +284,18 @@ def _fallback_multiline_input(prompt_text: str) -> str:
 
 
 def read_main_user_input(prompt_text: str = "IOBRpy> ", session: Optional[Any] = None) -> str:
+    _ = prompt_text  # prefix is rendered by the composer layout.
+    composer = build_main_composer()
+    if composer is not None:
+        try:
+            return composer.run()
+        except KeyboardInterrupt:
+            raise
+        except EOFError:
+            raise
+        except Exception:
+            pass
+
     session = session or build_main_prompt_session()
     if session is not None:
         try:

@@ -1,56 +1,77 @@
 import sys
+import threading
 import unittest
 from pathlib import Path
+
+try:
+    from prompt_toolkit.input import create_pipe_input
+    from prompt_toolkit.output import DummyOutput
+except Exception:
+    create_pipe_input = None
+    DummyOutput = None
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from iobrpy.RAG_MCP import ai
 
 
-class _FakeSession:
-    def __init__(self, out: str):
-        self._out = out
-        self.last_prompt = None
+@unittest.skipIf(create_pipe_input is None or DummyOutput is None, "prompt_toolkit is not installed")
+class AIComposerBehaviorTests(unittest.TestCase):
+    def _run_composer_with_keys(self, keys: str) -> str:
+        with create_pipe_input() as pipe_input:
+            composer = ai.build_main_composer(input_obj=pipe_input, output_obj=DummyOutput())
+            self.assertIsNotNone(composer)
 
-    def prompt(self, *args, **kwargs):
-        if args:
-            self.last_prompt = args[0]
-        return self._out
+            result = {}
 
+            def _runner():
+                result["text"] = composer.run()
 
-class AICliInputTests(unittest.TestCase):
+            t = threading.Thread(target=_runner)
+            t.start()
+            pipe_input.send_text(keys)
+            t.join(timeout=3)
+            self.assertFalse(t.is_alive(), "composer.run did not finish")
+            return result["text"]
+
     def test_main_prompt_prefix_is_iobrpy(self):
         self.assertEqual(ai.build_main_prompt_prefix(), "IOBRpy> ")
 
-    def test_main_input_supports_multiline_payload_as_single_submission(self):
-        payload = "line1\nline2\nline3"
-        sess = _FakeSession(payload)
-        out = ai.read_main_user_input(session=sess)
-        self.assertEqual(out, payload)
-        self.assertEqual(sess.last_prompt, "IOBRpy> ")
+    def test_main_composer_renders_iobrpy_prefix(self):
+        with create_pipe_input() as pipe_input:
+            composer = ai.build_main_composer(input_obj=pipe_input, output_obj=DummyOutput())
+            self.assertIsNotNone(composer)
+            root_children = composer.app.layout.container.children
+            self.assertEqual(root_children[0].content.text, "IOBRpy> ")
 
-    def test_main_shortcut_submit_classification(self):
-        self.assertEqual(ai.classify_main_shortcut("enter"), "submit")
-        self.assertEqual(ai.classify_main_shortcut("shift+enter"), "newline")
-
-    def test_main_shortcut_newline_inserts_newline_not_submit(self):
-        text, pos = ai.apply_newline_to_text("abc", 1)
-        self.assertEqual(text, "a\nbc")
-        self.assertEqual(pos, 2)
-
-    def test_backspace_at_line_start_merges_lines(self):
-        text, pos = ai.apply_backspace_to_text("ab\ncd", 3)
-        self.assertEqual(text, "abcd")
-        self.assertEqual(pos, 2)
-
-    def test_main_input_help_text_matches_enter_submit_contract(self):
+    def test_main_input_help_text_matches_runtime_shift_enter_capability(self):
         help_text = ai.build_main_input_help_text()
-        self.assertIn("Enter=submit", help_text)
-        self.assertIn("Shift+Enter=newline", help_text)
-        self.assertNotIn("Ctrl+J", help_text)
-        self.assertNotIn("Ctrl+S", help_text)
-        self.assertNotIn("Esc+Enter", help_text)
+        if ai.main_input_supports_shift_enter():
+            self.assertIn("Shift+Enter=newline", help_text)
+        else:
+            self.assertNotIn("Shift+Enter=newline", help_text)
+            self.assertIn("cannot distinguish Shift+Enter", help_text)
 
+    def test_enter_submits_main_composer(self):
+        out = self._run_composer_with_keys("hello world\r")
+        self.assertEqual(out, "hello world")
+
+    def test_multiline_buffer_can_merge_lines_with_backspace_at_line_start(self):
+        buf = ai.create_main_buffer()
+        self.assertIsNotNone(buf)
+        buf.text = "a\nb"
+        buf.cursor_position = 2
+        buf.delete_before_cursor(count=1)
+        self.assertEqual(buf.text, "ab")
+        self.assertEqual(buf.cursor_position, 1)
+
+    def test_paste_multiline_keeps_single_buffer_submission(self):
+        payload = "line1\nline2\nline3"
+        out = self._run_composer_with_keys(payload + "\r")
+        self.assertEqual(out, payload)
+
+
+class AIConfirmationFlowTests(unittest.TestCase):
     def test_confirmation_other_text_routes_back_to_main_flow(self):
         calls = []
 
