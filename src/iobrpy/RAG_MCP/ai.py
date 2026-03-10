@@ -17,23 +17,9 @@ from typing import Any, Dict, Optional, Tuple
 
 try:
     from prompt_toolkit import PromptSession  # type: ignore
-    from prompt_toolkit.application import Application  # type: ignore
-    from prompt_toolkit.buffer import Buffer  # type: ignore
-    from prompt_toolkit.layout import Layout  # type: ignore
-    from prompt_toolkit.layout.containers import HSplit, Window  # type: ignore
-    from prompt_toolkit.layout.controls import BufferControl, FormattedTextControl  # type: ignore
-    from prompt_toolkit.key_binding import KeyBindings  # type: ignore
     from prompt_toolkit.history import InMemoryHistory  # type: ignore
 except Exception:
     PromptSession = None
-    Application = None
-    Buffer = None
-    Layout = None
-    HSplit = None
-    Window = None
-    BufferControl = None
-    FormattedTextControl = None
-    KeyBindings = None
     InMemoryHistory = None
 
 try:
@@ -129,68 +115,17 @@ _MAIN_PROMPT_SESSION: Optional[Any] = None
 _CONFIRM_PROMPT_SESSION: Optional[Any] = None
 
 
-def main_input_supports_shift_enter() -> bool:
-    """Most VT terminals send Enter and Shift+Enter as the same key sequence."""
-    return False
-
-
-class MainComposer:
-    def __init__(self, *, app: Any, buffer: Any, supports_shift_enter: bool):
-        self.app = app
-        self.buffer = buffer
-        self.supports_shift_enter = supports_shift_enter
-
-    def run(self) -> str:
-        return str(self.app.run())
-
-
-def _build_main_key_bindings(*, supports_shift_enter: bool) -> Optional[Any]:
-    if KeyBindings is None:
-        return None
-    kb = KeyBindings()
-
-    @kb.add("enter", eager=True)
-    @kb.add("c-m", eager=True)
-    def _(event) -> None:  # type: ignore
-        event.current_buffer.validate_and_handle()
-        if not event.app.is_done:
-            event.app.exit(result=event.current_buffer.text)
-
-    if supports_shift_enter:
-        @kb.add("s-enter", eager=True)
-        def _(event) -> None:  # type: ignore
-            event.current_buffer.insert_text("\n")
-
-    return kb
-
-
-def apply_newline_to_text(text: str, cursor_pos: int) -> Tuple[str, int]:
-    left = text[:cursor_pos]
-    right = text[cursor_pos:]
-    out = left + "\n" + right
-    return out, cursor_pos + 1
-
-
-def apply_backspace_to_text(text: str, cursor_pos: int) -> Tuple[str, int]:
-    if cursor_pos <= 0:
-        return text, 0
-    out = text[: cursor_pos - 1] + text[cursor_pos:]
-    return out, cursor_pos - 1
-
-
-def classify_main_shortcut(shortcut: str) -> str:
-    s = (shortcut or "").strip().lower()
-    if s in {"shift+enter", "s-enter"}:
-        return "newline"
-    if s in {"enter"}:
-        return "submit"
-    return "unknown"
+def normalize_main_input_text(text: str) -> str:
+    normalized = (text or "").replace("\r\n", "\n").replace("\r", "\n")
+    if "\n" not in normalized:
+        return normalized.strip()
+    lines = [line.strip() for line in normalized.split("\n")]
+    lines = [line for line in lines if line]
+    return " ".join(lines)
 
 
 def build_main_input_help_text() -> str:
-    if main_input_supports_shift_enter():
-        return "Composer mode: Enter=submit, Shift+Enter=newline."
-    return "Composer mode: Enter=submit. Note: standard terminals usually cannot distinguish Shift+Enter from Enter."
+    return "Single-line input mode. Press Enter to submit. Multi-line paste is supported and will be sent as one request."
 
 
 def build_main_prompt_prefix() -> str:
@@ -199,37 +134,6 @@ def build_main_prompt_prefix() -> str:
 
 def build_main_continuation_prefix() -> str:
     return "... "
-
-
-def create_main_buffer() -> Optional[Any]:
-    if Buffer is None:
-        return None
-    return Buffer(multiline=True)
-
-
-def build_main_composer(*, input_obj: Optional[Any] = None, output_obj: Optional[Any] = None) -> Optional[MainComposer]:
-    if any(obj is None for obj in (Application, BufferControl, Layout, HSplit, Window, FormattedTextControl)):
-        return None
-    buf = create_main_buffer()
-    if buf is None:
-        return None
-
-    prefix_win = Window(
-        FormattedTextControl(text=build_main_prompt_prefix()),
-        height=1,
-        dont_extend_height=True,
-    )
-    buffer_control = BufferControl(buffer=buf, focusable=True)
-    composer_win = Window(content=buffer_control, wrap_lines=False)
-    layout = Layout(HSplit([prefix_win, composer_win]), focused_element=buffer_control)
-    app = Application(
-        layout=layout,
-        key_bindings=_build_main_key_bindings(supports_shift_enter=main_input_supports_shift_enter()),
-        full_screen=False,
-        input=input_obj,
-        output=output_obj,
-    )
-    return MainComposer(app=app, buffer=buf, supports_shift_enter=main_input_supports_shift_enter())
 
 
 def build_main_prompt_session() -> Optional[Any]:
@@ -241,8 +145,7 @@ def build_main_prompt_session() -> Optional[Any]:
     try:
         _MAIN_PROMPT_SESSION = PromptSession(
             history=InMemoryHistory(),
-            multiline=True,
-            key_bindings=_build_main_key_bindings(supports_shift_enter=main_input_supports_shift_enter()),
+            multiline=False,
             enable_history_search=True,
         )
     except Exception:
@@ -284,32 +187,18 @@ def _fallback_multiline_input(prompt_text: str) -> str:
 
 
 def read_main_user_input(prompt_text: str = "IOBRpy> ", session: Optional[Any] = None) -> str:
-    _ = prompt_text  # prefix is rendered by the composer layout.
-    composer = build_main_composer()
-    if composer is not None:
-        try:
-            return composer.run()
-        except KeyboardInterrupt:
-            raise
-        except EOFError:
-            raise
-        except Exception:
-            pass
-
     session = session or build_main_prompt_session()
     if session is not None:
         try:
-            return session.prompt(
-                prompt_text,
-                prompt_continuation=lambda width, line_no, is_soft_wrap: build_main_continuation_prefix(),
-            )
+            raw = session.prompt(prompt_text)
+            return normalize_main_input_text(raw)
         except KeyboardInterrupt:
             raise
         except EOFError:
             raise
         except Exception:
             pass
-    return _fallback_multiline_input(prompt_text)
+    return normalize_main_input_text(_fallback_multiline_input(prompt_text))
 
 
 def read_confirmation_input(prompt_text: str, session: Optional[Any] = None) -> str:
