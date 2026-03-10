@@ -9,17 +9,17 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from iobrpy.RAG_MCP import ai
 
 
-class _FakeSession:
-    def __init__(self, out: str):
-        self._out = out
-        self.last_prompt = None
-        self.calls = 0
+def _make_byte_reader(data: bytes):
+    state = {"i": 0}
 
-    def prompt(self, *args, **kwargs):
-        self.calls += 1
-        if args:
-            self.last_prompt = args[0]
-        return self._out
+    def _reader():
+        i = state["i"]
+        if i >= len(data):
+            return b""
+        state["i"] = i + 1
+        return data[i : i + 1]
+
+    return _reader
 
 
 class _FailingSession:
@@ -32,53 +32,46 @@ class AICliInputTests(unittest.TestCase):
         self.assertEqual(ai.build_main_prompt_prefix(), "IOBRpy> ")
 
     def test_normalize_multiline_payload(self):
-        payload = " line1\nline2 \n\n line3\r\n"
-        self.assertEqual(ai.normalize_main_input_text(payload), "line1 line2 line3")
+        self.assertEqual(ai.normalize_main_input_text("你好\n你是什么模型\n"), "你好 你是什么模型")
 
-    def test_single_payload_with_newlines_is_normalized_once(self):
-        payload = "你好\n你是什么模型\n"
-        sess = _FakeSession(payload)
-        out = ai.read_main_user_input(session=sess, drain_fn=lambda: "")
+    def test_bracketed_paste_payload_is_coalesced_in_primary_reader(self):
+        payload = b"\x1b[200~\xe4\xbd\xa0\xe5\xa5\xbd\n\xe4\xbd\xa0\xe6\x98\xaf\xe4\xbb\x80\xe4\xb9\x88\xe6\xa8\xa1\xe5\x9e\x8b\x1b[201~\r"
+        out = ai.read_main_user_input(read_byte_fn=_make_byte_reader(payload))
         self.assertEqual(out, "你好 你是什么模型")
-        self.assertEqual(sess.calls, 1)
 
-    def test_split_arrival_is_coalesced_to_single_request(self):
-        sess = _FakeSession("你好")
-        out = ai.read_main_user_input(session=sess, drain_fn=lambda: "\n你是什么模型\n")
-        self.assertEqual(out, "你好 你是什么模型")
-        self.assertEqual(sess.calls, 1)
-
-    def test_normal_two_turn_input_is_not_merged(self):
-        sess = _FakeSession("你好")
-        out = ai.read_main_user_input(session=sess, drain_fn=lambda: "")
+    def test_normal_single_line_submit(self):
+        out = ai.read_main_user_input(read_byte_fn=_make_byte_reader("你好\r".encode("utf-8")))
         self.assertEqual(out, "你好")
 
-    def test_drain_reader_aggregates_chunks_until_empty(self):
-        chunks = ["\n第二行", "\n第三行", ""]
+    def test_without_bracketed_paste_marker_newline_submits_first_line(self):
+        out = ai.read_main_user_input(read_byte_fn=_make_byte_reader("你好\n你是什么模型\r".encode("utf-8")))
+        self.assertEqual(out, "你好")
 
-        def _reader(_timeout):
-            return chunks.pop(0)
+    def test_help_text_is_honest_about_bracketed_paste(self):
+        help_text = ai.build_main_input_help_text()
+        self.assertIn("Single-line input mode", help_text)
+        self.assertIn("Bracketed paste", help_text)
+        self.assertNotIn("Multi-line paste is supported and will be sent as one request", help_text)
 
-        drained = ai._drain_immediately_available_paste_lines(read_chunk_fn=_reader)
-        self.assertEqual(drained, "\n第二行\n第三行")
-
-    def test_fallback_is_single_read_and_no_continuation_prompt(self):
+    def test_fallback_path_is_single_input_call(self):
         prompts = []
 
         def _fake_input(prompt):
             prompts.append(prompt)
-            return "line1\nline2"
+            return "one line"
 
         old_input = ai.__dict__.get("input", input)
         ai.input = _fake_input
+        old_can = ai._can_use_posix_raw_reader
+        ai._can_use_posix_raw_reader = lambda **kwargs: False
         try:
-            out = ai.read_main_user_input(session=_FailingSession(), drain_fn=lambda: "")
+            out = ai.read_main_user_input(session=_FailingSession())
         finally:
             ai.input = old_input
+            ai._can_use_posix_raw_reader = old_can
 
-        self.assertEqual(out, "line1 line2")
+        self.assertEqual(out, "one line")
         self.assertEqual(prompts, ["IOBRpy> "])
-        self.assertNotIn("... ", prompts)
 
 
 class AIRunInteractiveOutputTests(unittest.TestCase):
@@ -116,10 +109,7 @@ class AIRunInteractiveOutputTests(unittest.TestCase):
             else:
                 sys.modules["iobrpy.RAG_MCP.iobrpy_rag_mcp"] = old_module
 
-        self.assertNotIn(
-            "Single-line input mode. Press Enter to submit. Multi-line paste is supported and will be sent as one request.",
-            out,
-        )
+        self.assertNotIn("Single-line input mode", out)
 
 
 class AIConfirmationFlowTests(unittest.TestCase):

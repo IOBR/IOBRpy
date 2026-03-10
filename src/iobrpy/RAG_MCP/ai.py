@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import argparse
+import codecs
 import getpass
 import os
 import select
@@ -30,6 +31,13 @@ try:
 except Exception:
     readline = None  # type: ignore
 
+
+try:
+    import termios
+    import tty
+except Exception:
+    termios = None  # type: ignore
+    tty = None  # type: ignore
 
 @dataclass
 class ProviderProfile:
@@ -128,24 +136,12 @@ def normalize_main_input_text(text: str) -> str:
 
 
 def coalesce_paste_payload_for_single_line(text: str) -> str:
-    # Bracketed paste may contain newlines; keep it as one logical submission.
+    # Bracketed paste payload is treated as one submission and normalized at once.
     return normalize_main_input_text(text)
 
 
-def _build_main_key_bindings() -> Optional[Any]:
-    if KeyBindings is None:
-        return None
-    kb = KeyBindings()
-
-    @kb.add("bracketed-paste")
-    def _(event) -> None:  # type: ignore
-        event.current_buffer.insert_text(coalesce_paste_payload_for_single_line(event.data))
-
-    return kb
-
-
 def build_main_input_help_text() -> str:
-    return "Single-line input mode. Press Enter to submit. Multi-line paste is supported and will be sent as one request."
+    return "Single-line input mode. Press Enter to submit. Bracketed paste payloads are coalesced when terminal support is available."
 
 
 def build_main_prompt_prefix() -> str:
@@ -163,108 +159,144 @@ def build_main_prompt_session() -> Optional[Any]:
     if PromptSession is None or InMemoryHistory is None:
         return None
     try:
-        _MAIN_PROMPT_SESSION = PromptSession(
-            history=InMemoryHistory(),
-            multiline=False,
-            key_bindings=_build_main_key_bindings(),
-            enable_history_search=True,
-        )
+        _MAIN_PROMPT_SESSION = PromptSession(history=InMemoryHistory(), multiline=False, enable_history_search=True)
     except Exception:
         _MAIN_PROMPT_SESSION = None
     return _MAIN_PROMPT_SESSION
-
-
-def build_confirmation_prompt(prefer_chinese: bool) -> str:
-    return _ui_text("confirm_run", prefer_chinese)
-
-
-def build_confirmation_prompt_session() -> Optional[Any]:
-    global _CONFIRM_PROMPT_SESSION
-    if _CONFIRM_PROMPT_SESSION is not None:
-        return _CONFIRM_PROMPT_SESSION
-    if PromptSession is None or InMemoryHistory is None:
-        return None
-    try:
-        _CONFIRM_PROMPT_SESSION = PromptSession(history=InMemoryHistory(), multiline=False)
-    except Exception:
-        _CONFIRM_PROMPT_SESSION = None
-    return _CONFIRM_PROMPT_SESSION
 
 
 def _fallback_single_input(prompt_text: str) -> str:
     return input(prompt_text)
 
 
-def _read_one_submission(prompt_text: str = "IOBRpy> ", session: Optional[Any] = None) -> str:
-    session = session or build_main_prompt_session()
-    if session is not None:
-        try:
-            return str(session.prompt(prompt_text))
-        except KeyboardInterrupt:
-            raise
-        except EOFError:
-            raise
-        except Exception:
-            pass
-    return _fallback_single_input(prompt_text)
-
-
-def _drain_immediately_available_paste_lines(
-    *,
-    first_wait_s: float = 0.03,
-    next_wait_s: float = 0.008,
-    stdin_obj: Optional[Any] = None,
-    read_chunk_fn: Optional[Any] = None,
-) -> str:
-    if read_chunk_fn is not None:
-        chunks = []
-        timeout = first_wait_s
-        while True:
-            chunk = read_chunk_fn(timeout)
-            if not chunk:
-                break
-            chunks.append(str(chunk))
-            timeout = next_wait_s
-        return "".join(chunks)
-
-    stdin_obj = stdin_obj or sys.stdin
+def _enable_bracketed_paste(output_stream: Any) -> None:
     try:
-        fd = stdin_obj.fileno()
+        output_stream.write("[?2004h")
+        output_stream.flush()
     except Exception:
-        return ""
+        return
 
-    chunks = []
-    timeout = first_wait_s
+
+def _disable_bracketed_paste(output_stream: Any) -> None:
+    try:
+        output_stream.write("[?2004l")
+        output_stream.flush()
+    except Exception:
+        return
+
+
+def _read_escape_sequence_bytes(read_byte_fn: Any) -> bytes:
+    seq = b"\x1b"
+    for _ in range(16):
+        b = read_byte_fn()
+        if not b:
+            break
+        if isinstance(b, str):
+            b = b.encode(errors="replace")
+        seq += bytes(b)
+        if b in b"~ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz":
+            break
+    return seq
+
+
+def _read_single_line_submission(read_byte_fn: Any) -> str:
+    chars = []
+    in_paste = False
+    decoder = codecs.getincrementaldecoder("utf-8")("replace")
+
     while True:
-        try:
-            ready, _, _ = select.select([fd], [], [], timeout)
-        except Exception:
+        b = read_byte_fn()
+        if not b:
             break
-        if not ready:
+        if isinstance(b, str):
+            b = b.encode(errors="replace")
+        b = bytes(b)
+
+        if b == b"\x1b":
+            seq = _read_escape_sequence_bytes(read_byte_fn)
+            if seq == b"\x1b[200~":
+                in_paste = True
+                continue
+            if seq == b"\x1b[201~":
+                in_paste = False
+                continue
+            continue
+
+        if b in {b"\r", b"\n"} and not in_paste:
             break
-        try:
-            raw = os.read(fd, 4096)
-        except Exception:
-            break
-        if not raw:
-            break
-        if isinstance(raw, bytes):
-            chunks.append(raw.decode(errors="replace"))
-        else:
-            chunks.append(str(raw))
-        timeout = next_wait_s
-    return "".join(chunks)
+
+        if b in {b"\x7f", b"\x08"} and not in_paste:
+            if chars:
+                chars.pop()
+            continue
+
+        ch = decoder.decode(b, final=False)
+        if ch:
+            chars.append(ch)
+
+    tail = decoder.decode(b"", final=True)
+    if tail:
+        chars.append(tail)
+
+    return "".join(chars)
 
 
-def _collect_single_paste_payload(first_chunk: str, *, drain_fn: Optional[Any] = None) -> str:
-    tail = drain_fn() if drain_fn is not None else _drain_immediately_available_paste_lines()
-    return f"{first_chunk}{tail}" if tail else first_chunk
+def _read_main_input_posix(prompt_text: str, *, input_stream: Any = None, output_stream: Any = None) -> str:
+    if os.name != "posix":
+        raise RuntimeError("POSIX reader unavailable")
+
+    input_stream = input_stream or sys.stdin
+    output_stream = output_stream or sys.stdout
+
+    fd = input_stream.fileno()
+    old_attrs = termios.tcgetattr(fd)
+    _enable_bracketed_paste(output_stream)
+    output_stream.write(prompt_text)
+    output_stream.flush()
+
+    try:
+        tty.setraw(fd)
+        def _read_byte() -> bytes:
+            return os.read(fd, 1)
+
+        text = _read_single_line_submission(_read_byte)
+        output_stream.write("\n")
+        output_stream.flush()
+        return text
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, old_attrs)
+        _disable_bracketed_paste(output_stream)
 
 
-def read_main_user_input(prompt_text: str = "IOBRpy> ", session: Optional[Any] = None, drain_fn: Optional[Any] = None) -> str:
-    first_chunk = _read_one_submission(prompt_text=prompt_text, session=session)
-    merged = _collect_single_paste_payload(first_chunk, drain_fn=drain_fn)
-    return normalize_main_input_text(merged)
+def _can_use_posix_raw_reader(input_stream: Any = None) -> bool:
+    if os.name != "posix":
+        return False
+    if termios is None or tty is None:
+        return False
+    input_stream = input_stream or sys.stdin
+    try:
+        return bool(input_stream.isatty())
+    except Exception:
+        return False
+
+
+def read_main_user_input(
+    prompt_text: str = "IOBRpy> ",
+    session: Optional[Any] = None,
+    *,
+    input_stream: Any = None,
+    output_stream: Any = None,
+    read_byte_fn: Optional[Any] = None,
+) -> str:
+    _ = session  # main input no longer uses PromptSession as primary reader.
+    if read_byte_fn is not None:
+        return normalize_main_input_text(_read_single_line_submission(read_byte_fn))
+
+    if _can_use_posix_raw_reader(input_stream=input_stream):
+        raw = _read_main_input_posix(prompt_text, input_stream=input_stream, output_stream=output_stream)
+        return normalize_main_input_text(raw)
+
+    return normalize_main_input_text(_fallback_single_input(prompt_text))
 
 
 def read_confirmation_input(prompt_text: str, session: Optional[Any] = None) -> str:
