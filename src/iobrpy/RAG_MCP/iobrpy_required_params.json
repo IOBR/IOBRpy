@@ -187,6 +187,9 @@
       "output": "--output",
       "return_feature": "--return_feature",
       "remove_version": "--remove_version"
+    },
+    "bool_mode": {
+      "remove_version": "flag_true"
     }
   },
   "count2tpm": {
@@ -317,6 +320,10 @@
       "gene_symbol": "--gene_symbol",
       "check_data": "--check_data",
       "remove_version": "--remove_version"
+    },
+    "bool_mode": {
+      "check_data": "flag_true",
+      "remove_version": "flag_true"
     }
   },
   "anno_eset": {
@@ -417,6 +424,9 @@
       "probe": "--probe",
       "method": "--method",
       "remove_version": "--remove_version"
+    },
+    "bool_mode": {
+      "remove_version": "flag_true"
     }
   },
   "calculate_sig_score": {
@@ -496,6 +506,9 @@
       "mini_gene_count": "--mini_gene_count",
       "adjust_eset": "--adjust_eset",
       "parallel_size": "--parallel_size"
+    },
+    "bool_mode": {
+      "adjust_eset": "flag_true"
     }
   },
   "cibersort": {
@@ -574,6 +587,10 @@
       "absolute": "--absolute",
       "abs_method": "--abs_method",
       "threads": "--threads"
+    },
+    "bool_mode": {
+      "QN": "value",
+      "absolute": "value"
     }
   },
   "IPS": {
@@ -782,6 +799,11 @@
       "scale_mrna": "--scale_mrna",
       "method": "--method",
       "rmgenes": "--rmgenes"
+    },
+    "bool_mode": {
+      "arrays": "flag_true",
+      "tumor": "flag_true",
+      "scale_mrna": "flag_true"
     }
   },
   "epic": {
@@ -949,6 +971,10 @@
       "print_result": "--print_result",
       "input_sep": "--input_sep",
       "output_sep": "--output_sep"
+    },
+    "bool_mode": {
+      "scale": "dual_flag",
+      "print_result": "flag_true"
     }
   },
   "LR_cal": {
@@ -1025,6 +1051,9 @@
       "id_type": "--id_type",
       "cancer_type": "--cancer_type",
       "verbose": "--verbose"
+    },
+    "bool_mode": {
+      "verbose": "flag_true"
     }
   },
   "nmf": {
@@ -1129,6 +1158,11 @@
       "random_state": "--random-state",
       "max_iter": "--max-iter",
       "skip_k_2": "--skip_k_2"
+    },
+    "bool_mode": {
+      "log1p": "flag_true",
+      "normalize": "flag_true",
+      "skip_k_2": "flag_true"
     }
   },
   "mouse2human_eset": {
@@ -1209,6 +1243,11 @@
       "sep": "--sep",
       "out_sep": "--out_sep",
       "progress": "--progress"
+    },
+    "bool_mode": {
+      "is_matrix": "flag_true",
+      "verbose": "flag_true",
+      "progress": "flag_true"
     }
   },
   "batch_salmon": {
@@ -1488,6 +1527,9 @@
       "batch_size": "--batch_size",
       "se": "--se",
       "length_required": "--length_required"
+    },
+    "bool_mode": {
+      "se": "flag_true"
     }
   },
   "log2_eset": {
@@ -1822,6 +1864,9 @@
       "ref": "choice",
       "outdir": "path",
       "no_auto_install": "bool"
+    },
+    "bool_mode": {
+      "no_auto_install": "flag_true"
     }
   },
   "hla_typing": {
