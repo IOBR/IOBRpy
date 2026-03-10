@@ -74,8 +74,54 @@
       }
     },
     "function_summary": {
-      "zh": "执行从FASTQ到下游分析的一体化流程。",
-      "en": "Run end-to-end workflow from FASTQ to downstream analyses."
+      "zh": "执行从 FASTQ 到下游分析的一体化流程（runall）。",
+      "en": "Run the end-to-end workflow from FASTQ to downstream analyses (runall)."
+    },
+    "optional": [],
+    "cli_flags": {
+      "fastq": "--fastq",
+      "outdir": "--outdir",
+      "mode": "--mode",
+      "index": "--index",
+      "threads": "--threads",
+      "batch_size": "--batch_size",
+      "project": "--project"
+    },
+    "param_types": {
+      "fastq": "path",
+      "outdir": "path",
+      "mode": "choice",
+      "index": "path",
+      "threads": "int",
+      "batch_size": "int",
+      "project": "string"
+    },
+    "param_aliases": {
+      "fastq": [
+        "fastq",
+        "fast-q"
+      ],
+      "outdir": [
+        "outdir",
+        "out-dir"
+      ],
+      "mode": [
+        "mode"
+      ],
+      "index": [
+        "index"
+      ],
+      "threads": [
+        "threads",
+        "thread"
+      ],
+      "batch_size": [
+        "batch_size",
+        "batch-size"
+      ],
+      "project": [
+        "project"
+      ]
     }
   },
   "prepare_salmon": {
@@ -1120,7 +1166,10 @@
     }
   },
   "trust4": {
-    "required": ["o","t"],
+    "required": [
+      "o",
+      "t"
+    ],
     "optional": [
       "bam",
       "r1",
