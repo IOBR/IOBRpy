@@ -170,20 +170,8 @@ def build_confirmation_prompt_session() -> Optional[Any]:
     return _CONFIRM_PROMPT_SESSION
 
 
-def _fallback_multiline_input(prompt_text: str) -> str:
-    # Fallback is line-based and cannot match full in-buffer editing semantics.
-    print(prompt_text, end="", flush=True)
-    first = input()
-    lines = [first]
-    while True:
-        try:
-            nxt = input("... ")
-        except EOFError:
-            break
-        if nxt.strip() == ".":
-            break
-        lines.append(nxt)
-    return "\n".join(lines)
+def _fallback_single_input(prompt_text: str) -> str:
+    return input(prompt_text)
 
 
 def read_main_user_input(prompt_text: str = "IOBRpy> ", session: Optional[Any] = None) -> str:
@@ -198,7 +186,7 @@ def read_main_user_input(prompt_text: str = "IOBRpy> ", session: Optional[Any] =
             raise
         except Exception:
             pass
-    return normalize_main_input_text(_fallback_multiline_input(prompt_text))
+    return normalize_main_input_text(_fallback_single_input(prompt_text))
 
 
 def read_confirmation_input(prompt_text: str, session: Optional[Any] = None) -> str:

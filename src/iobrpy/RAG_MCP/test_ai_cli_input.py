@@ -20,6 +20,12 @@ class _FakeSession:
         return self._out
 
 
+
+
+class _FailingSession:
+    def prompt(self, *args, **kwargs):
+        raise RuntimeError("boom")
+
 class AICliInputTests(unittest.TestCase):
     def test_main_prompt_prefix_is_iobrpy(self):
         self.assertEqual(ai.build_main_prompt_prefix(), "IOBRpy> ")
@@ -32,6 +38,7 @@ class AICliInputTests(unittest.TestCase):
         self.assertNotIn("Shift+Enter", help_text)
         self.assertNotIn("Ctrl+J", help_text)
         self.assertNotIn("Esc+Enter", help_text)
+        self.assertNotIn("输入 . 结束", help_text)
 
     def test_normalize_single_line_input(self):
         self.assertEqual(ai.normalize_main_input_text("  hello world  "), "hello world")
@@ -47,6 +54,41 @@ class AICliInputTests(unittest.TestCase):
         self.assertEqual(out, "fastq路径在/a 输出在/b mode用salmon")
         self.assertEqual(sess.calls, 1)
         self.assertEqual(sess.last_prompt, "IOBRpy> ")
+
+    def test_fallback_single_input_reads_once(self):
+        prompts = []
+
+        def _fake_input(prompt):
+            prompts.append(prompt)
+            return "line1\nline2"
+
+        old_input = ai.__dict__.get("input", input)
+        ai.input = _fake_input
+        try:
+            out = ai._fallback_single_input("IOBRpy> ")
+        finally:
+            ai.input = old_input
+
+        self.assertEqual(out, "line1\nline2")
+        self.assertEqual(prompts, ["IOBRpy> "])
+
+    def test_read_main_user_input_fallback_reads_once_and_normalizes(self):
+        prompts = []
+
+        def _fake_input(prompt):
+            prompts.append(prompt)
+            return "line1\nline2\nline3"
+
+        old_input = ai.__dict__.get("input", input)
+        ai.input = _fake_input
+        try:
+            out = ai.read_main_user_input(session=_FailingSession())
+        finally:
+            ai.input = old_input
+
+        self.assertEqual(out, "line1 line2 line3")
+        self.assertEqual(prompts, ["IOBRpy> "])
+
 
 
 class AIConfirmationFlowTests(unittest.TestCase):
