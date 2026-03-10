@@ -17,17 +17,16 @@ from typing import Any, Dict, Optional, Tuple
 
 try:
     from prompt_toolkit import PromptSession  # type: ignore
-    from prompt_toolkit.key_binding import KeyBindings  # type: ignore
     from prompt_toolkit.history import InMemoryHistory  # type: ignore
 except Exception:
     PromptSession = None
-    KeyBindings = None
     InMemoryHistory = None
 
 try:
     import readline  # noqa: F401
 except Exception:
     readline = None  # type: ignore
+
 
 
 @dataclass
@@ -117,48 +116,22 @@ _MAIN_PROMPT_SESSION: Optional[Any] = None
 _CONFIRM_PROMPT_SESSION: Optional[Any] = None
 
 
-def _build_main_key_bindings() -> Optional[Any]:
-    if KeyBindings is None:
-        return None
-    kb = KeyBindings()
-
-    @kb.add("enter")
-    def _(event) -> None:  # type: ignore
-        event.current_buffer.validate_and_handle()
-
-    # Shift+Enter may be terminal-dependent; bind when supported by input stream.
-    @kb.add("s-enter")
-    def _(event) -> None:  # type: ignore
-        event.current_buffer.insert_text("\n")
-
-    return kb
+def normalize_main_input_text(text: str) -> str:
+    normalized = (text or "").replace("\r\n", "\n").replace("\r", "\n")
+    if "\n" not in normalized:
+        return normalized.strip()
+    lines = [line.strip() for line in normalized.split("\n")]
+    lines = [line for line in lines if line]
+    return " ".join(lines)
 
 
-def apply_newline_to_text(text: str, cursor_pos: int) -> Tuple[str, int]:
-    left = text[:cursor_pos]
-    right = text[cursor_pos:]
-    out = left + "\n" + right
-    return out, cursor_pos + 1
-
-
-def apply_backspace_to_text(text: str, cursor_pos: int) -> Tuple[str, int]:
-    if cursor_pos <= 0:
-        return text, 0
-    out = text[: cursor_pos - 1] + text[cursor_pos:]
-    return out, cursor_pos - 1
-
-
-def classify_main_shortcut(shortcut: str) -> str:
-    s = (shortcut or "").strip().lower()
-    if s in {"shift+enter", "s-enter"}:
-        return "newline"
-    if s in {"enter"}:
-        return "submit"
-    return "unknown"
+def coalesce_paste_payload_for_single_line(text: str) -> str:
+    # Best-effort text normalization for payloads that already arrived as one string.
+    return normalize_main_input_text(text)
 
 
 def build_main_input_help_text() -> str:
-    return "Composer mode: Enter=submit, Shift+Enter=newline (terminal support may vary)."
+    return "Single-line input mode. Press Enter to submit. Multi-line paste handling depends on terminal behavior."
 
 
 def build_main_prompt_prefix() -> str:
@@ -176,65 +149,29 @@ def build_main_prompt_session() -> Optional[Any]:
     if PromptSession is None or InMemoryHistory is None:
         return None
     try:
-        _MAIN_PROMPT_SESSION = PromptSession(
-            history=InMemoryHistory(),
-            multiline=True,
-            key_bindings=_build_main_key_bindings(),
-            enable_history_search=True,
-        )
+        _MAIN_PROMPT_SESSION = PromptSession(history=InMemoryHistory(), multiline=False, enable_history_search=True)
     except Exception:
         _MAIN_PROMPT_SESSION = None
     return _MAIN_PROMPT_SESSION
 
 
-def build_confirmation_prompt(prefer_chinese: bool) -> str:
-    return _ui_text("confirm_run", prefer_chinese)
-
-
-def build_confirmation_prompt_session() -> Optional[Any]:
-    global _CONFIRM_PROMPT_SESSION
-    if _CONFIRM_PROMPT_SESSION is not None:
-        return _CONFIRM_PROMPT_SESSION
-    if PromptSession is None or InMemoryHistory is None:
-        return None
-    try:
-        _CONFIRM_PROMPT_SESSION = PromptSession(history=InMemoryHistory(), multiline=False)
-    except Exception:
-        _CONFIRM_PROMPT_SESSION = None
-    return _CONFIRM_PROMPT_SESSION
-
-
-def _fallback_multiline_input(prompt_text: str) -> str:
-    # Fallback is line-based and cannot match full in-buffer editing semantics.
-    print(prompt_text, end="", flush=True)
-    first = input()
-    lines = [first]
-    while True:
-        try:
-            nxt = input("... ")
-        except EOFError:
-            break
-        if nxt.strip() == ".":
-            break
-        lines.append(nxt)
-    return "\n".join(lines)
+def _fallback_single_input(prompt_text: str) -> str:
+    return input(prompt_text)
 
 
 def read_main_user_input(prompt_text: str = "IOBRpy> ", session: Optional[Any] = None) -> str:
     session = session or build_main_prompt_session()
     if session is not None:
         try:
-            return session.prompt(
-                prompt_text,
-                prompt_continuation=lambda width, line_no, is_soft_wrap: build_main_continuation_prefix(),
-            )
+            raw = session.prompt(prompt_text)
+            return normalize_main_input_text(str(raw))
         except KeyboardInterrupt:
             raise
         except EOFError:
             raise
         except Exception:
             pass
-    return _fallback_multiline_input(prompt_text)
+    return normalize_main_input_text(_fallback_single_input(prompt_text))
 
 
 def read_confirmation_input(prompt_text: str, session: Optional[Any] = None) -> str:
@@ -424,7 +361,6 @@ def run_interactive(logdir: str, *, llm: str, api_key: Optional[str] = None, mod
     print(f"model  : {resolved_model}")
     print(_ui_text("type_request", prefer_chinese))
     print(_ui_text("commands", prefer_chinese) + "\n")
-    print(build_main_input_help_text())
 
     def call(answer: Optional[str] = None) -> Dict[str, Any]:
         return server.tool_iobrpy_assistant(session_id, task=None, answer_text=answer, run=False)
