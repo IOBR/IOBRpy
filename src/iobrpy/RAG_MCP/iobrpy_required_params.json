@@ -133,37 +133,60 @@
       "return_feature",
       "remove_version"
     ],
+    "choices": {
+      "return_feature": [
+        "ENST",
+        "ENSG",
+        "symbol"
+      ]
+    },
     "param_hints": {
       "input": {
-        "zh": "输入表达矩阵/文件路径。",
-        "en": "Input expression matrix/file path."
+        "zh": "Salmon 合并后的表达矩阵（通常为 TSV/TSV.GZ）。",
+        "en": "Merged Salmon expression table (typically TSV/TSV.GZ)."
       },
       "output": {
-        "zh": "输出文件路径。",
-        "en": "Output file path."
+        "zh": "输出清洗后的 TPM 矩阵文件路径。",
+        "en": "Path to write the cleaned TPM matrix."
       },
       "return_feature": {
-        "zh": "参数 return_feature 的说明。",
-        "en": "Description for parameter 'return_feature'."
+        "zh": "选择输出保留的基因标识类型（转录本 ENST、基因 ENSG 或 symbol）。",
+        "en": "Choose which identifier to keep in output (ENST, ENSG, or gene symbol)."
       },
       "remove_version": {
-        "zh": "参数 remove_version 的说明。",
-        "en": "Description for parameter 'remove_version'."
+        "zh": "是否去掉基因 ID 的版本号后缀（如 ENSG000001.12 → ENSG000001）。",
+        "en": "Whether to strip version suffixes from gene IDs (e.g., ENSG000001.12 → ENSG000001)."
       }
     },
     "intent_keywords": {
       "zh": [
-        "prepare_salmon",
-        "相关分析"
+        "salmon整理",
+        "TPM矩阵清洗"
       ],
       "en": [
-        "prepare_salmon",
-        "analysis"
+        "prepare salmon matrix",
+        "clean tpm matrix"
       ]
+    },
+    "function_summary": {
+      "zh": "将 Salmon 合并结果整理为可直接用于下游分析的 TPM 矩阵。",
+      "en": "Clean and reshape merged Salmon output into a TPM matrix for downstream analysis."
     },
     "optional_defaults": {
       "return_feature": "symbol",
       "remove_version": false
+    },
+    "param_types": {
+      "input": "path",
+      "output": "path",
+      "return_feature": "choice",
+      "remove_version": "bool"
+    },
+    "cli_flags": {
+      "input": "--input",
+      "output": "--output",
+      "return_feature": "--return_feature",
+      "remove_version": "--remove_version"
     }
   },
   "count2tpm": {
@@ -182,61 +205,81 @@
       "check_data",
       "remove_version"
     ],
+    "choices": {
+      "idtype": [
+        "ensembl",
+        "entrez",
+        "symbol",
+        "mgi"
+      ],
+      "org": [
+        "hsa",
+        "mmus"
+      ],
+      "source": [
+        "local",
+        "biomart"
+      ]
+    },
     "param_hints": {
       "input": {
-        "zh": "输入表达矩阵/文件路径。",
-        "en": "Input expression matrix/file path."
+        "zh": "原始 count 矩阵（基因×样本）。",
+        "en": "Raw count matrix (genes × samples)."
       },
       "output": {
-        "zh": "输出文件路径。",
-        "en": "Output file path."
+        "zh": "输出 TPM 矩阵文件。",
+        "en": "Output TPM matrix file."
       },
       "effLength_csv": {
-        "zh": "参数 effLength_csv 的说明。",
-        "en": "Description for parameter 'effLength_csv'."
+        "zh": "可选有效长度表；用于直接提供基因长度信息。",
+        "en": "Optional effective-length table to provide gene lengths directly."
       },
       "idtype": {
-        "zh": "参数 idtype 的说明。",
-        "en": "Description for parameter 'idtype'."
+        "zh": "输入矩阵基因 ID 类型。",
+        "en": "Gene ID type used in the input matrix."
       },
       "org": {
-        "zh": "参数 org 的说明。",
-        "en": "Description for parameter 'org'."
+        "zh": "物种代码（人 hsa / 小鼠 mmus）。",
+        "en": "Species code (human hsa / mouse mmus)."
       },
       "source": {
-        "zh": "参数 source 的说明。",
-        "en": "Description for parameter 'source'."
+        "zh": "基因注释来源：本地注释或 biomart 在线注释。",
+        "en": "Annotation source: local resources or biomart."
       },
       "id": {
-        "zh": "参数 id 的说明。",
-        "en": "Description for parameter 'id'."
+        "zh": "effLength_csv 中基因 ID 列名。",
+        "en": "Column name for gene ID in effLength_csv."
       },
       "length": {
-        "zh": "参数 length 的说明。",
-        "en": "Description for parameter 'length'."
+        "zh": "effLength_csv 中有效长度列名。",
+        "en": "Column name for effective length in effLength_csv."
       },
       "gene_symbol": {
-        "zh": "参数 gene_symbol 的说明。",
-        "en": "Description for parameter 'gene_symbol'."
+        "zh": "effLength_csv 中基因 symbol 列名。",
+        "en": "Column name for gene symbol in effLength_csv."
       },
       "check_data": {
-        "zh": "参数 check_data 的说明。",
-        "en": "Description for parameter 'check_data'."
+        "zh": "转换前检查并剔除缺失或无效条目。",
+        "en": "Validate data and drop invalid/missing entries before conversion."
       },
       "remove_version": {
-        "zh": "参数 remove_version 的说明。",
-        "en": "Description for parameter 'remove_version'."
+        "zh": "去掉基因 ID 版本号后缀。",
+        "en": "Remove version suffix from gene IDs."
       }
     },
     "intent_keywords": {
       "zh": [
-        "count2tpm",
-        "相关分析"
+        "count转tpm",
+        "RNA表达标准化"
       ],
       "en": [
-        "count2tpm",
-        "analysis"
+        "count to tpm",
+        "normalize expression"
       ]
+    },
+    "function_summary": {
+      "zh": "将 count 表达矩阵转换为 TPM。",
+      "en": "Convert a count expression matrix to TPM."
     },
     "optional_defaults": {
       "effLength_csv": null,
@@ -248,6 +291,32 @@
       "gene_symbol": "symbol",
       "check_data": false,
       "remove_version": false
+    },
+    "param_types": {
+      "input": "path",
+      "output": "path",
+      "effLength_csv": "path",
+      "idtype": "choice",
+      "org": "choice",
+      "source": "choice",
+      "id": "string",
+      "length": "string",
+      "gene_symbol": "string",
+      "check_data": "bool",
+      "remove_version": "bool"
+    },
+    "cli_flags": {
+      "input": "--input",
+      "output": "--output",
+      "effLength_csv": "--effLength_csv",
+      "idtype": "--idtype",
+      "org": "--org",
+      "source": "--source",
+      "id": "--id",
+      "length": "--length",
+      "gene_symbol": "--gene_symbol",
+      "check_data": "--check_data",
+      "remove_version": "--remove_version"
     }
   },
   "anno_eset": {
@@ -264,53 +333,60 @@
       "method",
       "remove_version"
     ],
+    "choices": {
+      "annotation": [
+        "anno_hug133plus2",
+        "anno_rnaseq",
+        "anno_illumina",
+        "anno_grch38"
+      ],
+      "method": [
+        "mean",
+        "sd",
+        "sum"
+      ]
+    },
     "param_hints": {
       "input": {
-        "zh": "输入表达矩阵/文件路径。",
-        "en": "Input expression matrix/file path."
+        "zh": "待注释的表达矩阵文件。",
+        "en": "Expression matrix file to annotate."
       },
       "output": {
-        "zh": "输出文件路径。",
-        "en": "Output file path."
+        "zh": "输出注释并去重后的矩阵文件。",
+        "en": "Output file for annotated and de-duplicated matrix."
       },
       "annotation": {
-        "zh": "参数 annotation 的说明。",
-        "en": "Description for parameter 'annotation'."
+        "zh": "内置注释资源名称；用于 ID 到 symbol 的映射。",
+        "en": "Built-in annotation resource name for ID-to-symbol mapping."
       },
       "annotation_file": {
-        "zh": "参数 annotation_file 的说明。",
-        "en": "Description for parameter 'annotation_file'."
+        "zh": "外部注释文件路径（提供后可覆盖内置注释）。",
+        "en": "Path to external annotation file (overrides built-in annotation when provided)."
       },
       "annotation_key": {
-        "zh": "参数 annotation_key 的说明。",
-        "en": "Description for parameter 'annotation_key'."
+        "zh": "当 annotation_file 为 pkl 且包含多个表时，指定要使用的键名。",
+        "en": "Key name to select a table when annotation_file is a multi-table pickle."
       },
       "symbol": {
-        "zh": "参数 symbol 的说明。",
-        "en": "Description for parameter 'symbol'."
+        "zh": "注释表中表示基因 symbol 的列名。",
+        "en": "Column name representing gene symbols in the annotation table."
       },
       "probe": {
-        "zh": "参数 probe 的说明。",
-        "en": "Description for parameter 'probe'."
+        "zh": "注释表中表示探针/特征 ID 的列名。",
+        "en": "Column name representing probe/feature IDs in the annotation table."
       },
       "method": {
-        "zh": "参数 method 的说明。",
-        "en": "Description for parameter 'method'."
+        "zh": "重复探针聚合方式（均值/标准差/求和）。",
+        "en": "Aggregation method for duplicated probes (mean/sd/sum)."
       },
       "remove_version": {
-        "zh": "参数 remove_version 的说明。",
-        "en": "Description for parameter 'remove_version'."
+        "zh": "注释前去掉基因 ID 的版本号。",
+        "en": "Remove gene ID version suffixes before annotation."
       }
     },
-    "intent_keywords": {
-      "zh": [
-        "anno_eset",
-        "相关分析"
-      ],
-      "en": [
-        "anno_eset",
-        "analysis"
-      ]
+    "function_summary": {
+      "zh": "按注释表映射基因并对重复条目聚合去重。",
+      "en": "Map genes using annotation and collapse duplicated entries."
     },
     "optional_defaults": {
       "annotation_file": null,
@@ -319,6 +395,28 @@
       "probe": "id",
       "method": "mean",
       "remove_version": false
+    },
+    "param_types": {
+      "input": "path",
+      "output": "path",
+      "annotation": "choice",
+      "annotation_file": "path",
+      "annotation_key": "string",
+      "symbol": "string",
+      "probe": "string",
+      "method": "choice",
+      "remove_version": "bool"
+    },
+    "cli_flags": {
+      "input": "--input",
+      "output": "--output",
+      "annotation": "--annotation",
+      "annotation_file": "--annotation-file",
+      "annotation_key": "--annotation-key",
+      "symbol": "--symbol",
+      "probe": "--probe",
+      "method": "--method",
+      "remove_version": "--remove_version"
     }
   },
   "calculate_sig_score": {
@@ -329,61 +427,75 @@
     ],
     "optional": [
       "method",
-      "parallel",
-      "parallel_size",
-      "ssgsea_norm",
-      "id_type"
+      "mini_gene_count",
+      "adjust_eset",
+      "parallel_size"
     ],
+    "choices": {
+      "method": [
+        "pca",
+        "zscore",
+        "ssgsea",
+        "integration"
+      ]
+    },
     "param_hints": {
       "input": {
-        "zh": "输入表达矩阵/文件路径。",
-        "en": "Input expression matrix/file path."
+        "zh": "输入表达矩阵（基因×样本）。",
+        "en": "Input expression matrix (genes × samples)."
       },
       "output": {
-        "zh": "输出文件路径。",
-        "en": "Output file path."
+        "zh": "输出 signature 评分结果文件。",
+        "en": "Output file for signature scores."
       },
       "signature": {
-        "zh": "参数 signature 的说明。",
-        "en": "Description for parameter 'signature'."
+        "zh": "要计算的 signature group，可传一个或多个；可用空格分隔（在自然语言中也支持逗号语义）。",
+        "en": "Signature group(s) to score; pass one or multiple groups (space-separated, comma intent also supported)."
       },
       "method": {
-        "zh": "参数 method 的说明。",
-        "en": "Description for parameter 'method'."
+        "zh": "signature 评分方法。",
+        "en": "Scoring method for signatures."
       },
-      "parallel": {
-        "zh": "参数 parallel 的说明。",
-        "en": "Description for parameter 'parallel'."
+      "mini_gene_count": {
+        "zh": "每个 signature 至少命中的基因数，低于该阈值会影响该 signature 计算。",
+        "en": "Minimum matched genes required per signature; signatures below this threshold are filtered/affected."
+      },
+      "adjust_eset": {
+        "zh": "计算前对表达矩阵做标准化调整，常用于减少样本间量纲差异。",
+        "en": "Apply expression-set adjustment before scoring, useful to reduce scale differences across samples."
       },
       "parallel_size": {
-        "zh": "参数 parallel_size 的说明。",
-        "en": "Description for parameter 'parallel_size'."
-      },
-      "ssgsea_norm": {
-        "zh": "参数 ssgsea_norm 的说明。",
-        "en": "Description for parameter 'ssgsea_norm'."
-      },
-      "id_type": {
-        "zh": "参数 id_type 的说明。",
-        "en": "Description for parameter 'id_type'."
+        "zh": "并行工作进程/线程数。",
+        "en": "Parallel worker count for scoring."
       }
     },
-    "intent_keywords": {
-      "zh": [
-        "calculate_sig_score",
-        "相关分析"
-      ],
-      "en": [
-        "calculate_sig_score",
-        "analysis"
-      ]
+    "function_summary": {
+      "zh": "按指定 signature 集合计算样本评分。",
+      "en": "Calculate sample-level scores for selected signature groups."
     },
     "optional_defaults": {
       "method": "pca",
-      "parallel": false,
-      "parallel_size": 1,
-      "ssgsea_norm": true,
-      "id_type": "symbol"
+      "mini_gene_count": 3,
+      "adjust_eset": false,
+      "parallel_size": 1
+    },
+    "param_types": {
+      "input": "path",
+      "output": "path",
+      "signature": "list",
+      "method": "choice",
+      "mini_gene_count": "int",
+      "adjust_eset": "bool",
+      "parallel_size": "int"
+    },
+    "cli_flags": {
+      "input": "--input",
+      "output": "--output",
+      "signature": "--signature",
+      "method": "--method",
+      "mini_gene_count": "--mini_gene_count",
+      "adjust_eset": "--adjust_eset",
+      "parallel_size": "--parallel_size"
     }
   },
   "cibersort": {
@@ -391,56 +503,77 @@
       "input",
       "output"
     ],
-    "confirm": [
-      "threads"
-    ],
     "optional": [
       "perm",
       "QN",
+      "absolute",
+      "abs_method",
       "threads"
     ],
-    "param_hints": {
-      "input": {
-        "zh": "输入表达矩阵/文件路径。",
-        "en": "Input expression matrix/file path."
-      },
-      "output": {
-        "zh": "输出文件路径。",
-        "en": "Output file path."
-      },
-      "perm": {
-        "zh": "置换次数（越大越稳定但更慢）。",
-        "en": "Number of permutations (more stable p-values but slower)."
-      },
-      "QN": {
-        "zh": "是否启用分位数归一化（芯片常为TRUE，RNA-seq常为FALSE）。",
-        "en": "Quantile normalization switch (often TRUE for microarray, FALSE for RNA-seq)."
-      },
-      "threads": {
-        "zh": "CPU线程数。",
-        "en": "Number of CPU threads."
-      }
-    },
-    "intent_keywords": {
-      "zh": [
-        "免疫反卷积",
-        "细胞比例",
-        "肿瘤微环境"
-      ],
-      "en": [
-        "immune deconvolution",
-        "cell fraction",
-        "cibersort"
+    "choices": {
+      "abs_method": [
+        "sig.score",
+        "no.sumto1"
       ]
     },
+    "param_hints": {
+      "input": {
+        "zh": "输入表达矩阵（基因×样本）。",
+        "en": "Input expression matrix (genes × samples)."
+      },
+      "output": {
+        "zh": "输出 CIBERSORT 结果文件。",
+        "en": "Output CIBERSORT result file."
+      },
+      "perm": {
+        "zh": "置换次数，越大通常越稳健但更耗时。",
+        "en": "Number of permutations; larger values are usually more stable but slower."
+      },
+      "QN": {
+        "zh": "是否启用 quantile normalization（微阵列常开，RNA-seq 常关）。",
+        "en": "Whether to apply quantile normalization (often on for arrays, off for RNA-seq)."
+      },
+      "absolute": {
+        "zh": "是否输出 absolute 模式结果（而非仅相对比例）。",
+        "en": "Whether to output absolute-mode results instead of only relative fractions."
+      },
+      "abs_method": {
+        "zh": "absolute 模式的计算策略。",
+        "en": "Computation strategy for absolute mode."
+      },
+      "threads": {
+        "zh": "并行线程数。",
+        "en": "Number of parallel threads."
+      }
+    },
     "function_summary": {
-      "zh": "基于表达矩阵估计免疫细胞比例，输出各细胞类型丰度表。",
-      "en": "Estimate immune cell fractions from expression data and output cell-type abundance table."
+      "zh": "运行 CIBERSORT 估计免疫细胞组成。",
+      "en": "Run CIBERSORT to estimate immune cell composition."
     },
     "optional_defaults": {
       "perm": 100,
-      "QN": "TRUE",
+      "QN": true,
+      "absolute": false,
+      "abs_method": "sig.score",
       "threads": 1
+    },
+    "param_types": {
+      "input": "path",
+      "output": "path",
+      "perm": "int",
+      "QN": "bool",
+      "absolute": "bool",
+      "abs_method": "choice",
+      "threads": "int"
+    },
+    "cli_flags": {
+      "input": "--input",
+      "output": "--output",
+      "perm": "--perm",
+      "QN": "--QN",
+      "absolute": "--absolute",
+      "abs_method": "--abs_method",
+      "threads": "--threads"
     }
   },
   "IPS": {
@@ -448,32 +581,28 @@
       "input",
       "output"
     ],
+    "optional": [],
     "param_hints": {
       "input": {
-        "zh": "输入表达矩阵/文件路径。",
-        "en": "Input expression matrix/file path."
+        "zh": "输入表达矩阵。",
+        "en": "Input expression matrix."
       },
       "output": {
-        "zh": "输出文件路径。",
-        "en": "Output file path."
+        "zh": "输出 IPS 评分结果文件。",
+        "en": "Output file for IPS results."
       }
     },
-    "intent_keywords": {
-      "zh": [
-        "免疫反卷积",
-        "免疫评分",
-        "ips评分"
-      ],
-      "en": [
-        "immune deconvolution",
-        "immunophenoscore",
-        "ips",
-        "immune score"
-      ]
-    },
     "function_summary": {
-      "zh": "计算免疫表型评分（IPS），输出样本免疫评分表。",
-      "en": "Calculate Immunophenoscore (IPS) and output per-sample immune scores."
+      "zh": "计算样本的免疫表型评分（IPS）。",
+      "en": "Calculate Immunophenoscore (IPS) for samples."
+    },
+    "param_types": {
+      "input": "path",
+      "output": "path"
+    },
+    "cli_flags": {
+      "input": "--input",
+      "output": "--output"
     }
   },
   "estimate": {
@@ -484,40 +613,43 @@
     "optional": [
       "platform"
     ],
-    "param_hints": {
-      "input": {
-        "zh": "输入表达矩阵/文件路径。",
-        "en": "Input expression matrix/file path."
-      },
-      "output": {
-        "zh": "输出文件路径。",
-        "en": "Output file path."
-      },
-      "platform": {
-        "zh": "参数 platform 的说明。",
-        "en": "Description for parameter 'platform'."
-      }
-    },
-    "intent_keywords": {
-      "zh": [
-        "免疫反卷积",
-        "肿瘤纯度",
-        "免疫基质评分"
-      ],
-      "en": [
-        "immune deconvolution",
-        "estimate",
-        "tumor purity",
-        "immune score",
-        "stromal score"
+    "choices": {
+      "platform": [
+        "affymetrix",
+        "agilent",
+        "illumina"
       ]
     },
+    "param_hints": {
+      "input": {
+        "zh": "输入表达矩阵（基因×样本）。",
+        "en": "Input expression matrix (genes × samples)."
+      },
+      "output": {
+        "zh": "输出 ESTIMATE 结果文件。",
+        "en": "Output file for ESTIMATE scores."
+      },
+      "platform": {
+        "zh": "芯片平台类型，用于匹配相应的注释流程。",
+        "en": "Microarray platform type used for platform-specific annotation handling."
+      }
+    },
     "function_summary": {
-      "zh": "计算肿瘤纯度及免疫/基质评分，输出ESTIMATE结果。",
-      "en": "Compute tumor purity and immune/stromal scores, output ESTIMATE metrics."
+      "zh": "计算 ESTIMATE 相关评分（如免疫/基质评分）。",
+      "en": "Calculate ESTIMATE-related scores (e.g., immune/stromal)."
     },
     "optional_defaults": {
       "platform": "affymetrix"
+    },
+    "param_types": {
+      "input": "path",
+      "output": "path",
+      "platform": "choice"
+    },
+    "cli_flags": {
+      "input": "--input",
+      "platform": "--platform",
+      "output": "--output"
     }
   },
   "mcpcounter": {
@@ -526,35 +658,42 @@
       "features",
       "output"
     ],
-    "param_hints": {
-      "input": {
-        "zh": "输入表达矩阵/文件路径。",
-        "en": "Input expression matrix/file path."
-      },
-      "features": {
-        "zh": "参数 features 的说明。",
-        "en": "Description for parameter 'features'."
-      },
-      "output": {
-        "zh": "输出文件路径。",
-        "en": "Output file path."
-      }
-    },
-    "intent_keywords": {
-      "zh": [
-        "免疫细胞计数",
-        "mcpcounter",
-        "反卷积"
-      ],
-      "en": [
-        "mcpcounter",
-        "cell abundance",
-        "deconvolution"
+    "optional": [],
+    "choices": {
+      "features": [
+        "affy133P2_probesets",
+        "HUGO_symbols",
+        "ENTREZ_ID",
+        "ENSEMBL_ID"
       ]
     },
+    "param_hints": {
+      "input": {
+        "zh": "输入表达矩阵（基因×样本）。",
+        "en": "Input expression matrix (genes × samples)."
+      },
+      "features": {
+        "zh": "输入矩阵所使用的基因 ID 类型。",
+        "en": "Gene identifier type used by the input matrix."
+      },
+      "output": {
+        "zh": "输出 MCPcounter 结果文件。",
+        "en": "Output file for MCPcounter scores."
+      }
+    },
     "function_summary": {
-      "zh": "计算免疫与基质细胞丰度分数，输出各细胞分值矩阵。",
-      "en": "Compute immune/stromal abundance scores and output per-cell-type score matrix."
+      "zh": "运行 MCPcounter 估计肿瘤微环境细胞丰度。",
+      "en": "Run MCPcounter to estimate cell population abundance."
+    },
+    "param_types": {
+      "input": "path",
+      "features": "choice",
+      "output": "path"
+    },
+    "cli_flags": {
+      "input": "--input",
+      "features": "--features",
+      "output": "--output"
     }
   },
   "quantiseq": {
@@ -570,55 +709,51 @@
       "method",
       "rmgenes"
     ],
-    "param_hints": {
-      "input": {
-        "zh": "输入表达矩阵/文件路径。",
-        "en": "Input expression matrix/file path."
-      },
-      "output": {
-        "zh": "输出文件路径。",
-        "en": "Output file path."
-      },
-      "arrays": {
-        "zh": "参数 arrays 的说明。",
-        "en": "Description for parameter 'arrays'."
-      },
-      "signame": {
-        "zh": "参数 signame 的说明。",
-        "en": "Description for parameter 'signame'."
-      },
-      "tumor": {
-        "zh": "参数 tumor 的说明。",
-        "en": "Description for parameter 'tumor'."
-      },
-      "scale_mrna": {
-        "zh": "参数 scale_mrna 的说明。",
-        "en": "Description for parameter 'scale_mrna'."
-      },
-      "method": {
-        "zh": "参数 method 的说明。",
-        "en": "Description for parameter 'method'."
-      },
-      "rmgenes": {
-        "zh": "参数 rmgenes 的说明。",
-        "en": "Description for parameter 'rmgenes'."
-      }
-    },
-    "intent_keywords": {
-      "zh": [
-        "免疫反卷积",
-        "quantiseq",
-        "细胞比例"
-      ],
-      "en": [
-        "quantiseq",
-        "immune deconvolution",
-        "cell fraction"
+    "choices": {
+      "method": [
+        "lsei",
+        "hampel",
+        "huber",
+        "bisquare"
       ]
     },
+    "param_hints": {
+      "input": {
+        "zh": "输入表达矩阵（基因×样本）。",
+        "en": "Input expression matrix (genes × samples)."
+      },
+      "output": {
+        "zh": "输出 quanTIseq 结果文件。",
+        "en": "Output file for quanTIseq results."
+      },
+      "arrays": {
+        "zh": "微阵列数据时开启分位数标准化。",
+        "en": "Enable quantile normalization for array data."
+      },
+      "signame": {
+        "zh": "使用的 signature 集名称（默认 TIL10）。",
+        "en": "Signature set name to use (default: TIL10)."
+      },
+      "tumor": {
+        "zh": "去除在肿瘤中高表达、可能干扰反卷积的基因。",
+        "en": "Remove genes highly expressed in tumors that may confound deconvolution."
+      },
+      "scale_mrna": {
+        "zh": "开启 mRNA scaling 进行比例校正。",
+        "en": "Enable mRNA scaling for proportion correction."
+      },
+      "method": {
+        "zh": "回归/稳健拟合方法。",
+        "en": "Regression/robust fitting method."
+      },
+      "rmgenes": {
+        "zh": "要移除的基因集策略（default/none 或自定义逗号列表）。",
+        "en": "Gene removal strategy (default/none or a custom comma-separated list)."
+      }
+    },
     "function_summary": {
-      "zh": "估计肿瘤样本中免疫细胞组成，输出细胞比例结果。",
-      "en": "Estimate immune-cell composition in tumor samples and output cell-fraction results."
+      "zh": "运行 quanTIseq 进行免疫细胞反卷积。",
+      "en": "Run quanTIseq immune deconvolution."
     },
     "optional_defaults": {
       "arrays": false,
@@ -627,6 +762,26 @@
       "scale_mrna": false,
       "method": "lsei",
       "rmgenes": "unassigned"
+    },
+    "param_types": {
+      "input": "path",
+      "output": "path",
+      "arrays": "bool",
+      "signame": "string",
+      "tumor": "bool",
+      "scale_mrna": "bool",
+      "method": "choice",
+      "rmgenes": "string"
+    },
+    "cli_flags": {
+      "input": "--input",
+      "output": "--output",
+      "arrays": "--arrays",
+      "signame": "--signame",
+      "tumor": "--tumor",
+      "scale_mrna": "--scale_mrna",
+      "method": "--method",
+      "rmgenes": "--rmgenes"
     }
   },
   "epic": {
@@ -637,38 +792,43 @@
     "optional": [
       "reference"
     ],
-    "param_hints": {
-      "input": {
-        "zh": "输入表达矩阵/文件路径。",
-        "en": "Input expression matrix/file path."
-      },
-      "output": {
-        "zh": "输出文件路径。",
-        "en": "Output file path."
-      },
-      "reference": {
-        "zh": "参数 reference 的说明。",
-        "en": "Description for parameter 'reference'."
-      }
-    },
-    "intent_keywords": {
-      "zh": [
-        "免疫反卷积",
-        "epic",
-        "细胞比例"
-      ],
-      "en": [
-        "epic",
-        "immune deconvolution",
-        "cell fraction"
+    "choices": {
+      "reference": [
+        "TRef",
+        "BRef",
+        "both"
       ]
     },
+    "param_hints": {
+      "input": {
+        "zh": "输入表达矩阵（基因×样本）。",
+        "en": "Input expression matrix (genes × samples)."
+      },
+      "output": {
+        "zh": "输出 EPIC 细胞比例结果。",
+        "en": "Output EPIC cell-fraction result file."
+      },
+      "reference": {
+        "zh": "EPIC 参考面板选择。",
+        "en": "Reference panel selection for EPIC."
+      }
+    },
     "function_summary": {
-      "zh": "进行免疫/基质细胞反卷积，输出细胞群体比例。",
-      "en": "Perform immune/stromal deconvolution and output cell-population fractions."
+      "zh": "运行 EPIC 估计细胞组分。",
+      "en": "Run EPIC deconvolution to estimate cell composition."
     },
     "optional_defaults": {
       "reference": "TRef"
+    },
+    "param_types": {
+      "input": "path",
+      "output": "path",
+      "reference": "choice"
+    },
+    "cli_flags": {
+      "input": "--input",
+      "output": "--output",
+      "reference": "--reference"
     }
   },
   "tme_cluster": {
@@ -685,63 +845,67 @@
       "max_nc",
       "max_iter",
       "tol",
-      "random_state"
+      "print_result",
+      "input_sep",
+      "output_sep"
     ],
     "param_hints": {
       "input": {
-        "zh": "输入表达矩阵/文件路径。",
-        "en": "Input expression matrix/file path."
+        "zh": "用于聚类的输入表格。",
+        "en": "Input table used for clustering."
       },
       "output": {
-        "zh": "输出文件路径。",
-        "en": "Output file path."
+        "zh": "聚类结果输出文件。",
+        "en": "Output file for clustering results."
       },
       "features": {
-        "zh": "参数 features 的说明。",
-        "en": "Description for parameter 'features'."
+        "zh": "按列位置范围选择特征（如 1:22）。",
+        "en": "Select feature columns by positional range (e.g., 1:22)."
       },
       "pattern": {
-        "zh": "参数 pattern 的说明。",
-        "en": "Description for parameter 'pattern'."
+        "zh": "用正则表达式按列名筛选特征。",
+        "en": "Select features by regex on column names."
       },
       "id": {
-        "zh": "参数 id 的说明。",
-        "en": "Description for parameter 'id'."
+        "zh": "样本 ID 列名；不填时默认首列。",
+        "en": "Sample ID column name; defaults to the first column."
       },
       "scale": {
-        "zh": "参数 scale 的说明。",
-        "en": "Description for parameter 'scale'."
+        "zh": "是否进行 z-score 标准化（支持 --scale/--no-scale）。",
+        "en": "Whether to apply z-score scaling (controlled by --scale/--no-scale)."
       },
       "min_nc": {
-        "zh": "参数 min_nc 的说明。",
-        "en": "Description for parameter 'min_nc'."
+        "zh": "最小聚类数。",
+        "en": "Minimum number of clusters to evaluate."
       },
       "max_nc": {
-        "zh": "参数 max_nc 的说明。",
-        "en": "Description for parameter 'max_nc'."
+        "zh": "最大聚类数。",
+        "en": "Maximum number of clusters to evaluate."
       },
       "max_iter": {
-        "zh": "参数 max_iter 的说明。",
-        "en": "Description for parameter 'max_iter'."
+        "zh": "k-means 最大迭代次数。",
+        "en": "Maximum k-means iterations."
       },
       "tol": {
-        "zh": "参数 tol 的说明。",
-        "en": "Description for parameter 'tol'."
+        "zh": "聚类收敛阈值。",
+        "en": "Convergence tolerance for clustering."
       },
-      "random_state": {
-        "zh": "参数 random_state 的说明。",
-        "en": "Description for parameter 'random_state'."
+      "print_result": {
+        "zh": "打印中间 KL 分数与聚类数量信息。",
+        "en": "Print intermediate KL scores and cluster counts."
+      },
+      "input_sep": {
+        "zh": "输入分隔符；不填时自动识别。",
+        "en": "Input delimiter; auto-detected when omitted."
+      },
+      "output_sep": {
+        "zh": "输出分隔符；不填时按输出后缀推断。",
+        "en": "Output delimiter; inferred from output suffix when omitted."
       }
     },
-    "intent_keywords": {
-      "zh": [
-        "tme_cluster",
-        "相关分析"
-      ],
-      "en": [
-        "tme_cluster",
-        "analysis"
-      ]
+    "function_summary": {
+      "zh": "对 TME 特征进行聚类并输出分群结果。",
+      "en": "Cluster TME features and output sample subtypes."
     },
     "optional_defaults": {
       "features": null,
@@ -752,7 +916,39 @@
       "max_nc": 6,
       "max_iter": 10,
       "tol": 0.0001,
-      "random_state": 42
+      "print_result": false,
+      "input_sep": null,
+      "output_sep": null
+    },
+    "param_types": {
+      "input": "path",
+      "output": "path",
+      "features": "string",
+      "pattern": "string",
+      "id": "string",
+      "scale": "bool",
+      "min_nc": "int",
+      "max_nc": "int",
+      "max_iter": "int",
+      "tol": "float",
+      "print_result": "bool",
+      "input_sep": "string",
+      "output_sep": "string"
+    },
+    "cli_flags": {
+      "input": "--input",
+      "output": "--output",
+      "features": "--features",
+      "pattern": "--pattern",
+      "id": "--id",
+      "scale": "--scale/--no-scale",
+      "min_nc": "--min_nc",
+      "max_nc": "--max_nc",
+      "max_iter": "--max_iter",
+      "tol": "--tol",
+      "print_result": "--print_result",
+      "input_sep": "--input_sep",
+      "output_sep": "--output_sep"
     }
   },
   "LR_cal": {
@@ -761,52 +957,74 @@
       "output"
     ],
     "optional": [
-      "database",
-      "group",
-      "min_expr",
-      "fdr"
+      "data_type",
+      "id_type",
+      "cancer_type",
+      "verbose"
     ],
-    "param_hints": {
-      "input": {
-        "zh": "输入表达矩阵/文件路径。",
-        "en": "Input expression matrix/file path."
-      },
-      "output": {
-        "zh": "输出文件路径。",
-        "en": "Output file path."
-      },
-      "database": {
-        "zh": "参数 database 的说明。",
-        "en": "Description for parameter 'database'."
-      },
-      "group": {
-        "zh": "参数 group 的说明。",
-        "en": "Description for parameter 'group'."
-      },
-      "min_expr": {
-        "zh": "参数 min_expr 的说明。",
-        "en": "Description for parameter 'min_expr'."
-      },
-      "fdr": {
-        "zh": "参数 fdr 的说明。",
-        "en": "Description for parameter 'fdr'."
-      }
-    },
-    "intent_keywords": {
-      "zh": [
-        "LR_cal",
-        "相关分析"
+    "choices": {
+      "data_type": [
+        "count",
+        "tpm"
       ],
-      "en": [
-        "LR_cal",
-        "analysis"
+      "id_type": [
+        "ensembl",
+        "entrez",
+        "symbol",
+        "mgi"
       ]
     },
+    "param_hints": {
+      "input": {
+        "zh": "输入表达矩阵（基因×样本）。",
+        "en": "Input expression matrix (genes × samples)."
+      },
+      "output": {
+        "zh": "输出配体-受体评分文件。",
+        "en": "Output ligand-receptor score file."
+      },
+      "data_type": {
+        "zh": "输入数据类型（count 或 tpm）。",
+        "en": "Input data type (count or tpm)."
+      },
+      "id_type": {
+        "zh": "输入基因 ID 类型。",
+        "en": "Gene ID type used in input."
+      },
+      "cancer_type": {
+        "zh": "指定用于网络计算的癌种标签。",
+        "en": "Cancer type label used to select interaction network."
+      },
+      "verbose": {
+        "zh": "输出详细日志。",
+        "en": "Enable verbose logging."
+      }
+    },
+    "function_summary": {
+      "zh": "计算样本的配体-受体互作评分。",
+      "en": "Compute ligand-receptor interaction scores from expression data."
+    },
     "optional_defaults": {
-      "database": "CellChatDB_human",
-      "group": "normal-vs-cancer",
-      "min_expr": 0.1,
-      "fdr": 0.1
+      "data_type": "tpm",
+      "id_type": "ensembl",
+      "cancer_type": "pancan",
+      "verbose": false
+    },
+    "param_types": {
+      "input": "path",
+      "output": "path",
+      "data_type": "choice",
+      "id_type": "choice",
+      "cancer_type": "string",
+      "verbose": "bool"
+    },
+    "cli_flags": {
+      "input": "--input",
+      "output": "--output",
+      "data_type": "--data_type",
+      "id_type": "--id_type",
+      "cancer_type": "--cancer_type",
+      "verbose": "--verbose"
     }
   },
   "nmf": {
@@ -815,58 +1033,102 @@
       "output"
     ],
     "optional": [
-      "ranks",
-      "nrun",
-      "seed",
+      "kmin",
+      "kmax",
+      "features",
+      "log1p",
+      "normalize",
+      "shift",
+      "random_state",
       "max_iter",
-      "method"
+      "skip_k_2"
     ],
     "param_hints": {
       "input": {
-        "zh": "输入表达矩阵/文件路径。",
-        "en": "Input expression matrix/file path."
+        "zh": "输入待分解矩阵（首列通常为样本名）。",
+        "en": "Input matrix to factorize (first column usually sample names)."
       },
       "output": {
-        "zh": "输出文件路径。",
-        "en": "Output file path."
+        "zh": "NMF 结果输出目录。",
+        "en": "Output directory for NMF results."
       },
-      "ranks": {
-        "zh": "参数 ranks 的说明。",
-        "en": "Description for parameter 'ranks'."
+      "kmin": {
+        "zh": "搜索最优分解维度时的最小 k。",
+        "en": "Minimum k when searching factorization ranks."
       },
-      "nrun": {
-        "zh": "参数 nrun 的说明。",
-        "en": "Description for parameter 'nrun'."
+      "kmax": {
+        "zh": "搜索最优分解维度时的最大 k。",
+        "en": "Maximum k when searching factorization ranks."
       },
-      "seed": {
-        "zh": "参数 seed 的说明。",
-        "en": "Description for parameter 'seed'."
+      "features": {
+        "zh": "可选特征列范围（如 2-10 或 1:5）。",
+        "en": "Optional feature-column range (e.g., 2-10 or 1:5)."
+      },
+      "log1p": {
+        "zh": "先对输入做 log1p 变换。",
+        "en": "Apply log1p transform before NMF."
+      },
+      "normalize": {
+        "zh": "是否进行按行 L1 归一化。",
+        "en": "Whether to apply row-wise L1 normalization."
+      },
+      "shift": {
+        "zh": "当存在负值时添加常数平移。",
+        "en": "Add a constant shift when input contains negative values."
+      },
+      "random_state": {
+        "zh": "随机种子。",
+        "en": "Random seed for NMF."
       },
       "max_iter": {
-        "zh": "参数 max_iter 的说明。",
-        "en": "Description for parameter 'max_iter'."
+        "zh": "NMF 最大迭代次数。",
+        "en": "Maximum iterations for NMF."
       },
-      "method": {
-        "zh": "参数 method 的说明。",
-        "en": "Description for parameter 'method'."
+      "skip_k_2": {
+        "zh": "搜索 k 时跳过 k=2。",
+        "en": "Skip k=2 during rank search."
       }
     },
-    "intent_keywords": {
-      "zh": [
-        "nmf",
-        "相关分析"
-      ],
-      "en": [
-        "nmf",
-        "analysis"
-      ]
+    "function_summary": {
+      "zh": "执行 NMF 分解并评估最优聚类维度。",
+      "en": "Run NMF decomposition and evaluate candidate cluster ranks."
     },
     "optional_defaults": {
-      "ranks": "2-6",
-      "nrun": 10,
-      "seed": 1234,
+      "kmin": 2,
+      "kmax": 8,
+      "features": null,
+      "log1p": false,
+      "normalize": false,
+      "shift": null,
+      "random_state": 42,
       "max_iter": 1000,
-      "method": "brunet"
+      "skip_k_2": false
+    },
+    "param_types": {
+      "input": "path",
+      "output": "path",
+      "kmin": "int",
+      "kmax": "int",
+      "features": "string",
+      "log1p": "bool",
+      "normalize": "bool",
+      "shift": "float",
+      "random_state": "int",
+      "max_iter": "int",
+      "skip_k_2": "bool"
+    },
+    "cli_flags": {
+      "input": "--input",
+      "output": "--output",
+      "kmin": "--kmin",
+      "kmax": "--kmax",
+      "features": "--features",
+      "log1p": "--log1p",
+      "normalize": "--normalize",
+      "shift": "--shift",
+      "random_state": "--random-state",
+      "max_iter": "--max-iter",
+      "skip_k_2": "--skip_k_2"
     }
   },
   "mouse2human_eset": {
@@ -875,34 +1137,78 @@
       "output"
     ],
     "optional": [
-      "method"
+      "is_matrix",
+      "column_of_symbol",
+      "verbose",
+      "sep",
+      "out_sep",
+      "progress"
     ],
     "param_hints": {
       "input": {
-        "zh": "输入表达矩阵/文件路径。",
-        "en": "Input expression matrix/file path."
+        "zh": "输入小鼠基因表达文件（矩阵或表格模式）。",
+        "en": "Input mouse-gene expression file (matrix or table mode)."
       },
       "output": {
-        "zh": "输出文件路径。",
-        "en": "Output file path."
+        "zh": "输出映射到人类 symbol 的结果文件。",
+        "en": "Output file mapped to human gene symbols."
       },
-      "method": {
-        "zh": "参数 method 的说明。",
-        "en": "Description for parameter 'method'."
+      "is_matrix": {
+        "zh": "声明输入为矩阵模式（行是基因、列是样本）。",
+        "en": "Treat input as matrix mode (rows=genes, cols=samples)."
+      },
+      "column_of_symbol": {
+        "zh": "表格模式下，小鼠 symbol 所在列名。",
+        "en": "Column name containing mouse symbols in table mode."
+      },
+      "verbose": {
+        "zh": "打印详细处理信息。",
+        "en": "Print verbose processing logs."
+      },
+      "sep": {
+        "zh": "输入分隔符（不填则自动推断）。",
+        "en": "Input delimiter (auto-inferred when omitted)."
+      },
+      "out_sep": {
+        "zh": "输出分隔符（不填则按输出扩展名推断）。",
+        "en": "Output delimiter (inferred from output extension when omitted)."
+      },
+      "progress": {
+        "zh": "保存结果时显示进度条。",
+        "en": "Show a progress bar while writing output."
       }
     },
-    "intent_keywords": {
-      "zh": [
-        "mouse2human_eset",
-        "相关分析"
-      ],
-      "en": [
-        "mouse2human_eset",
-        "analysis"
-      ]
+    "function_summary": {
+      "zh": "将小鼠基因符号映射为人类基因符号。",
+      "en": "Convert mouse gene symbols to human symbols."
     },
     "optional_defaults": {
-      "method": "replace"
+      "is_matrix": false,
+      "column_of_symbol": null,
+      "verbose": false,
+      "sep": null,
+      "out_sep": null,
+      "progress": true
+    },
+    "param_types": {
+      "input": "path",
+      "output": "path",
+      "is_matrix": "bool",
+      "column_of_symbol": "string",
+      "verbose": "bool",
+      "sep": "string",
+      "out_sep": "string",
+      "progress": "bool"
+    },
+    "cli_flags": {
+      "input": "--input",
+      "output": "--output",
+      "is_matrix": "--is_matrix",
+      "column_of_symbol": "--column_of_symbol",
+      "verbose": "--verbose",
+      "sep": "--sep",
+      "out_sep": "--out_sep",
+      "progress": "--progress"
     }
   },
   "batch_salmon": {
@@ -919,49 +1225,61 @@
     ],
     "param_hints": {
       "index": {
-        "zh": "参考索引路径/目录。",
-        "en": "Reference index path/directory."
+        "zh": "Salmon 索引目录。",
+        "en": "Salmon index directory."
       },
       "path_fq": {
-        "zh": "参数 path_fq 的说明。",
-        "en": "Description for parameter 'path_fq'."
+        "zh": "FASTQ 输入目录（按 suffix1 匹配 R1 并自动推断 R2）。",
+        "en": "FASTQ input directory (R1 matched by suffix1; R2 inferred automatically)."
       },
       "path_out": {
-        "zh": "参数 path_out 的说明。",
-        "en": "Description for parameter 'path_out'."
+        "zh": "每个样本 Salmon 结果输出根目录。",
+        "en": "Output root directory for per-sample Salmon results."
       },
       "suffix1": {
-        "zh": "参数 suffix1 的说明。",
-        "en": "Description for parameter 'suffix1'."
+        "zh": "R1 文件后缀（例如 _1.fastq.gz）。",
+        "en": "R1 filename suffix (e.g., _1.fastq.gz)."
       },
       "batch_size": {
-        "zh": "并行处理样本数。",
-        "en": "Number of samples processed in parallel."
+        "zh": "并发处理样本数。",
+        "en": "Number of samples processed concurrently."
       },
       "num_threads": {
-        "zh": "参数 num_threads 的说明。",
-        "en": "Description for parameter 'num_threads'."
+        "zh": "每个 Salmon 进程使用的线程数。",
+        "en": "Threads used by each Salmon process."
       },
       "gtf": {
-        "zh": "参数 gtf 的说明。",
-        "en": "Description for parameter 'gtf'."
+        "zh": "可选 GTF 文件，传给 Salmon 的 -g 进行基因层级汇总。",
+        "en": "Optional GTF passed to Salmon -g for gene-level summarization."
       }
     },
-    "intent_keywords": {
-      "zh": [
-        "batch_salmon",
-        "相关分析"
-      ],
-      "en": [
-        "batch_salmon",
-        "analysis"
-      ]
+    "function_summary": {
+      "zh": "批量运行 Salmon 定量。",
+      "en": "Run Salmon quantification in batch mode."
     },
     "optional_defaults": {
       "suffix1": "_1.fastq.gz",
       "batch_size": 1,
       "num_threads": 8,
       "gtf": null
+    },
+    "param_types": {
+      "index": "path",
+      "path_fq": "path",
+      "path_out": "path",
+      "suffix1": "string",
+      "batch_size": "int",
+      "num_threads": "int",
+      "gtf": "path"
+    },
+    "cli_flags": {
+      "index": "--index",
+      "path_fq": "--path_fq",
+      "path_out": "--path_out",
+      "suffix1": "--suffix1",
+      "batch_size": "--batch_size",
+      "num_threads": "--num_threads",
+      "gtf": "--gtf"
     }
   },
   "merge_salmon": {
@@ -974,30 +1292,34 @@
     ],
     "param_hints": {
       "path_salmon": {
-        "zh": "参数 path_salmon 的说明。",
-        "en": "Description for parameter 'path_salmon'."
+        "zh": "Salmon 结果根目录（会递归查找 quant.sf）。",
+        "en": "Root directory of Salmon outputs (quant.sf searched recursively)."
       },
       "project": {
-        "zh": "参数 project 的说明。",
-        "en": "Description for parameter 'project'."
+        "zh": "输出文件名前缀。",
+        "en": "Output filename prefix."
       },
       "num_processes": {
-        "zh": "参数 num_processes 的说明。",
-        "en": "Description for parameter 'num_processes'."
+        "zh": "读取 quant.sf 时使用的并行进程/线程数。",
+        "en": "Worker count for loading quant.sf files."
       }
     },
-    "intent_keywords": {
-      "zh": [
-        "merge_salmon",
-        "相关分析"
-      ],
-      "en": [
-        "merge_salmon",
-        "analysis"
-      ]
+    "function_summary": {
+      "zh": "合并多个 Salmon quant.sf 为 TPM 与 count 矩阵。",
+      "en": "Merge multiple Salmon quant.sf files into TPM and count matrices."
     },
     "optional_defaults": {
       "num_processes": null
+    },
+    "param_types": {
+      "path_salmon": "path",
+      "project": "string",
+      "num_processes": "int"
+    },
+    "cli_flags": {
+      "path_salmon": "--path_salmon",
+      "project": "--project",
+      "num_processes": "--num_processes"
     }
   },
   "merge_star_count": {
@@ -1005,25 +1327,28 @@
       "path",
       "project"
     ],
+    "optional": [],
     "param_hints": {
       "path": {
-        "zh": "参数 path 的说明。",
-        "en": "Description for parameter 'path'."
+        "zh": "包含多个 STAR *_ReadsPerGene.out.tab 的目录。",
+        "en": "Directory containing STAR *_ReadsPerGene.out.tab files."
       },
       "project": {
-        "zh": "参数 project 的说明。",
-        "en": "Description for parameter 'project'."
+        "zh": "输出文件名前缀。",
+        "en": "Output filename prefix."
       }
     },
-    "intent_keywords": {
-      "zh": [
-        "merge_star_count",
-        "相关分析"
-      ],
-      "en": [
-        "merge_star_count",
-        "analysis"
-      ]
+    "function_summary": {
+      "zh": "合并 STAR gene count 文件为统一矩阵。",
+      "en": "Merge STAR gene-count outputs into one matrix."
+    },
+    "param_types": {
+      "path": "path",
+      "project": "string"
+    },
+    "cli_flags": {
+      "path": "--path",
+      "project": "--project"
     }
   },
   "batch_star_count": {
@@ -1039,44 +1364,54 @@
     ],
     "param_hints": {
       "index": {
-        "zh": "参考索引路径/目录。",
-        "en": "Reference index path/directory."
+        "zh": "STAR 基因组索引目录。",
+        "en": "STAR genome index directory."
       },
       "path_fq": {
-        "zh": "参数 path_fq 的说明。",
-        "en": "Description for parameter 'path_fq'."
+        "zh": "FASTQ 输入目录（按 suffix1 匹配 R1 并自动推断 R2）。",
+        "en": "FASTQ input directory (R1 matched by suffix1; R2 inferred automatically)."
       },
       "path_out": {
-        "zh": "参数 path_out 的说明。",
-        "en": "Description for parameter 'path_out'."
+        "zh": "STAR 结果输出目录。",
+        "en": "Output directory for STAR results."
       },
       "suffix1": {
-        "zh": "参数 suffix1 的说明。",
-        "en": "Description for parameter 'suffix1'."
+        "zh": "R1 文件后缀。",
+        "en": "R1 filename suffix."
       },
       "batch_size": {
-        "zh": "并行处理样本数。",
-        "en": "Number of samples processed in parallel."
+        "zh": "每批并发样本数。",
+        "en": "Concurrent sample count per batch."
       },
       "num_threads": {
-        "zh": "参数 num_threads 的说明。",
-        "en": "Description for parameter 'num_threads'."
+        "zh": "STAR 与排序步骤使用的线程数。",
+        "en": "Threads used by STAR and sorting."
       }
     },
-    "intent_keywords": {
-      "zh": [
-        "batch_star_count",
-        "相关分析"
-      ],
-      "en": [
-        "batch_star_count",
-        "analysis"
-      ]
+    "function_summary": {
+      "zh": "批量运行 STAR 比对并输出基因计数。",
+      "en": "Run STAR alignment/counting in batch mode."
     },
     "optional_defaults": {
       "suffix1": "_1.fastq.gz",
       "batch_size": 1,
       "num_threads": 8
+    },
+    "param_types": {
+      "index": "path",
+      "path_fq": "path",
+      "path_out": "path",
+      "suffix1": "string",
+      "batch_size": "int",
+      "num_threads": "int"
+    },
+    "cli_flags": {
+      "index": "--index",
+      "path_fq": "--path_fq",
+      "path_out": "--path_out",
+      "suffix1": "--suffix1",
+      "batch_size": "--batch_size",
+      "num_threads": "--num_threads"
     }
   },
   "fastq_qc": {
@@ -1093,43 +1428,41 @@
     ],
     "param_hints": {
       "path1_fastq": {
-        "zh": "参数 path1_fastq 的说明。",
-        "en": "Description for parameter 'path1_fastq'."
+        "zh": "原始 FASTQ 所在目录。",
+        "en": "Directory containing raw FASTQ files."
       },
       "path2_fastp": {
-        "zh": "参数 path2_fastp 的说明。",
-        "en": "Description for parameter 'path2_fastp'."
+        "zh": "fastp 清洗后 FASTQ 的输出目录。",
+        "en": "Output directory for cleaned FASTQs from fastp."
       },
       "num_threads": {
-        "zh": "参数 num_threads 的说明。",
-        "en": "Description for parameter 'num_threads'."
+        "zh": "每个 fastp 任务使用的线程数。",
+        "en": "Threads used by each fastp process."
       },
       "suffix1": {
-        "zh": "参数 suffix1 的说明。",
-        "en": "Description for parameter 'suffix1'."
+        "zh": "R1 文件后缀，用于配对推断 R2。",
+        "en": "R1 suffix used to infer paired R2 files."
       },
       "batch_size": {
-        "zh": "并行处理样本数。",
-        "en": "Number of samples processed in parallel."
+        "zh": "并发处理样本数量。",
+        "en": "Number of samples processed concurrently."
       },
       "se": {
-        "zh": "参数 se 的说明。",
-        "en": "Description for parameter 'se'."
+        "zh": "是否按单端测序处理（默认双端）。",
+        "en": "Run in single-end mode (paired-end by default)."
       },
       "length_required": {
-        "zh": "参数 length_required 的说明。",
-        "en": "Description for parameter 'length_required'."
+        "zh": "保留 reads 的最小长度阈值。",
+        "en": "Minimum read length to retain."
       }
     },
-    "intent_keywords": {
-      "zh": [
-        "fastq_qc",
-        "相关分析"
-      ],
-      "en": [
-        "fastq_qc",
-        "analysis"
-      ]
+    "function_summary": {
+      "zh": "使用 fastp 进行批量 FASTQ 质控与清洗。",
+      "en": "Run batch FASTQ quality control and trimming with fastp."
+    },
+    "notes": {
+      "zh": "若环境中有 multiqc，会自动汇总 fastp 报告。",
+      "en": "If multiqc is available, fastp reports are summarized automatically."
     },
     "optional_defaults": {
       "num_threads": 8,
@@ -1137,6 +1470,24 @@
       "batch_size": 1,
       "se": false,
       "length_required": 50
+    },
+    "param_types": {
+      "path1_fastq": "path",
+      "path2_fastp": "path",
+      "num_threads": "int",
+      "suffix1": "string",
+      "batch_size": "int",
+      "se": "bool",
+      "length_required": "int"
+    },
+    "cli_flags": {
+      "path1_fastq": "--path1_fastq",
+      "path2_fastp": "--path2_fastp",
+      "num_threads": "--num_threads",
+      "suffix1": "--suffix1",
+      "batch_size": "--batch_size",
+      "se": "--se",
+      "length_required": "--length_required"
     }
   },
   "log2_eset": {
@@ -1144,25 +1495,28 @@
       "input",
       "output"
     ],
+    "optional": [],
     "param_hints": {
       "input": {
-        "zh": "输入表达矩阵/文件路径。",
-        "en": "Input expression matrix/file path."
+        "zh": "输入表达矩阵文件。",
+        "en": "Input expression matrix file."
       },
       "output": {
-        "zh": "输出文件路径。",
-        "en": "Output file path."
+        "zh": "输出 log2(x+1) 转换后的矩阵文件。",
+        "en": "Output file for log2(x+1)-transformed matrix."
       }
     },
-    "intent_keywords": {
-      "zh": [
-        "log2_eset",
-        "相关分析"
-      ],
-      "en": [
-        "log2_eset",
-        "analysis"
-      ]
+    "function_summary": {
+      "zh": "对表达矩阵执行 log2(x+1) 变换。",
+      "en": "Apply log2(x+1) transform to an expression matrix."
+    },
+    "param_types": {
+      "input": "path",
+      "output": "path"
+    },
+    "cli_flags": {
+      "input": "--input",
+      "output": "--output"
     }
   },
   "trust4": {
@@ -1581,39 +1935,38 @@
     ],
     "param_hints": {
       "input": {
-        "zh": "输入表达矩阵/文件路径。",
-        "en": "Input expression matrix/file path."
+        "zh": "TPM 矩阵（基因×样本）。",
+        "en": "TPM matrix (genes × samples)."
       },
       "output": {
-        "zh": "输出文件路径。",
-        "en": "Output file path."
+        "zh": "一体化 TME 分析输出目录。",
+        "en": "Output directory for integrated TME analysis."
       },
       "threads": {
-        "zh": "CPU线程数。",
-        "en": "Number of CPU threads."
+        "zh": "用于 signature 打分与部分反卷积步骤的线程数。",
+        "en": "Thread count for signature scoring and selected deconvolution steps."
       }
     },
-    "intent_keywords": {
-      "zh": [
-        "肿瘤微环境画像",
-        "免疫浸润评估"
-      ],
-      "en": [
-        "tme profile",
-        "microenvironment profiling",
-        "immune infiltration assessment"
-      ]
+    "function_summary": {
+      "zh": "一键串联 signature 评分、免疫反卷积和 LR 评分的 TME wrapper。",
+      "en": "Integrated wrapper that chains signature scoring, immune deconvolution, and LR scoring."
+    },
+    "notes": {
+      "zh": "该命令是流程封装器，会调用多个子算法而非单一方法。",
+      "en": "This command is a pipeline wrapper and orchestrates multiple methods, not a single algorithm."
     },
     "optional_defaults": {
       "threads": 1
     },
-    "function_summary": {
-      "zh": "基于TPM矩阵的一体化TME流程：包含signature评分、6种免疫反卷积、LR评分及反卷积结果合并。",
-      "en": "Integrated TPM-based TME profiling wrapper: signature scoring, six immune deconvolution methods, LR scoring, and merged deconvolution outputs."
+    "param_types": {
+      "input": "path",
+      "output": "path",
+      "threads": "int"
     },
-    "notes": {
-      "zh": "使用一个命令完成基于TPM的TME profiling流程。该功能会串联运行calculate_sig_score、cibersort、IPS、estimate、mcpcounter、quantiseq、epic和LR_cal，生成标准化输出目录（signature、TME deconvolution、LR scoring），并将6种反卷积结果合并为一个总表。该流程不包含deside、bayesprism、tme_cluster或nmf。",
-      "en": "Runs an end-to-end TPM-based TME profiling workflow in one command by chaining calculate_sig_score, cibersort, IPS, estimate, mcpcounter, quantiseq, epic, and LR_cal. Produces a standardized output structure (signature, TME deconvolution, LR scoring) and merges six deconvolution outputs into one summary table. This workflow does not include deside, bayesprism, tme_cluster, or nmf."
+    "cli_flags": {
+      "input": "--input",
+      "output": "--output",
+      "threads": "--threads"
     }
   },
   "bayesprism": {
@@ -1630,49 +1983,37 @@
     ],
     "param_hints": {
       "input": {
-        "zh": "输入表达矩阵/文件路径。",
-        "en": "Input expression matrix/file path."
+        "zh": "bulk 表达矩阵（基因×样本）。",
+        "en": "Bulk expression matrix (genes × samples)."
       },
       "output": {
-        "zh": "输出文件路径。",
-        "en": "Output file path."
+        "zh": "BayesPrism 结果输出目录。",
+        "en": "Output directory for BayesPrism results."
       },
       "threads": {
-        "zh": "CPU线程数。",
-        "en": "Number of CPU threads."
+        "zh": "BayesPrism 使用的 CPU 核数。",
+        "en": "Number of CPU cores for BayesPrism."
       },
       "sc_dat": {
-        "zh": "参数 sc_dat 的说明。",
-        "en": "Description for parameter 'sc_dat'."
+        "zh": "自定义单细胞参考矩阵（基因×细胞）。",
+        "en": "Custom single-cell reference matrix (genes × cells)."
       },
       "cell_state_labels": {
-        "zh": "参数 cell_state_labels 的说明。",
-        "en": "Description for parameter 'cell_state_labels'."
+        "zh": "与 sc_dat 细胞顺序一致的 cell state 标签文件。",
+        "en": "Cell-state label file aligned to the same cell order as sc_dat."
       },
       "cell_type_labels": {
-        "zh": "参数 cell_type_labels 的说明。",
-        "en": "Description for parameter 'cell_type_labels'."
+        "zh": "与 sc_dat 细胞顺序一致的 cell type 标签文件。",
+        "en": "Cell-type label file aligned to the same cell order as sc_dat."
       },
       "key": {
-        "zh": "参数 key 的说明。",
-        "en": "Description for parameter 'key'."
+        "zh": "自定义单细胞参考时指定肿瘤细胞类型名称；用于告诉模型哪个 cell type 视为肿瘤。",
+        "en": "Tumor cell-type key for custom single-cell references; tells BayesPrism which cell type is tumor."
       }
     },
-    "intent_keywords": {
-      "zh": [
-        "反卷积",
-        "bayesprism",
-        "细胞比例"
-      ],
-      "en": [
-        "bayesprism",
-        "deconvolution",
-        "cell fraction"
-      ]
-    },
     "function_summary": {
-      "zh": "贝叶斯反卷积估计细胞组成，输出细胞比例与相关结果。",
-      "en": "Run Bayesian deconvolution to estimate cell composition and output cell-fraction results."
+      "zh": "运行 BayesPrism 进行 bulk RNA 细胞成分反卷积。",
+      "en": "Run BayesPrism deconvolution on bulk RNA expression."
     },
     "optional_defaults": {
       "threads": 8,
@@ -1680,6 +2021,24 @@
       "cell_state_labels": null,
       "cell_type_labels": null,
       "key": null
+    },
+    "param_types": {
+      "input": "path",
+      "output": "path",
+      "threads": "int",
+      "sc_dat": "path",
+      "cell_state_labels": "path",
+      "cell_type_labels": "path",
+      "key": "string"
+    },
+    "cli_flags": {
+      "input": "--input",
+      "output": "--output",
+      "threads": "--threads",
+      "sc_dat": "--sc_dat",
+      "cell_state_labels": "--cell_state_labels",
+      "cell_type_labels": "--cell_type_labels",
+      "key": "--key"
     }
   }
 }
