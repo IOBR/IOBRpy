@@ -10,32 +10,46 @@ from iobrpy.RAG_MCP import ai
 class _FakeSession:
     def __init__(self, out: str):
         self._out = out
+        self.last_prompt = None
 
     def prompt(self, *args, **kwargs):
+        if args:
+            self.last_prompt = args[0]
         return self._out
 
 
 class AICliInputTests(unittest.TestCase):
+    def test_main_prompt_prefix_is_iobrpy(self):
+        self.assertEqual(ai.build_main_prompt_prefix(), "IOBRpy> ")
+
     def test_main_input_supports_multiline_payload_as_single_submission(self):
         payload = "line1\nline2\nline3"
-        out = ai.read_main_user_input("AI> ", session=_FakeSession(payload))
+        sess = _FakeSession(payload)
+        out = ai.read_main_user_input(session=sess)
         self.assertEqual(out, payload)
+        self.assertEqual(sess.last_prompt, "IOBRpy> ")
 
     def test_main_shortcut_submit_classification(self):
         self.assertEqual(ai.classify_main_shortcut("enter"), "submit")
-        self.assertEqual(ai.classify_main_shortcut("c-s"), "submit")
+        self.assertEqual(ai.classify_main_shortcut("shift+enter"), "newline")
 
     def test_main_shortcut_newline_inserts_newline_not_submit(self):
-        self.assertEqual(ai.classify_main_shortcut("c-j"), "newline")
-        self.assertEqual(ai.classify_main_shortcut("escape+enter"), "newline")
         text, pos = ai.apply_newline_to_text("abc", 1)
         self.assertEqual(text, "a\nbc")
+        self.assertEqual(pos, 2)
+
+    def test_backspace_at_line_start_merges_lines(self):
+        text, pos = ai.apply_backspace_to_text("ab\ncd", 3)
+        self.assertEqual(text, "abcd")
         self.assertEqual(pos, 2)
 
     def test_main_input_help_text_matches_enter_submit_contract(self):
         help_text = ai.build_main_input_help_text()
         self.assertIn("Enter=submit", help_text)
-        self.assertIn("Ctrl+J=newline", help_text)
+        self.assertIn("Shift+Enter=newline", help_text)
+        self.assertNotIn("Ctrl+J", help_text)
+        self.assertNotIn("Ctrl+S", help_text)
+        self.assertNotIn("Esc+Enter", help_text)
 
     def test_confirmation_other_text_routes_back_to_main_flow(self):
         calls = []

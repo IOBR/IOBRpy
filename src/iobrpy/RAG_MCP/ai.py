@@ -123,12 +123,11 @@ def _build_main_key_bindings() -> Optional[Any]:
     kb = KeyBindings()
 
     @kb.add("enter")
-    @kb.add("c-s")
     def _(event) -> None:  # type: ignore
         event.current_buffer.validate_and_handle()
 
-    @kb.add("c-j")
-    @kb.add("escape", "enter")
+    # Shift+Enter may be terminal-dependent; bind when supported by input stream.
+    @kb.add("s-enter")
     def _(event) -> None:  # type: ignore
         event.current_buffer.insert_text("\n")
 
@@ -142,17 +141,32 @@ def apply_newline_to_text(text: str, cursor_pos: int) -> Tuple[str, int]:
     return out, cursor_pos + 1
 
 
+def apply_backspace_to_text(text: str, cursor_pos: int) -> Tuple[str, int]:
+    if cursor_pos <= 0:
+        return text, 0
+    out = text[: cursor_pos - 1] + text[cursor_pos:]
+    return out, cursor_pos - 1
+
+
 def classify_main_shortcut(shortcut: str) -> str:
     s = (shortcut or "").strip().lower()
-    if s in {"c-j", "escape+enter"}:
+    if s in {"shift+enter", "s-enter"}:
         return "newline"
-    if s in {"enter", "c-s"}:
+    if s in {"enter"}:
         return "submit"
     return "unknown"
 
 
 def build_main_input_help_text() -> str:
-    return "Multi-line input enabled: Enter=submit, Ctrl+J=newline, Esc+Enter=newline."
+    return "Composer mode: Enter=submit, Shift+Enter=newline (terminal support may vary)."
+
+
+def build_main_prompt_prefix() -> str:
+    return "IOBRpy> "
+
+
+def build_main_continuation_prefix() -> str:
+    return "... "
 
 
 def build_main_prompt_session() -> Optional[Any]:
@@ -191,6 +205,7 @@ def build_confirmation_prompt_session() -> Optional[Any]:
 
 
 def _fallback_multiline_input(prompt_text: str) -> str:
+    # Fallback is line-based and cannot match full in-buffer editing semantics.
     print(prompt_text, end="", flush=True)
     first = input()
     lines = [first]
@@ -205,13 +220,13 @@ def _fallback_multiline_input(prompt_text: str) -> str:
     return "\n".join(lines)
 
 
-def read_main_user_input(prompt_text: str = "AI> ", session: Optional[Any] = None) -> str:
+def read_main_user_input(prompt_text: str = "IOBRpy> ", session: Optional[Any] = None) -> str:
     session = session or build_main_prompt_session()
     if session is not None:
         try:
             return session.prompt(
                 prompt_text,
-                prompt_continuation=lambda width, line_no, is_soft_wrap: "... ",
+                prompt_continuation=lambda width, line_no, is_soft_wrap: build_main_continuation_prefix(),
             )
         except KeyboardInterrupt:
             raise
@@ -420,7 +435,7 @@ def run_interactive(logdir: str, *, llm: str, api_key: Optional[str] = None, mod
 
     while True:
         try:
-            user_in = read_main_user_input("AI> ").strip()
+            user_in = read_main_user_input(build_main_prompt_prefix()).strip()
         except (EOFError, KeyboardInterrupt):
             print("\n" + _ui_text("bye", prefer_chinese))
             return
