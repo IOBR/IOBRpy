@@ -7,6 +7,7 @@ from __future__ import annotations
 import argparse
 import getpass
 import os
+import select
 import subprocess
 import sys
 import time
@@ -194,19 +195,76 @@ def _fallback_single_input(prompt_text: str) -> str:
     return input(prompt_text)
 
 
-def read_main_user_input(prompt_text: str = "IOBRpy> ", session: Optional[Any] = None) -> str:
+def _read_one_submission(prompt_text: str = "IOBRpy> ", session: Optional[Any] = None) -> str:
     session = session or build_main_prompt_session()
     if session is not None:
         try:
-            raw = session.prompt(prompt_text)
-            return normalize_main_input_text(raw)
+            return str(session.prompt(prompt_text))
         except KeyboardInterrupt:
             raise
         except EOFError:
             raise
         except Exception:
             pass
-    return normalize_main_input_text(_fallback_single_input(prompt_text))
+    return _fallback_single_input(prompt_text)
+
+
+def _drain_immediately_available_paste_lines(
+    *,
+    first_wait_s: float = 0.03,
+    next_wait_s: float = 0.008,
+    stdin_obj: Optional[Any] = None,
+    read_chunk_fn: Optional[Any] = None,
+) -> str:
+    if read_chunk_fn is not None:
+        chunks = []
+        timeout = first_wait_s
+        while True:
+            chunk = read_chunk_fn(timeout)
+            if not chunk:
+                break
+            chunks.append(str(chunk))
+            timeout = next_wait_s
+        return "".join(chunks)
+
+    stdin_obj = stdin_obj or sys.stdin
+    try:
+        fd = stdin_obj.fileno()
+    except Exception:
+        return ""
+
+    chunks = []
+    timeout = first_wait_s
+    while True:
+        try:
+            ready, _, _ = select.select([fd], [], [], timeout)
+        except Exception:
+            break
+        if not ready:
+            break
+        try:
+            raw = os.read(fd, 4096)
+        except Exception:
+            break
+        if not raw:
+            break
+        if isinstance(raw, bytes):
+            chunks.append(raw.decode(errors="replace"))
+        else:
+            chunks.append(str(raw))
+        timeout = next_wait_s
+    return "".join(chunks)
+
+
+def _collect_single_paste_payload(first_chunk: str, *, drain_fn: Optional[Any] = None) -> str:
+    tail = drain_fn() if drain_fn is not None else _drain_immediately_available_paste_lines()
+    return f"{first_chunk}{tail}" if tail else first_chunk
+
+
+def read_main_user_input(prompt_text: str = "IOBRpy> ", session: Optional[Any] = None, drain_fn: Optional[Any] = None) -> str:
+    first_chunk = _read_one_submission(prompt_text=prompt_text, session=session)
+    merged = _collect_single_paste_payload(first_chunk, drain_fn=drain_fn)
+    return normalize_main_input_text(merged)
 
 
 def read_confirmation_input(prompt_text: str, session: Optional[Any] = None) -> str:
