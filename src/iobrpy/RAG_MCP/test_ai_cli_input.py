@@ -1,4 +1,6 @@
+import io
 import sys
+import types
 import unittest
 from pathlib import Path
 
@@ -20,11 +22,10 @@ class _FakeSession:
         return self._out
 
 
-
-
 class _FailingSession:
     def prompt(self, *args, **kwargs):
         raise RuntimeError("boom")
+
 
 class AICliInputTests(unittest.TestCase):
     def test_main_prompt_prefix_is_iobrpy(self):
@@ -40,12 +41,13 @@ class AICliInputTests(unittest.TestCase):
         self.assertNotIn("Esc+Enter", help_text)
         self.assertNotIn("输入 . 结束", help_text)
 
-    def test_normalize_single_line_input(self):
-        self.assertEqual(ai.normalize_main_input_text("  hello world  "), "hello world")
-
     def test_normalize_multiline_paste(self):
         payload = " line1\nline2 \n\n line3\r\n"
         self.assertEqual(ai.normalize_main_input_text(payload), "line1 line2 line3")
+
+    def test_coalesce_paste_payload_for_single_line(self):
+        payload = "a\n\nb\r\nc"
+        self.assertEqual(ai.coalesce_paste_payload_for_single_line(payload), "a b c")
 
     def test_read_main_user_input_keeps_multiline_paste_as_one_request(self):
         payload = "fastq路径在/a\n输出在/b\nmode用salmon"
@@ -89,6 +91,45 @@ class AICliInputTests(unittest.TestCase):
         self.assertEqual(out, "line1 line2 line3")
         self.assertEqual(prompts, ["IOBRpy> "])
 
+
+class AIRunInteractiveOutputTests(unittest.TestCase):
+    def test_run_interactive_does_not_print_main_input_help_text(self):
+        fake_server = types.SimpleNamespace()
+
+        class _Cfg:
+            def __init__(self, **kwargs):
+                self.kwargs = kwargs
+
+        def _configure_runtime(_cfg):
+            return None
+
+        def _assistant(session_id, task=None, answer_text=None, run=False):
+            return {"status": "need_info", "question": "ok", "prefer_chinese": False}
+
+        fake_server.AIConfig = _Cfg
+        fake_server.configure_runtime = _configure_runtime
+        fake_server.tool_iobrpy_assistant = _assistant
+
+        old_module = sys.modules.get("iobrpy.RAG_MCP.iobrpy_rag_mcp")
+        sys.modules["iobrpy.RAG_MCP.iobrpy_rag_mcp"] = fake_server
+
+        old_read = ai.read_main_user_input
+        ai.read_main_user_input = lambda *args, **kwargs: (_ for _ in ()).throw(KeyboardInterrupt())
+
+        old_stdout = sys.stdout
+        sys.stdout = io.StringIO()
+        try:
+            ai.run_interactive(logdir="./.tmp_ai_logs", llm="openai", api_key="k")
+            out = sys.stdout.getvalue()
+        finally:
+            sys.stdout = old_stdout
+            ai.read_main_user_input = old_read
+            if old_module is None:
+                sys.modules.pop("iobrpy.RAG_MCP.iobrpy_rag_mcp", None)
+            else:
+                sys.modules["iobrpy.RAG_MCP.iobrpy_rag_mcp"] = old_module
+
+        self.assertNotIn("Single-line input mode. Press Enter to submit. Multi-line paste is supported and will be sent as one request.", out)
 
 
 class AIConfirmationFlowTests(unittest.TestCase):

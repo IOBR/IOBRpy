@@ -18,9 +18,11 @@ from typing import Any, Dict, Optional, Tuple
 try:
     from prompt_toolkit import PromptSession  # type: ignore
     from prompt_toolkit.history import InMemoryHistory  # type: ignore
+    from prompt_toolkit.key_binding import KeyBindings  # type: ignore
 except Exception:
     PromptSession = None
     InMemoryHistory = None
+    KeyBindings = None
 
 try:
     import readline  # noqa: F401
@@ -124,6 +126,23 @@ def normalize_main_input_text(text: str) -> str:
     return " ".join(lines)
 
 
+def coalesce_paste_payload_for_single_line(text: str) -> str:
+    # Bracketed paste may contain newlines; keep it as one logical submission.
+    return normalize_main_input_text(text)
+
+
+def _build_main_key_bindings() -> Optional[Any]:
+    if KeyBindings is None:
+        return None
+    kb = KeyBindings()
+
+    @kb.add("bracketed-paste")
+    def _(event) -> None:  # type: ignore
+        event.current_buffer.insert_text(coalesce_paste_payload_for_single_line(event.data))
+
+    return kb
+
+
 def build_main_input_help_text() -> str:
     return "Single-line input mode. Press Enter to submit. Multi-line paste is supported and will be sent as one request."
 
@@ -146,6 +165,7 @@ def build_main_prompt_session() -> Optional[Any]:
         _MAIN_PROMPT_SESSION = PromptSession(
             history=InMemoryHistory(),
             multiline=False,
+            key_bindings=_build_main_key_bindings(),
             enable_history_search=True,
         )
     except Exception:
@@ -376,7 +396,6 @@ def run_interactive(logdir: str, *, llm: str, api_key: Optional[str] = None, mod
     print(f"model  : {resolved_model}")
     print(_ui_text("type_request", prefer_chinese))
     print(_ui_text("commands", prefer_chinese) + "\n")
-    print(build_main_input_help_text())
 
     def call(answer: Optional[str] = None) -> Dict[str, Any]:
         return server.tool_iobrpy_assistant(session_id, task=None, answer_text=answer, run=False)
