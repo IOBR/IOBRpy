@@ -5,10 +5,8 @@
 from __future__ import annotations
 
 import argparse
-import codecs
 import getpass
 import os
-import select
 import subprocess
 import sys
 import time
@@ -20,11 +18,9 @@ from typing import Any, Dict, Optional, Tuple
 try:
     from prompt_toolkit import PromptSession  # type: ignore
     from prompt_toolkit.history import InMemoryHistory  # type: ignore
-    from prompt_toolkit.key_binding import KeyBindings  # type: ignore
 except Exception:
     PromptSession = None
     InMemoryHistory = None
-    KeyBindings = None
 
 try:
     import readline  # noqa: F401
@@ -32,12 +28,6 @@ except Exception:
     readline = None  # type: ignore
 
 
-try:
-    import termios
-    import tty
-except Exception:
-    termios = None  # type: ignore
-    tty = None  # type: ignore
 
 @dataclass
 class ProviderProfile:
@@ -136,12 +126,12 @@ def normalize_main_input_text(text: str) -> str:
 
 
 def coalesce_paste_payload_for_single_line(text: str) -> str:
-    # Bracketed paste payload is treated as one submission and normalized at once.
+    # Best-effort text normalization for payloads that already arrived as one string.
     return normalize_main_input_text(text)
 
 
 def build_main_input_help_text() -> str:
-    return "Single-line input mode. Press Enter to submit. Bracketed paste payloads are coalesced when terminal support is available."
+    return "Single-line input mode. Press Enter to submit. Multi-line paste handling depends on terminal behavior."
 
 
 def build_main_prompt_prefix() -> str:
@@ -169,133 +159,18 @@ def _fallback_single_input(prompt_text: str) -> str:
     return input(prompt_text)
 
 
-def _enable_bracketed_paste(output_stream: Any) -> None:
-    try:
-        output_stream.write("[?2004h")
-        output_stream.flush()
-    except Exception:
-        return
-
-
-def _disable_bracketed_paste(output_stream: Any) -> None:
-    try:
-        output_stream.write("[?2004l")
-        output_stream.flush()
-    except Exception:
-        return
-
-
-def _read_escape_sequence_bytes(read_byte_fn: Any) -> bytes:
-    seq = b"\x1b"
-    for _ in range(16):
-        b = read_byte_fn()
-        if not b:
-            break
-        if isinstance(b, str):
-            b = b.encode(errors="replace")
-        seq += bytes(b)
-        if b in b"~ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz":
-            break
-    return seq
-
-
-def _read_single_line_submission(read_byte_fn: Any) -> str:
-    chars = []
-    in_paste = False
-    decoder = codecs.getincrementaldecoder("utf-8")("replace")
-
-    while True:
-        b = read_byte_fn()
-        if not b:
-            break
-        if isinstance(b, str):
-            b = b.encode(errors="replace")
-        b = bytes(b)
-
-        if b == b"\x1b":
-            seq = _read_escape_sequence_bytes(read_byte_fn)
-            if seq == b"\x1b[200~":
-                in_paste = True
-                continue
-            if seq == b"\x1b[201~":
-                in_paste = False
-                continue
-            continue
-
-        if b in {b"\r", b"\n"} and not in_paste:
-            break
-
-        if b in {b"\x7f", b"\x08"} and not in_paste:
-            if chars:
-                chars.pop()
-            continue
-
-        ch = decoder.decode(b, final=False)
-        if ch:
-            chars.append(ch)
-
-    tail = decoder.decode(b"", final=True)
-    if tail:
-        chars.append(tail)
-
-    return "".join(chars)
-
-
-def _read_main_input_posix(prompt_text: str, *, input_stream: Any = None, output_stream: Any = None) -> str:
-    if os.name != "posix":
-        raise RuntimeError("POSIX reader unavailable")
-
-    input_stream = input_stream or sys.stdin
-    output_stream = output_stream or sys.stdout
-
-    fd = input_stream.fileno()
-    old_attrs = termios.tcgetattr(fd)
-    _enable_bracketed_paste(output_stream)
-    output_stream.write(prompt_text)
-    output_stream.flush()
-
-    try:
-        tty.setraw(fd)
-        def _read_byte() -> bytes:
-            return os.read(fd, 1)
-
-        text = _read_single_line_submission(_read_byte)
-        output_stream.write("\n")
-        output_stream.flush()
-        return text
-    finally:
-        termios.tcsetattr(fd, termios.TCSADRAIN, old_attrs)
-        _disable_bracketed_paste(output_stream)
-
-
-def _can_use_posix_raw_reader(input_stream: Any = None) -> bool:
-    if os.name != "posix":
-        return False
-    if termios is None or tty is None:
-        return False
-    input_stream = input_stream or sys.stdin
-    try:
-        return bool(input_stream.isatty())
-    except Exception:
-        return False
-
-
-def read_main_user_input(
-    prompt_text: str = "IOBRpy> ",
-    session: Optional[Any] = None,
-    *,
-    input_stream: Any = None,
-    output_stream: Any = None,
-    read_byte_fn: Optional[Any] = None,
-) -> str:
-    _ = session  # main input no longer uses PromptSession as primary reader.
-    if read_byte_fn is not None:
-        return normalize_main_input_text(_read_single_line_submission(read_byte_fn))
-
-    if _can_use_posix_raw_reader(input_stream=input_stream):
-        raw = _read_main_input_posix(prompt_text, input_stream=input_stream, output_stream=output_stream)
-        return normalize_main_input_text(raw)
-
+def read_main_user_input(prompt_text: str = "IOBRpy> ", session: Optional[Any] = None) -> str:
+    session = session or build_main_prompt_session()
+    if session is not None:
+        try:
+            raw = session.prompt(prompt_text)
+            return normalize_main_input_text(str(raw))
+        except KeyboardInterrupt:
+            raise
+        except EOFError:
+            raise
+        except Exception:
+            pass
     return normalize_main_input_text(_fallback_single_input(prompt_text))
 
 
