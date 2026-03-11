@@ -831,25 +831,21 @@ def _truthy_bool_text(val: str) -> Optional[bool]:
 
 
 def _split_list_value_tokens(value: Any) -> List[str]:
+    texts: List[str] = []
     if isinstance(value, list):
-        raw_parts: List[str] = []
-        for item in value:
-            if item is None:
-                continue
-            raw_parts.append(str(item))
-        text = "+".join(raw_parts)
+        texts = [str(item) for item in value if item is not None]
     else:
-        text = str(value or "")
-    text = text.strip()
-    if not text:
-        return []
+        texts = [str(value or "")]
 
-    # support common natural-language separators when users say "A和B" / "A and B"
-    text = re.sub(r"\b(?:and|AND)\b", "+", text)
-    text = text.replace("和", "+")
-
-    parts = re.split(r"[+,，、;；\s]+", text)
-    return [p.strip() for p in parts if p and p.strip()]
+    tokens: List[str] = []
+    for text in texts:
+        t = text.strip()
+        if not t:
+            continue
+        # Generic tokenization for identifier-like list options.
+        # Avoid language-specific hardcoded conjunction rules.
+        tokens.extend(re.findall(r"[A-Za-z0-9_./-]+", t))
+    return [tok.strip() for tok in tokens if tok and tok.strip()]
 
 
 def _build_alias_map(subcommand: str, rules: Dict[str, Any]) -> Dict[str, str]:
