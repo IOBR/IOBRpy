@@ -1,5 +1,7 @@
 import sys
 import unittest
+
+import pandas as pd
 from pathlib import Path
 from unittest.mock import patch
 
@@ -243,24 +245,35 @@ class RagMcpRegressionTests(unittest.TestCase):
 
 
 class RagMcpSignatureSerializationTests(unittest.TestCase):
-    def test_convert_signature_text_with_chinese_and_to_list(self):
+    @staticmethod
+    def _pick_two_signature_choices(_rules):
+        # derive available groups dynamically from packaged signatures instead of hardcoding names
+        data = pd.read_pickle("src/iobrpy/resources/calculate_data.pkl")
+        opts = sorted([k for k, v in data.items() if isinstance(v, dict)])
+        assert len(opts) >= 2
+        return opts[0], opts[1]
+
+    def test_convert_signature_text_to_list_without_hardcoded_groups(self):
         rules = mcp.load_rules()
-        out = mcp._convert_value_for_key("signature", "go_bp和go_cc", rules, "calculate_sig_score")
-        self.assertEqual(out, ["go_bp", "go_cc"])
+        a, b = self._pick_two_signature_choices(rules)
+        mixed_text = f"{a}，{b}"
+        out = mcp._convert_value_for_key("signature", mixed_text, rules, "calculate_sig_score")
+        self.assertEqual(out, [a, b])
 
     def test_build_command_serializes_signature_list_with_plus(self):
         rules = mcp.load_rules()
+        a, b = self._pick_two_signature_choices(rules)
         params = {
             "input": "/tmp/in.tsv",
             "output": "/tmp/out.csv",
-            "signature": ["go_bp", "go_cc"],
+            "signature": [a, b],
         }
         draft, argv = mcp.build_command("calculate_sig_score", params, rules)
         self.assertIn("--signature", draft)
-        self.assertIn("go_bp+go_cc", draft)
+        self.assertIn(f"{a}+{b}", draft)
         self.assertIn("--signature", argv)
         idx = argv.index("--signature")
-        self.assertEqual(argv[idx + 1], "go_bp+go_cc")
+        self.assertEqual(argv[idx + 1], f"{a}+{b}")
 
 
 if __name__ == "__main__":
