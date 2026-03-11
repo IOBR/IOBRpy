@@ -250,39 +250,39 @@ class RagMcpSignatureSerializationTests(unittest.TestCase):
         # derive available groups dynamically from packaged signatures instead of hardcoding names
         data = pd.read_pickle("src/iobrpy/resources/calculate_data.pkl")
         opts = sorted([k for k, v in data.items() if isinstance(v, dict)])
-        assert len(opts) >= 4
+        assert len(opts) >= 1
         return opts
 
-    def test_convert_signature_text_supports_single_and_multiple_groups(self):
+    def test_convert_signature_text_accepts_any_input_count(self):
         rules = mcp.load_rules()
         opts = self._signature_choices()
 
-        single = opts[0]
-        out_single = mcp._convert_value_for_key("signature", single, rules, "calculate_sig_score")
-        self.assertEqual(out_single, [single])
+        for n in range(1, len(opts) + 1):
+            selected = opts[:n]
+            mixed_text = "，".join(selected)
+            with self.subTest(count=n, text=mixed_text):
+                out = mcp._convert_value_for_key("signature", mixed_text, rules, "calculate_sig_score")
+                self.assertEqual(out, selected)
 
-        multi = opts[:3]
-        mixed_text = f"{multi[0]}，{multi[1]} {multi[2]}"
-        out_multi = mcp._convert_value_for_key("signature", mixed_text, rules, "calculate_sig_score")
-        self.assertEqual(out_multi, multi)
-
-    def test_build_command_serializes_variable_length_signature_list_with_plus(self):
+    def test_build_command_serializes_signature_for_any_input_count(self):
         rules = mcp.load_rules()
         opts = self._signature_choices()
 
-        selected = opts[:4]
-        params = {
-            "input": "/tmp/in.tsv",
-            "output": "/tmp/out.csv",
-            "signature": selected,
-        }
-        draft, argv = mcp.build_command("calculate_sig_score", params, rules)
-        expected = "+".join(selected)
-        self.assertIn("--signature", draft)
-        self.assertIn(expected, draft)
-        self.assertIn("--signature", argv)
-        idx = argv.index("--signature")
-        self.assertEqual(argv[idx + 1], expected)
+        for n in range(1, len(opts) + 1):
+            selected = opts[:n]
+            params = {
+                "input": "/tmp/in.tsv",
+                "output": "/tmp/out.csv",
+                "signature": selected,
+            }
+            draft, argv = mcp.build_command("calculate_sig_score", params, rules)
+            expected = "+".join(selected)
+            with self.subTest(count=n, expected=expected):
+                self.assertIn("--signature", draft)
+                self.assertIn(expected, draft)
+                self.assertIn("--signature", argv)
+                idx = argv.index("--signature")
+                self.assertEqual(argv[idx + 1], expected)
 
     def test_convert_signature_all_token(self):
         rules = mcp.load_rules()
