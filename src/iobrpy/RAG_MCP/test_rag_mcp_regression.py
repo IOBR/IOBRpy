@@ -242,5 +242,26 @@ class RagMcpRegressionTests(unittest.TestCase):
         self.assertTrue(out.get("state_summary"))
 
 
+class RagMcpSignatureSerializationTests(unittest.TestCase):
+    def test_convert_signature_text_with_chinese_and_to_list(self):
+        rules = mcp.load_rules()
+        out = mcp._convert_value_for_key("signature", "go_bp和go_cc", rules, "calculate_sig_score")
+        self.assertEqual(out, ["go_bp", "go_cc"])
+
+    def test_build_command_serializes_signature_list_with_plus(self):
+        rules = mcp.load_rules()
+        params = {
+            "input": "/tmp/in.tsv",
+            "output": "/tmp/out.csv",
+            "signature": ["go_bp", "go_cc"],
+        }
+        draft, argv = mcp.build_command("calculate_sig_score", params, rules)
+        self.assertIn("--signature", draft)
+        self.assertIn("go_bp+go_cc", draft)
+        self.assertIn("--signature", argv)
+        idx = argv.index("--signature")
+        self.assertEqual(argv[idx + 1], "go_bp+go_cc")
+
+
 if __name__ == "__main__":
     unittest.main()

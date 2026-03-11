@@ -499,6 +499,11 @@ def build_command(subcommand: str, params: Dict[str, Any], rules: Dict[str, Any]
         flag = _resolve_cli_flag(subcommand, k, rules, is_bool=False)
         if not flag:
             raise ValueError(f"Parameter '{k}' for '{subcommand}' cannot be serialized to a CLI flag")
+        if isinstance(v, (list, tuple)):
+            serialized = "+".join([str(x).strip() for x in v if str(x).strip()])
+            if serialized:
+                argv.extend([flag, serialized])
+            continue
         argv.extend([flag, str(v)])
 
     unsupported_flags = _unsupported_serialized_flags(subcommand, argv)
@@ -825,6 +830,28 @@ def _truthy_bool_text(val: str) -> Optional[bool]:
     return None
 
 
+def _split_list_value_tokens(value: Any) -> List[str]:
+    if isinstance(value, list):
+        raw_parts: List[str] = []
+        for item in value:
+            if item is None:
+                continue
+            raw_parts.append(str(item))
+        text = "+".join(raw_parts)
+    else:
+        text = str(value or "")
+    text = text.strip()
+    if not text:
+        return []
+
+    # support common natural-language separators when users say "A和B" / "A and B"
+    text = re.sub(r"\b(?:and|AND)\b", "+", text)
+    text = text.replace("和", "+")
+
+    parts = re.split(r"[+,，、;；\s]+", text)
+    return [p.strip() for p in parts if p and p.strip()]
+
+
 def _build_alias_map(subcommand: str, rules: Dict[str, Any]) -> Dict[str, str]:
     aliases: Dict[str, str] = {}
     allowed = [k for k in allowed_keys_for(subcommand, rules) if k != "confirm"]
@@ -1140,6 +1167,28 @@ user_text:
 def _convert_value_for_key(key: str, value: Any, rules: Dict[str, Any], subcommand: str) -> Any:
     rule = rules.get(subcommand, {}) if isinstance(rules.get(subcommand, {}), dict) else {}
     choices = rule.get("choices", {}) if isinstance(rule.get("choices", {}), dict) else {}
+    ptype = _param_type_for_key(subcommand, key, rules)
+
+    if ptype == "list":
+        tokens = _split_list_value_tokens(value)
+        if not tokens:
+            raise ValueError(f"empty list value for {key}")
+        opts = choices.get(key, []) if isinstance(choices.get(key, []), list) else []
+        normalized = []
+        for tok in tokens:
+            t = tok.strip()
+            if not t:
+                continue
+            if t.lower() == "all":
+                return ["all"]
+            if opts and t not in opts:
+                raise ValueError(f"invalid choice for {key}: {t}, allowed={opts}")
+            if t not in normalized:
+                normalized.append(t)
+        if not normalized:
+            raise ValueError(f"empty list value for {key}")
+        return normalized
+
     if key in {"threads", "batch_size", "t", "k"}:
         if isinstance(value, int):
             return value

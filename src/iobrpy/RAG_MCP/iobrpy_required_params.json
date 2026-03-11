@@ -353,8 +353,8 @@
         "en": "Output file for annotated and de-duplicated matrix."
       },
       "annotation": {
-        "zh": "内置注释资源名称；用于 ID 到 symbol 的映射。",
-        "en": "Built-in annotation resource name for ID-to-symbol mapping."
+        "zh": "内置注释资源名称。可选：anno_rnaseq（RNA-seq 常见基因 ID，尤其 Ensembl gene ID→symbol 映射，适合行名为 ENSG... 的矩阵）；anno_grch38（人类 GRCh38 基因注释，包含 id/symbol/eff_length/entrez/gc 等更完整字段，适合人类 RNA-seq 与 TPM 相关流程）；anno_hug133plus2（Affymetrix HG-U133 Plus 2.0 芯片探针注释，probe→symbol）；anno_illumina（Illumina 芯片探针注释，probe→symbol）。内置注释默认按 --probe id 与 --symbol symbol 匹配。",
+        "en": "Built-in annotation resource name. Options: anno_rnaseq (RNA-seq gene ID, especially Ensembl gene ID, to symbol mapping); anno_grch38 (human GRCh38 annotation with richer fields such as id/symbol/eff_length/entrez/gc, suitable for human RNA-seq and TPM workflows); anno_hug133plus2 (Affymetrix HG-U133 Plus 2.0 probe-to-symbol mapping); anno_illumina (Illumina probe-to-symbol mapping). Built-in annotations match with --probe id and --symbol symbol by default."
       },
       "annotation_file": {
         "zh": "外部注释文件路径（提供后可覆盖内置注释）。",
@@ -449,8 +449,8 @@
         "en": "Output file for signature scores."
       },
       "signature": {
-        "zh": "要计算的 signature group，可传一个或多个；可用空格分隔（在自然语言中也支持逗号语义）。",
-        "en": "Signature group(s) to score; pass one or multiple groups (space-separated, comma intent also supported)."
+        "zh": "要计算的 signature 特征集。可选：go_bp（GO Biological Process 通路集）、go_cc（GO Cellular Component 通路集）、go_mf（GO Molecular Function 通路集）、kegg（KEGG 通路集）、reactome（Reactome 通路集）、hallmark（MSigDB Hallmark 通路集）、signature_collection（IOBR 内置综合 signature 集）、signature_tme（肿瘤微环境相关 signature 集）、signature_sc（单细胞来源 signature 集）、signature_tumor（肿瘤生物学相关 signature 集）、signature_metabolism（代谢相关 signature 集）。可选择单个，也可选择任意多个（使用空格、逗号或 + 连接），也可使用 all 一次性计算全部特征集。",
+        "en": "Signature group(s) to score. Available groups: go_bp (GO Biological Process), go_cc (GO Cellular Component), go_mf (GO Molecular Function), kegg (KEGG pathways), reactome (Reactome pathways), hallmark (MSigDB Hallmark), signature_collection (built-in comprehensive IOBR signatures), signature_tme (tumor microenvironment-related signatures), signature_sc (single-cell-derived signatures), signature_tumor (tumor biology-related signatures), and signature_metabolism (metabolism-related signatures). You can choose one group, any subset of groups (separated by spaces, commas, or +), or use all to score every group."
       },
       "method": {
         "zh": "signature 评分方法。",
