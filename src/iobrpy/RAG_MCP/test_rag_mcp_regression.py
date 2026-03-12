@@ -247,47 +247,131 @@ class RagMcpRegressionTests(unittest.TestCase):
 class RagMcpSignatureSerializationTests(unittest.TestCase):
     @staticmethod
     def _signature_choices():
-        # derive available groups dynamically from packaged signatures instead of hardcoding names
         data = pd.read_pickle("src/iobrpy/resources/calculate_data.pkl")
         opts = sorted([k for k, v in data.items() if isinstance(v, dict)])
-        assert len(opts) >= 1
+        assert len(opts) >= 2
         return opts
 
-    def test_convert_signature_text_accepts_any_input_count(self):
+    def test_rules_signature_choices_are_schema_driven(self):
         rules = mcp.load_rules()
         opts = self._signature_choices()
+        from_rules = rules.get("calculate_sig_score", {}).get("choices", {}).get("signature", [])
+        self.assertEqual(from_rules, opts)
 
-        for n in range(1, len(opts) + 1):
-            selected = opts[:n]
-            mixed_text = "，".join(selected)
-            with self.subTest(count=n, text=mixed_text):
-                out = mcp._convert_value_for_key("signature", mixed_text, rules, "calculate_sig_score")
-                self.assertEqual(out, selected)
-
-    def test_build_command_serializes_signature_for_any_input_count(self):
+    def test_convert_signature_single(self):
         rules = mcp.load_rules()
-        opts = self._signature_choices()
+        a = self._signature_choices()[0]
+        out = mcp._convert_value_for_key("signature", a, rules, "calculate_sig_score")
+        self.assertEqual(out, [a])
 
-        for n in range(1, len(opts) + 1):
-            selected = opts[:n]
-            params = {
-                "input": "/tmp/in.tsv",
-                "output": "/tmp/out.csv",
-                "signature": selected,
-            }
-            draft, argv = mcp.build_command("calculate_sig_score", params, rules)
-            expected = "+".join(selected)
-            with self.subTest(count=n, expected=expected):
-                self.assertIn("--signature", draft)
-                self.assertIn(expected, draft)
-                self.assertIn("--signature", argv)
-                idx = argv.index("--signature")
-                self.assertEqual(argv[idx + 1], expected)
+    def test_convert_signature_comma_separated(self):
+        rules = mcp.load_rules()
+        a, b = self._signature_choices()[:2]
+        out = mcp._convert_value_for_key("signature", f"{a},{b}", rules, "calculate_sig_score")
+        self.assertEqual(out, [a, b])
+
+    def test_convert_signature_plus_separated(self):
+        rules = mcp.load_rules()
+        a, b = self._signature_choices()[:2]
+        out = mcp._convert_value_for_key("signature", f"{a}+{b}", rules, "calculate_sig_score")
+        self.assertEqual(out, [a, b])
+
+    def test_convert_signature_list_input(self):
+        rules = mcp.load_rules()
+        a, b = self._signature_choices()[:2]
+        out = mcp._convert_value_for_key("signature", [a, b], rules, "calculate_sig_score")
+        self.assertEqual(out, [a, b])
 
     def test_convert_signature_all_token(self):
         rules = mcp.load_rules()
         out = mcp._convert_value_for_key("signature", "all", rules, "calculate_sig_score")
         self.assertEqual(out, ["all"])
+
+    def test_convert_signature_invalid_group_raises(self):
+        rules = mcp.load_rules()
+        with self.assertRaises(ValueError):
+            mcp._convert_value_for_key("signature", "not_a_real_group", rules, "calculate_sig_score")
+
+    def test_build_command_serializes_signature_with_plus(self):
+        rules = mcp.load_rules()
+        a, b = self._signature_choices()[:2]
+        params = {"input": "/tmp/in.tsv", "output": "/tmp/out.csv", "signature": [a, b]}
+        _draft, argv = mcp.build_command("calculate_sig_score", params, rules)
+        idx = argv.index("--signature")
+        self.assertEqual(argv[idx + 1], f"{a}+{b}")
+
+    def test_build_command_serializes_signature_all(self):
+        rules = mcp.load_rules()
+        params = {"input": "/tmp/in.tsv", "output": "/tmp/out.csv", "signature": ["all"]}
+        _draft, argv = mcp.build_command("calculate_sig_score", params, rules)
+        idx = argv.index("--signature")
+        self.assertEqual(argv[idx + 1], "all")
+
+
+class RagMcpCalculateSigScoreFlowTests(unittest.TestCase):
+    def setUp(self):
+        mcp.SESSIONS.clear()
+
+    def test_dialog_flow_to_ready_with_structured_signature(self):
+        plan1 = make_planner_output(
+            action="select_command",
+            intent_type="execution_request",
+            subcommand="calculate_sig_score",
+            reason="select_calc_sig",
+        )
+        plan2 = make_planner_output(
+            action="update_params",
+            intent_type="parameter_update",
+            keep_current_command=True,
+            param_updates={
+                "input": "/tmp/in.tsv",
+                "output": "/tmp/out.csv",
+                "signature": ["signature_collection", "signature_tme"],
+                "adjust_eset": True,
+            },
+            reason="fill_params",
+        )
+
+        with patch.object(mcp, "llm_plan_next_action", side_effect=planner_sequence(plan1, plan2)):
+            mcp.tool_iobrpy_assistant("s_sig", answer_text="turn_1", run=False)
+            out = mcp.tool_iobrpy_assistant("s_sig", answer_text="turn_2", run=False)
+
+        self.assertEqual(out.get("status"), "ready")
+        draft = out.get("draft_command") or ""
+        self.assertIn("iobrpy calculate_sig_score", draft)
+        self.assertIn("--input /tmp/in.tsv", draft)
+        self.assertIn("--output /tmp/out.csv", draft)
+        self.assertIn("--signature 'signature_collection+signature_tme'", draft)
+        self.assertIn("--method pca", draft)
+        self.assertIn("--mini_gene_count 3", draft)
+        self.assertIn("--adjust_eset", draft)
+        self.assertIn("--parallel_size 1", draft)
+
+    def test_dialog_flow_to_ready_with_signature_all(self):
+        plan1 = make_planner_output(
+            action="select_command",
+            intent_type="execution_request",
+            subcommand="calculate_sig_score",
+            reason="select_calc_sig",
+        )
+        plan2 = make_planner_output(
+            action="update_params",
+            intent_type="parameter_update",
+            keep_current_command=True,
+            param_updates={
+                "input": "/tmp/in.tsv",
+                "output": "/tmp/out.csv",
+                "signature": ["all"],
+            },
+            reason="fill_params_all",
+        )
+
+        with patch.object(mcp, "llm_plan_next_action", side_effect=planner_sequence(plan1, plan2)):
+            mcp.tool_iobrpy_assistant("s_sig_all", answer_text="turn_1", run=False)
+            out = mcp.tool_iobrpy_assistant("s_sig_all", answer_text="turn_2", run=False)
+
+        self.assertEqual(out.get("status"), "ready")
+        self.assertIn("--signature all", out.get("draft_command") or "")
 
 
 if __name__ == "__main__":

@@ -437,6 +437,19 @@
         "zscore",
         "ssgsea",
         "integration"
+      ],
+      "signature": [
+        "go_bp",
+        "go_cc",
+        "go_mf",
+        "hallmark",
+        "kegg",
+        "reactome",
+        "signature_collection",
+        "signature_metabolism",
+        "signature_sc",
+        "signature_tme",
+        "signature_tumor"
       ]
     },
     "param_hints": {

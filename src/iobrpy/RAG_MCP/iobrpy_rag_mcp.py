@@ -297,6 +297,22 @@ DEFAULT_RULES = {
 }
 
 
+def _load_signature_group_choices() -> List[str]:
+    """Load supported calculate_sig_score signature groups from packaged resource."""
+    pkl_path = os.path.join(os.path.dirname(__file__), "..", "resources", "calculate_data.pkl")
+    pkl_path = os.path.normpath(pkl_path)
+    try:
+        import pandas as pd  # local import to avoid hard dependency at module import time
+
+        data = pd.read_pickle(pkl_path)
+        if isinstance(data, dict):
+            groups = sorted([k for k, v in data.items() if isinstance(k, str) and isinstance(v, dict)])
+            return groups
+    except Exception:
+        return []
+    return []
+
+
 def load_rules() -> Dict[str, Any]:
     rules = _read_json(REQUIRED_FILE, DEFAULT_RULES)
     if not isinstance(rules, dict) or not rules:
@@ -337,6 +353,24 @@ def load_rules() -> Dict[str, Any]:
             "param_hints": param_hints,
             "function_summary": function_summary,
         }
+
+    # Schema-driven enrichment for calculate_sig_score.signature from packaged metadata.
+    sig_groups = _load_signature_group_choices()
+    if "calculate_sig_score" in out and isinstance(out.get("calculate_sig_score"), dict):
+        cs = out["calculate_sig_score"]
+        cs_choices = cs.get("choices", {}) if isinstance(cs.get("choices", {}), dict) else {}
+        if sig_groups:
+            cs_choices["signature"] = sig_groups
+        cs["choices"] = cs_choices
+
+        cs_param_types = cs.get("param_types", {}) if isinstance(cs.get("param_types", {}), dict) else {}
+        cs_param_types.setdefault("signature", "list")
+        cs["param_types"] = cs_param_types
+
+        cs_cli_flags = cs.get("cli_flags", {}) if isinstance(cs.get("cli_flags", {}), dict) else {}
+        cs_cli_flags.setdefault("signature", "--signature")
+        cs["cli_flags"] = cs_cli_flags
+
     return out or DEFAULT_RULES
 
 
@@ -978,6 +1012,25 @@ def extract_param_updates_from_text(
             matched = {tok for tok in tokens if tok in opts}
             if len(matched) > 1:
                 ambiguous_choice_keys.add(k)
+
+        # Schema-driven inference for unkeyed list parameters (e.g., signature group tokens).
+        list_candidates = [
+            k for k in unresolved
+            if _param_type_for_key(subcommand, k, rules) == "list"
+            and isinstance(choices.get(k, []), list)
+            and choices.get(k, [])
+        ]
+        if len(list_candidates) == 1:
+            lk = list_candidates[0]
+            opts = set(choices.get(lk, []))
+            recognized = [tok for tok in tokens if tok in opts or tok.lower() == "all"]
+            if recognized and len(recognized) == len(tokens):
+                try:
+                    updates[lk] = _convert_value_for_key(lk, recognized, rules, subcommand)
+                    used_tokens.update(tokens)
+                    unresolved = [k for k in unresolved if k != lk]
+                except Exception:
+                    pass
 
         for tok in tokens:
             if not tok or tok in used_tokens:
