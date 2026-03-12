@@ -155,6 +155,23 @@ def build_main_prompt_session() -> Optional[Any]:
     return _MAIN_PROMPT_SESSION
 
 
+def build_confirmation_prompt(prefer_chinese: bool) -> str:
+    return _ui_text("confirm_run", prefer_chinese)
+
+
+def build_confirmation_prompt_session() -> Optional[Any]:
+    global _CONFIRM_PROMPT_SESSION
+    if _CONFIRM_PROMPT_SESSION is not None:
+        return _CONFIRM_PROMPT_SESSION
+    if PromptSession is None or InMemoryHistory is None:
+        return None
+    try:
+        _CONFIRM_PROMPT_SESSION = PromptSession(history=InMemoryHistory(), multiline=False, enable_history_search=True)
+    except Exception:
+        _CONFIRM_PROMPT_SESSION = None
+    return _CONFIRM_PROMPT_SESSION
+
+
 def _fallback_single_input(prompt_text: str) -> str:
     return input(prompt_text)
 

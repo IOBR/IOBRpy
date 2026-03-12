@@ -64,6 +64,16 @@ class AICliInputTests(unittest.TestCase):
         self.assertIn("depends on terminal behavior", text)
         self.assertNotIn("will be sent as one request", text)
 
+    def test_confirmation_prompt_builder_exists_and_is_localized(self):
+        self.assertIn("[y/n]", ai.build_confirmation_prompt(False))
+        self.assertIn("[y/n]", ai.build_confirmation_prompt(True))
+
+    def test_read_confirmation_input_prefers_confirmation_session(self):
+        sess = _FakeSession("yes")
+        out = ai.read_confirmation_input("Execute this command now? [y/n] ", session=sess)
+        self.assertEqual(out, "yes")
+        self.assertEqual(sess.calls, 1)
+
 
 class AIRunInteractiveOutputTests(unittest.TestCase):
     def test_run_interactive_does_not_print_main_input_help_text(self):

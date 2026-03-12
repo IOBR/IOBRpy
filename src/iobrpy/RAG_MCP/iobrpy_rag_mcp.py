@@ -297,6 +297,22 @@ DEFAULT_RULES = {
 }
 
 
+def _load_signature_group_choices() -> List[str]:
+    """Load supported calculate_sig_score signature groups from packaged resource."""
+    pkl_path = os.path.join(os.path.dirname(__file__), "..", "resources", "calculate_data.pkl")
+    pkl_path = os.path.normpath(pkl_path)
+    try:
+        import pandas as pd  # local import to avoid hard dependency at module import time
+
+        data = pd.read_pickle(pkl_path)
+        if isinstance(data, dict):
+            groups = sorted([k for k, v in data.items() if isinstance(k, str) and isinstance(v, dict)])
+            return groups
+    except Exception:
+        return []
+    return []
+
+
 def load_rules() -> Dict[str, Any]:
     rules = _read_json(REQUIRED_FILE, DEFAULT_RULES)
     if not isinstance(rules, dict) or not rules:
@@ -337,6 +353,24 @@ def load_rules() -> Dict[str, Any]:
             "param_hints": param_hints,
             "function_summary": function_summary,
         }
+
+    # Schema-driven enrichment for calculate_sig_score.signature from packaged metadata.
+    sig_groups = _load_signature_group_choices()
+    if "calculate_sig_score" in out and isinstance(out.get("calculate_sig_score"), dict):
+        cs = out["calculate_sig_score"]
+        cs_choices = cs.get("choices", {}) if isinstance(cs.get("choices", {}), dict) else {}
+        if sig_groups:
+            cs_choices["signature"] = sig_groups
+        cs["choices"] = cs_choices
+
+        cs_param_types = cs.get("param_types", {}) if isinstance(cs.get("param_types", {}), dict) else {}
+        cs_param_types.setdefault("signature", "list")
+        cs["param_types"] = cs_param_types
+
+        cs_cli_flags = cs.get("cli_flags", {}) if isinstance(cs.get("cli_flags", {}), dict) else {}
+        cs_cli_flags.setdefault("signature", "--signature")
+        cs["cli_flags"] = cs_cli_flags
+
     return out or DEFAULT_RULES
 
 
@@ -499,6 +533,11 @@ def build_command(subcommand: str, params: Dict[str, Any], rules: Dict[str, Any]
         flag = _resolve_cli_flag(subcommand, k, rules, is_bool=False)
         if not flag:
             raise ValueError(f"Parameter '{k}' for '{subcommand}' cannot be serialized to a CLI flag")
+        if isinstance(v, (list, tuple)):
+            serialized = "+".join([str(x).strip() for x in v if str(x).strip()])
+            if serialized:
+                argv.extend([flag, serialized])
+            continue
         argv.extend([flag, str(v)])
 
     unsupported_flags = _unsupported_serialized_flags(subcommand, argv)
@@ -825,6 +864,24 @@ def _truthy_bool_text(val: str) -> Optional[bool]:
     return None
 
 
+def _split_list_value_tokens(value: Any) -> List[str]:
+    texts: List[str] = []
+    if isinstance(value, list):
+        texts = [str(item) for item in value if item is not None]
+    else:
+        texts = [str(value or "")]
+
+    tokens: List[str] = []
+    for text in texts:
+        t = text.strip()
+        if not t:
+            continue
+        # Generic tokenization for identifier-like list options.
+        # Avoid language-specific hardcoded conjunction rules.
+        tokens.extend(re.findall(r"[A-Za-z0-9_./-]+", t))
+    return [tok.strip() for tok in tokens if tok and tok.strip()]
+
+
 def _build_alias_map(subcommand: str, rules: Dict[str, Any]) -> Dict[str, str]:
     aliases: Dict[str, str] = {}
     allowed = [k for k in allowed_keys_for(subcommand, rules) if k != "confirm"]
@@ -955,6 +1012,25 @@ def extract_param_updates_from_text(
             matched = {tok for tok in tokens if tok in opts}
             if len(matched) > 1:
                 ambiguous_choice_keys.add(k)
+
+        # Schema-driven inference for unkeyed list parameters (e.g., signature group tokens).
+        list_candidates = [
+            k for k in unresolved
+            if _param_type_for_key(subcommand, k, rules) == "list"
+            and isinstance(choices.get(k, []), list)
+            and choices.get(k, [])
+        ]
+        if len(list_candidates) == 1:
+            lk = list_candidates[0]
+            opts = set(choices.get(lk, []))
+            recognized = [tok for tok in tokens if tok in opts or tok.lower() == "all"]
+            if recognized and len(recognized) == len(tokens):
+                try:
+                    updates[lk] = _convert_value_for_key(lk, recognized, rules, subcommand)
+                    used_tokens.update(tokens)
+                    unresolved = [k for k in unresolved if k != lk]
+                except Exception:
+                    pass
 
         for tok in tokens:
             if not tok or tok in used_tokens:
@@ -1140,6 +1216,28 @@ user_text:
 def _convert_value_for_key(key: str, value: Any, rules: Dict[str, Any], subcommand: str) -> Any:
     rule = rules.get(subcommand, {}) if isinstance(rules.get(subcommand, {}), dict) else {}
     choices = rule.get("choices", {}) if isinstance(rule.get("choices", {}), dict) else {}
+    ptype = _param_type_for_key(subcommand, key, rules)
+
+    if ptype == "list":
+        tokens = _split_list_value_tokens(value)
+        if not tokens:
+            raise ValueError(f"empty list value for {key}")
+        opts = choices.get(key, []) if isinstance(choices.get(key, []), list) else []
+        normalized = []
+        for tok in tokens:
+            t = tok.strip()
+            if not t:
+                continue
+            if t.lower() == "all":
+                return ["all"]
+            if opts and t not in opts:
+                raise ValueError(f"invalid choice for {key}: {t}, allowed={opts}")
+            if t not in normalized:
+                normalized.append(t)
+        if not normalized:
+            raise ValueError(f"empty list value for {key}")
+        return normalized
+
     if key in {"threads", "batch_size", "t", "k"}:
         if isinstance(value, int):
             return value
