@@ -723,7 +723,6 @@
     ],
     "optional": [
       "arrays",
-      "signame",
       "tumor",
       "scale_mrna",
       "method",
@@ -750,10 +749,6 @@
         "zh": "微阵列数据时开启分位数标准化。",
         "en": "Enable quantile normalization for array data."
       },
-      "signame": {
-        "zh": "使用的 signature 集名称（默认 TIL10）。",
-        "en": "Signature set name to use (default: TIL10)."
-      },
       "tumor": {
         "zh": "去除在肿瘤中高表达、可能干扰反卷积的基因。",
         "en": "Remove genes highly expressed in tumors that may confound deconvolution."
@@ -765,10 +760,6 @@
       "method": {
         "zh": "回归/稳健拟合方法。",
         "en": "Regression/robust fitting method."
-      },
-      "rmgenes": {
-        "zh": "要移除的基因集策略（default/none 或自定义逗号列表）。",
-        "en": "Gene removal strategy (default/none or a custom comma-separated list)."
       }
     },
     "function_summary": {
@@ -777,31 +768,25 @@
     },
     "optional_defaults": {
       "arrays": false,
-      "signame": "TIL10",
       "tumor": false,
       "scale_mrna": false,
-      "method": "lsei",
-      "rmgenes": "unassigned"
+      "method": "lsei"
     },
     "param_types": {
       "input": "path",
       "output": "path",
       "arrays": "bool",
-      "signame": "string",
       "tumor": "bool",
       "scale_mrna": "bool",
-      "method": "choice",
-      "rmgenes": "string"
+      "method": "choice"
     },
     "cli_flags": {
       "input": "--input",
       "output": "--output",
       "arrays": "--arrays",
-      "signame": "--signame",
       "tumor": "--tumor",
       "scale_mrna": "--scale_mrna",
-      "method": "--method",
-      "rmgenes": "--rmgenes"
+      "method": "--method"
     },
     "bool_mode": {
       "arrays": "flag_true",
@@ -834,8 +819,8 @@
         "en": "Output EPIC cell-fraction result file."
       },
       "reference": {
-        "zh": "EPIC 参考面板选择。",
-        "en": "Reference panel selection for EPIC."
+        "zh": "EPIC 参考面板选择：TRef 用于肿瘤组织或肿瘤微环境样本，BRef 用于外周血或血液来源样本，both 合并两者以同时覆盖肿瘤基质和血液免疫细胞。",
+        "en": "EPIC reference panel selection: TRef for tumor tissue or tumor microenvironment samples, BRef for peripheral blood or blood-derived samples, and both to combine both for coverage of tumor-stromal and blood-immune components."
       }
     },
     "function_summary": {
@@ -859,11 +844,10 @@
   "tme_cluster": {
     "required": [
       "input",
-      "output"
+      "output",
+      "features"
     ],
     "optional": [
-      "features",
-      "pattern",
       "id",
       "scale",
       "min_nc",
@@ -884,12 +868,8 @@
         "en": "Output file for clustering results."
       },
       "features": {
-        "zh": "按列位置范围选择特征（如 1:22）。",
-        "en": "Select feature columns by positional range (e.g., 1:22)."
-      },
-      "pattern": {
-        "zh": "用正则表达式按列名筛选特征。",
-        "en": "Select features by regex on column names."
+        "zh": "按列位置范围选择特征(如 1:22)，计数时不包含样本 ID 列。",
+        "en": "Select feature columns by positional range (e.g., 1:22),excluding the sample ID column when counting."
       },
       "id": {
         "zh": "样本 ID 列名；不填时默认首列。",
@@ -934,7 +914,6 @@
     },
     "optional_defaults": {
       "features": null,
-      "pattern": null,
       "id": null,
       "scale": true,
       "min_nc": 2,
@@ -949,7 +928,6 @@
       "input": "path",
       "output": "path",
       "features": "string",
-      "pattern": "string",
       "id": "string",
       "scale": "bool",
       "min_nc": "int",
@@ -964,7 +942,6 @@
       "input": "--input",
       "output": "--output",
       "features": "--features",
-      "pattern": "--pattern",
       "id": "--id",
       "scale": "--scale/--no-scale",
       "min_nc": "--min_nc",
@@ -1013,16 +990,16 @@
         "en": "Output ligand-receptor score file."
       },
       "data_type": {
-        "zh": "输入数据类型（count 或 tpm）。",
-        "en": "Input data type (count or tpm)."
+        "zh": "输入数据类型（count矩阵 或 tpm）。",
+        "en": "Input data type (count matrix or tpm)."
       },
       "id_type": {
         "zh": "输入基因 ID 类型。",
         "en": "Gene ID type used in input."
       },
       "cancer_type": {
-        "zh": "指定用于网络计算的癌种标签。",
-        "en": "Cancer type label used to select interaction network."
+        "zh": "指定用于网络计算的癌种标签，默认为泛癌。",
+        "en": "Cancer type label used to select interaction network, defaults to pan-cancer."
       },
       "verbose": {
         "zh": "输出详细日志。",
@@ -1062,18 +1039,16 @@
   "nmf": {
     "required": [
       "input",
-      "output"
+      "output",
+      "features"
     ],
     "optional": [
       "kmin",
       "kmax",
-      "features",
       "log1p",
       "normalize",
       "shift",
-      "random_state",
-      "max_iter",
-      "skip_k_2"
+      "max_iter"
     ],
     "param_hints": {
       "input": {
@@ -1093,32 +1068,24 @@
         "en": "Maximum k when searching factorization ranks."
       },
       "features": {
-        "zh": "可选特征列范围（如 2-10 或 1:5）。",
-        "en": "Optional feature-column range (e.g., 2-10 or 1:5)."
+        "zh": "可选特征列范围(如 2-10 或 1:5),计数时不包含样本 ID 列。",
+        "en": "Optional feature-column range (e.g., 2-10 or 1:5),excluding the sample ID column when counting."
       },
       "log1p": {
-        "zh": "先对输入做 log1p 变换。",
-        "en": "Apply log1p transform before NMF."
+        "zh": "先对输入做 ln(x+1) 变换。",
+        "en": "Apply ln(x+1) transform before NMF."
       },
       "normalize": {
-        "zh": "是否进行按行 L1 归一化。",
-        "en": "Whether to apply row-wise L1 normalization."
+        "zh": "是否进行按行 L1 归一化，每一行会被缩放到总和为 1。",
+        "en": "Whether to apply row-wise L1 normalization, where each row is scaled to sum to 1."
       },
       "shift": {
         "zh": "当存在负值时添加常数平移。",
         "en": "Add a constant shift when input contains negative values."
       },
-      "random_state": {
-        "zh": "随机种子。",
-        "en": "Random seed for NMF."
-      },
       "max_iter": {
         "zh": "NMF 最大迭代次数。",
         "en": "Maximum iterations for NMF."
-      },
-      "skip_k_2": {
-        "zh": "搜索 k 时跳过 k=2。",
-        "en": "Skip k=2 during rank search."
       }
     },
     "function_summary": {
@@ -1132,9 +1099,7 @@
       "log1p": false,
       "normalize": false,
       "shift": null,
-      "random_state": 42,
-      "max_iter": 1000,
-      "skip_k_2": false
+      "max_iter": 1000
     },
     "param_types": {
       "input": "path",
@@ -1145,9 +1110,7 @@
       "log1p": "bool",
       "normalize": "bool",
       "shift": "float",
-      "random_state": "int",
-      "max_iter": "int",
-      "skip_k_2": "bool"
+      "max_iter": "int"
     },
     "cli_flags": {
       "input": "--input",
@@ -1158,14 +1121,11 @@
       "log1p": "--log1p",
       "normalize": "--normalize",
       "shift": "--shift",
-      "random_state": "--random-state",
-      "max_iter": "--max-iter",
-      "skip_k_2": "--skip_k_2"
+      "max_iter": "--max-iter"
     },
     "bool_mode": {
       "log1p": "flag_true",
-      "normalize": "flag_true",
-      "skip_k_2": "flag_true"
+      "normalize": "flag_true"
     }
   },
   "mouse2human_eset": {
@@ -1178,8 +1138,7 @@
       "column_of_symbol",
       "verbose",
       "sep",
-      "out_sep",
-      "progress"
+      "out_sep"
     ],
     "param_hints": {
       "input": {
@@ -1195,7 +1154,7 @@
         "en": "Treat input as matrix mode (rows=genes, cols=samples)."
       },
       "column_of_symbol": {
-        "zh": "表格模式下，小鼠 symbol 所在列名。",
+        "zh": "表格模式下，小鼠 symbol 列的列名。",
         "en": "Column name containing mouse symbols in table mode."
       },
       "verbose": {
@@ -1209,10 +1168,6 @@
       "out_sep": {
         "zh": "输出分隔符（不填则按输出扩展名推断）。",
         "en": "Output delimiter (inferred from output extension when omitted)."
-      },
-      "progress": {
-        "zh": "保存结果时显示进度条。",
-        "en": "Show a progress bar while writing output."
       }
     },
     "function_summary": {
@@ -1224,8 +1179,7 @@
       "column_of_symbol": null,
       "verbose": false,
       "sep": null,
-      "out_sep": null,
-      "progress": true
+      "out_sep": null
     },
     "param_types": {
       "input": "path",
@@ -1234,8 +1188,7 @@
       "column_of_symbol": "string",
       "verbose": "bool",
       "sep": "string",
-      "out_sep": "string",
-      "progress": "bool"
+      "out_sep": "string"
     },
     "cli_flags": {
       "input": "--input",
@@ -1244,13 +1197,11 @@
       "column_of_symbol": "--column_of_symbol",
       "verbose": "--verbose",
       "sep": "--sep",
-      "out_sep": "--out_sep",
-      "progress": "--progress"
+      "out_sep": "--out_sep"
     },
     "bool_mode": {
       "is_matrix": "flag_true",
-      "verbose": "flag_true",
-      "progress": "flag_true"
+      "verbose": "flag_true"
     }
   },
   "batch_salmon": {
@@ -1418,8 +1369,8 @@
         "en": "Output directory for STAR results."
       },
       "suffix1": {
-        "zh": "R1 文件后缀。",
-        "en": "R1 filename suffix."
+        "zh": "R1 文件后缀（例如 _1.fastq.gz）。",
+        "en": "R1 filename suffix (e.g., _1.fastq.gz)."
       },
       "batch_size": {
         "zh": "每批并发样本数。",
@@ -1482,8 +1433,8 @@
         "en": "Threads used by each fastp process."
       },
       "suffix1": {
-        "zh": "R1 文件后缀，用于配对推断 R2。",
-        "en": "R1 suffix used to infer paired R2 files."
+        "zh": "R1 文件后缀，用于配对推断 R2（例如 _1.fastq.gz）。",
+        "en": "R1 suffix used to infer paired R2 files (e.g., _1.fastq.gz)."
       },
       "batch_size": {
         "zh": "并发处理样本数量。",
@@ -1708,12 +1659,12 @@
         "en": "Description for parameter 'name'."
       },
       "read1": {
-        "zh": "参数 read1 的说明。",
-        "en": "Description for parameter 'read1'."
+        "zh": "Read1 FASTQ文件路径。",
+        "en": "Read1 FASTQ file path."
       },
       "read2": {
-        "zh": "参数 read2 的说明。",
-        "en": "Description for parameter 'read2'."
+        "zh": "Read2 FASTQ文件路径。",
+        "en": "Read2 FASTQ file path."
       },
       "outdir": {
         "zh": "输出目录路径。",
