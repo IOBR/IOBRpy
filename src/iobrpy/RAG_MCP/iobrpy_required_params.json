@@ -21,15 +21,6 @@
         "star"
       ]
     },
-    "notes": {
-      "index": "Path to Salmon index (mode=salmon) or STAR genome index directory (mode=star).",
-      "threads": "Threads used per sample.",
-      "batch_size": "How many samples to process in parallel.",
-      "mode": "Please provide mode: salmon or star.",
-      "project": "Please provide project identifier.",
-      "fastq": "Please provide FASTQ directory path.",
-      "outdir": "Please provide output directory path."
-    },
     "intent_keywords": {
       "zh": [
         "全流程",
@@ -53,12 +44,12 @@
         "en": "Output directory path."
       },
       "mode": {
-        "zh": "参数 mode 的说明。",
-        "en": "Description for parameter 'mode'."
+        "zh": "流程运行模式。`salmon` 表示使用 Salmon 对 FASTQ 进行准比对/定量，随后合并结果并整理为 TPM 矩阵；其特点是速度较快、资源占用相对较低，适合直接做转录本/基因表达定量。`star` 表示使用 STAR 将 FASTQ 比对到参考基因组并生成 count，随后合并 count 并转换为 TPM 矩阵；其特点是基于基因组比对、输出更偏向 read count 层面，通常更适合需要显式比对结果或基因组坐标信息的场景，但计算和存储开销通常高于 salmon。",
+        "en": "Workflow mode. `salmon` uses Salmon for FASTQ quasi-mapping/quantification, then merges the results and prepares a TPM matrix; it is typically faster and lighter on resources, making it suitable for direct transcript/gene expression quantification. `star` uses STAR to align FASTQ reads to the reference genome and generate count data, then merges the counts and converts them to a TPM matrix; it is genome-alignment-based and more centered on read-count output, which is often more suitable when explicit alignments or genome-coordinate-level information are needed, but it usually requires more computation and storage than salmon."
       },
       "index": {
-        "zh": "参考索引路径/目录。",
-        "en": "Reference index path/directory."
+        "zh": "参考索引路径，具体含义取决于 `mode`。当 `mode=salmon` 时，应提供 Salmon 转录组索引目录；当 `mode=star` 时，应提供 STAR 基因组索引目录。该参数必须与所选模式对应。",
+        "en": "Reference index path, whose meaning depends on `mode`. When `mode=salmon`, provide the Salmon transcriptome index directory; when `mode=star`, provide the STAR genome index directory. This parameter must match the selected mode."
       },
       "threads": {
         "zh": "CPU线程数。",
@@ -98,8 +89,7 @@
     },
     "param_aliases": {
       "fastq": [
-        "fastq",
-        "fast-q"
+        "fastq"
       ],
       "outdir": [
         "outdir",
@@ -275,6 +265,10 @@
       "zh": "将 count 表达矩阵转换为 TPM。",
       "en": "Convert a count expression matrix to TPM."
     },
+    "notes": {
+      "zh": "`effLength_csv` 一般无需提供。若不提供自定义 `effLength_csv`，则 `effLength_csv`、`id`、`length` 和 `gene_symbol` 这四个参数都无需理会；只有在想使用自己的有效长度表时，才需要同时设置这些参数。",
+      "en": "`effLength_csv` is usually not required. If you do not provide a custom `effLength_csv`, you can ignore `effLength_csv`, `id`, `length`, and `gene_symbol`. These four parameters are only needed when you want to use your own effective-length table."
+    },
     "optional_defaults": {
       "effLength_csv": null,
       "idtype": "ensembl",
@@ -361,16 +355,16 @@
         "en": "Path to external annotation file (overrides built-in annotation when provided)."
       },
       "annotation_key": {
-        "zh": "当 annotation_file 为 pkl 且包含多个表时，指定要使用的键名。",
-        "en": "Key name to select a table when annotation_file is a multi-table pickle."
+        "zh": "当外部注释文件为 pkl 且包含多个表时，指定要使用的键名。",
+        "en": "Key name to select a table when the external annotation file is a multi-table pickle."
       },
       "symbol": {
-        "zh": "注释表中表示基因 symbol 的列名，如果使用annotation参数则无需提供。",
-        "en": "Column name representing gene symbols in the annotation table(If the annotation parameter is used, it need not be provided)"
+        "zh": "外部注释文件中表示基因 symbol 的列名，如果使用annotation参数则无需提供。",
+        "en": "Column name representing gene symbols in the external annotation file (If the annotation parameter is used, it need not be provided)"
       },
       "probe": {
-        "zh": "注释表中表示探针/特征 ID 的列名，如果使用annotation参数则无需提供。",
-        "en": "Column name representing probe/feature IDs in the annotation table(If the annotation parameter is used, it need not be provided)"
+        "zh": "外部注释文件中表示探针/特征 ID 的列名，如果使用annotation参数则无需提供。",
+        "en": "Column name representing probe/feature IDs in the external annotation file (If the annotation parameter is used, it need not be provided)"
       },
       "method": {
         "zh": "重复探针聚合方式（均值/标准差/求和），默认值为mean。",
@@ -1586,12 +1580,12 @@
         "en": "FASTQ directory for batch processing."
       },
       "o": {
-        "zh": "-o：输出根目录（单样本与 batch 模式一致）。",
-        "en": "-o: output root directory (same semantics for single-run and batch modes)."
+        "zh": "输出根目录（单样本与 batch 模式一致）。",
+        "en": "output root directory (same semantics for single-run and batch modes)."
       },
       "t": {
-        "zh": "-t：线程数。",
-        "en": "-t: number of threads."
+        "zh": "线程数。",
+        "en": "number of threads."
       }
     },
     "optional_defaults": {
@@ -1604,6 +1598,11 @@
       "t": null
     },
     "cli_flags": {
+      "bam": "-b",
+      "r1": "-1",
+      "r2": "-2",
+      "ru": "-u",
+      "fqdir": "--fqdir",
       "o": "-o",
       "t": "-t"
     },
@@ -1624,6 +1623,11 @@
       ]
     },
     "param_types": {
+      "bam": "path",
+      "r1": "path",
+      "r2": "path",
+      "ru": "path",
+      "fqdir": "path",
       "o": "path",
       "t": "int"
     },
@@ -1643,6 +1647,12 @@
       "threads",
       "use_exon"
     ],
+    "choices": {
+      "use_exon": [
+        0,
+        1
+      ]
+    },
     "intent_keywords": {
       "zh": [
         "hla",
@@ -1675,8 +1685,8 @@
         "en": "Number of CPU threads."
       },
       "use_exon": {
-        "zh": "参数 use_exon 的说明。",
-        "en": "Description for parameter 'use_exon'."
+        "zh": "选择全长或外显子分型 [0|1]。0 表示全长，1 表示外显子，默认 1。对于 Exome 或 RNA 数据，必须选择 1（即外显子分型）。",
+        "en": "Choose full-length or exon typing [0|1]. 0 indicates full-length, 1 means exon, default is 1. With Exome or RNA data, must select 1 (i.e., exon typing)."
       }
     },
     "optional_defaults": {
@@ -1692,6 +1702,11 @@
       "en": "Runs SpecHLA for a single sample using extracted paired FASTQ reads to perform high-resolution HLA typing, and outputs allele calls at major HLA loci for downstream immune-related analyses."
     },
     "cli_flags": {
+      "name": "-n",
+      "read1": "-1",
+      "read2": "-2",
+      "outdir": "-o",
+      "threads": "-j",
       "use_exon": "-u"
     },
     "param_aliases": {
@@ -1739,9 +1754,7 @@
       "ref",
       "outdir"
     ],
-    "optional": [
-      "no_auto_install"
-    ],
+    "optional": [],
     "choices": {
       "ref": [
         "hg38",
@@ -1768,21 +1781,15 @@
         "en": "Input BAM file path or BAM directory."
       },
       "ref": {
-        "zh": "参数 ref 的说明。",
-        "en": "Description for parameter 'ref'."
+        "zh": "参考基因组版本。`hg38` 对应人类参考基因组 GRCh38；`hg19` 对应人类参考基因组 GRCh37。应选择与输入 BAM/CRAM 比对时使用的参考版本一致的选项。",
+        "en": "Reference genome build. `hg38` corresponds to the human GRCh38 build, and `hg19` corresponds to the human GRCh37 build. Choose the one that matches the reference used to align the input BAM/CRAM."
       },
       "outdir": {
         "zh": "输出目录路径。",
         "en": "Output directory path."
-      },
-      "no_auto_install": {
-        "zh": "参数 no_auto_install 的说明。",
-        "en": "Description for parameter 'no_auto_install'."
       }
     },
-    "optional_defaults": {
-      "no_auto_install": false
-    },
+    "optional_defaults": {},
     "function_summary": {
       "zh": "从BAM/CRAM提取HLA相关reads，并转换为后续HLA分型使用的FASTQ。",
       "en": "Extracts HLA-related reads from BAM/CRAM and converts them to FASTQ for downstream HLA typing."
@@ -1790,6 +1797,12 @@
     "notes": {
       "zh": "用于HLA分型前处理：从比对后的BAM/CRAM文件中提取HLA区域相关reads，并导出成配对FASTQ文件，供后续SpecHLA分型使用。该步骤本身不执行最终HLA分型。",
       "en": "Preprocessing step before HLA typing: extracts HLA-region reads from aligned BAM/CRAM files and exports paired FASTQ files for downstream SpecHLA typing. This step does not perform final HLA typing by itself."
+    },
+    "cli_flags": {
+      "sample": "-s",
+      "bam": "-b",
+      "ref": "-r",
+      "outdir": "-o"
     },
     "param_aliases": {
       "sample": [
@@ -1806,21 +1819,13 @@
       "outdir": [
         "outdir",
         "out-dir"
-      ],
-      "no_auto_install": [
-        "no_auto_install",
-        "no-auto-install"
       ]
     },
     "param_types": {
       "sample": "string",
       "bam": "path",
       "ref": "choice",
-      "outdir": "path",
-      "no_auto_install": "bool"
-    },
-    "bool_mode": {
-      "no_auto_install": "flag_true"
+      "outdir": "path"
     }
   },
   "hla_typing": {
@@ -1857,12 +1862,12 @@
     },
     "param_hints": {
       "bam_dir": {
-        "zh": "参数 bam_dir 的说明。",
-        "en": "Description for parameter 'bam_dir'."
+        "zh": "输入 BAM 目录路径。该目录下应包含待批量处理的 BAM 文件，流程会逐个样本提取 HLA reads、运行 SpecHLA，并最终合并结果。",
+        "en": "Path to the input BAM directory. This directory should contain the BAM files to be processed in batch; the workflow will extract HLA reads for each sample, run SpecHLA, and merge the results."
       },
       "ref": {
-        "zh": "参数 ref 的说明。",
-        "en": "Description for parameter 'ref'."
+        "zh": "参考基因组版本。`hg38` 对应人类参考基因组 GRCh38；`hg19` 对应人类参考基因组 GRCh37。应选择与输入 BAM/CRAM 比对时使用的参考版本一致的选项。",
+        "en": "Reference genome build. `hg38` corresponds to the human GRCh38 build, and `hg19` corresponds to the human GRCh37 build. Choose the one that matches the reference used to align the input BAM/CRAM."
       },
       "outdir": {
         "zh": "输出目录路径。",
@@ -1873,8 +1878,8 @@
         "en": "Number of CPU threads."
       },
       "use_exon": {
-        "zh": "-u：选择全长或外显子分型 [0|1]。0 表示全长，1 表示外显子，默认 1。对于 Exome 或 RNA 数据，必须选择 1（即外显子分型）。",
-        "en": "-u: Choose full-length or exon typing [0|1]. 0 indicates full-length, 1 means exon, default is 1. With Exome or RNA data, must select 1 (i.e., exon typing)."
+        "zh": "选择全长或外显子分型 [0|1]。0 表示全长，1 表示外显子，默认 1。对于 Exome 或 RNA 数据，必须选择 1（即外显子分型）。",
+        "en": "Choose full-length or exon typing [0|1]. 0 indicates full-length, 1 means exon, default is 1. With Exome or RNA data, must select 1 (i.e., exon typing)."
       }
     },
     "optional_defaults": {
@@ -1888,9 +1893,13 @@
     "notes": {
       "zh": "对一个BAM目录执行完整的批量HLA分型流程。该功能会为每个样本先提取HLA相关reads，再运行SpecHLA，保存各样本结果，支持基于完成标记的断点续跑/跳过，并最终生成合并结果表hla_result_merged.txt。",
       "en": "Runs a complete batch HLA typing workflow over a BAM directory. For each sample, it first extracts HLA-related reads and then runs SpecHLA, stores per-sample outputs, supports resume/skip based on completion markers, and finally generates a merged table hla_result_merged.txt.",
-      "use_exon": "-u: Choose full-length or exon typing [0|1]. 0 indicates full-length, 1 means exon, default is 1. With Exome or RNA data, must select 1 (i.e., exon typing)."
+      "use_exon": "Choose full-length or exon typing [0|1]. 0 indicates full-length, 1 means exon, default is 1. With Exome or RNA data, must select 1 (i.e., exon typing)."
     },
     "cli_flags": {
+      "bam_dir": "-b",
+      "ref": "-r",
+      "outdir": "-o",
+      "threads": "-j",
       "use_exon": "-u"
     },
     "param_aliases": {
@@ -1942,8 +1951,8 @@
         "en": "Output directory for integrated TME analysis."
       },
       "threads": {
-        "zh": "用于 signature 打分与部分反卷积步骤的线程数。",
-        "en": "Thread count for signature scoring and selected deconvolution steps."
+        "zh": "运行使用的线程数。",
+        "en": "Number of threads used for execution."
       }
     },
     "function_summary": {
@@ -2013,6 +2022,10 @@
     "function_summary": {
       "zh": "运行 BayesPrism 进行 bulk RNA 细胞成分反卷积。",
       "en": "Run BayesPrism deconvolution on bulk RNA expression."
+    },
+    "notes": {
+      "zh": "iobrpy 内置了默认的单细胞参考 sc_dat。若不提供自定义 sc_dat，则无需设置 sc_dat、cell_state_labels、cell_type_labels 和 key 这四个参数；只有在想使用自己的单细胞参考时，才需要一并提供这些参数。",
+      "en": "iobrpy includes a built-in single-cell reference (sc_dat). If you do not provide your own sc_dat, you can ignore sc_dat, cell_state_labels, cell_type_labels, and key. These four parameters are only needed when you want to use a custom single-cell reference."
     },
     "optional_defaults": {
       "threads": 8,
