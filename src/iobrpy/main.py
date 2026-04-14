@@ -485,7 +485,7 @@ def main():
     p_ai = subparsers.add_parser('ai', help='Interactive AI assistant (BYOK cloud LLM planner + local execution)')
     p_ai.add_argument('--logdir', required=True, help='Directory to store AI logs and defaults')
 
-    p_ai.add_argument('--llm', required=True, choices=['qwen','kimi','deepseek','glm','chatgpt','claude','gemini'], help='LLM provider alias')
+    p_ai.add_argument('--llm', required=True, choices=['qwen','kimi','deepseek','glm','chatgpt','openai','claude','gemini'], help='LLM provider alias')
     p_ai.add_argument('--api-key', default=None, help='BYOK API key; if omitted, reads env then hidden prompt')
     p_ai.add_argument('--model', default=None, help='Override model name')
     p_ai.add_argument('--base-url', default=None, help='Override provider base URL')

@@ -11,6 +11,7 @@
     ],
     "confirm": [
       "mode",
+      "index",
       "threads",
       "batch_size",
       "project"
@@ -285,7 +286,6 @@
       "effLength_csv": "path",
       "idtype": "choice",
       "org": "choice",
-      "source": "choice",
       "id": "string",
       "length": "string",
       "gene_symbol": "string",
@@ -298,7 +298,6 @@
       "effLength_csv": "--effLength_csv",
       "idtype": "--idtype",
       "org": "--org",
-      "source": "--source",
       "id": "--id",
       "length": "--length",
       "gene_symbol": "--gene_symbol",
@@ -460,8 +459,8 @@
         "en": "Signature group(s) to score. Available groups: go_bp (GO Biological Process), go_cc (GO Cellular Component), go_mf (GO Molecular Function), kegg (KEGG pathways), reactome (Reactome pathways), hallmark (MSigDB Hallmark), signature_collection (built-in comprehensive IOBR signatures), signature_tme (tumor microenvironment-related signatures), signature_sc (single-cell-derived signatures), signature_tumor (tumor biology-related signatures), and signature_metabolism (metabolism-related signatures). You can choose one group, any subset of groups (separated by spaces, commas, or +), or use all to score every group."
       },
       "method": {
-        "zh": "signature 评分方法。",
-        "en": "Scoring method for signatures."
+        "zh": "signature 评分方法。可选 4 种：`pca`，对每个 signature 的基因表达做标准化后提取第一主成分（PC1）作为评分，适合概括整体协同变化趋势，也是默认方法；`zscore`，对 signature 内基因表达取平均得到分数，计算简单、速度快、结果直观；`ssgsea`，基于单样本 GSEA 的富集评分，按样本内基因排序评估 signature 富集程度，更适合关注相对富集趋势，但通常计算更慢；`integration`，同时计算 `pca`、`zscore` 和 `ssgsea` 三类结果，并将它们一起输出，结果列会分别带 `_PCA`、`_zscore` 和 `_ssGSEA` 后缀，适合需要多种评分结果并行比较的场景。",
+        "en": "Scoring method for signatures. Four options are available: `pca`, which standardizes gene expression within each signature and uses the first principal component (PC1) as the score; this is the default and is useful for capturing the dominant coordinated expression trend. `zscore`, which takes the mean expression across genes in a signature; it is simple, fast, and easy to interpret. `ssgsea`, which computes single-sample GSEA enrichment scores based on within-sample gene ranking; it is more focused on relative enrichment patterns, but is usually slower. `integration`, which computes `pca`, `zscore`, and `ssgsea` together and outputs all of them in one table; the result columns are suffixed with `_PCA`, `_zscore`, and `_ssGSEA`, making it suitable when you want to compare multiple scoring strategies side by side."
       },
       "mini_gene_count": {
         "zh": "每个 signature 至少命中的基因数，低于该阈值会影响该 signature 计算。",
@@ -843,7 +842,7 @@
     ],
     "optional": [
       "id",
-      "scale",
+      "no_scale",
       "min_nc",
       "max_nc",
       "max_iter",
@@ -869,9 +868,9 @@
         "zh": "样本 ID 列名；不填时默认首列。",
         "en": "Sample ID column name; defaults to the first column."
       },
-      "scale": {
-        "zh": "是否进行 z-score 标准化（支持 --scale/--no-scale）。",
-        "en": "Whether to apply z-score scaling (controlled by --scale/--no-scale)."
+      "no_scale": {
+        "zh": "是否关闭 z-score 标准化。默认会启用 scale；只有在不想做标准化时才需要传 `--no-scale`。",
+        "en": "Whether to disable z-score scaling. Scaling is enabled by default; only use `--no-scale` when you want to turn it off."
       },
       "min_nc": {
         "zh": "最小聚类数。",
@@ -909,7 +908,7 @@
     "optional_defaults": {
       "features": null,
       "id": null,
-      "scale": true,
+      "no_scale": false,
       "min_nc": 2,
       "max_nc": 6,
       "max_iter": 10,
@@ -923,7 +922,7 @@
       "output": "path",
       "features": "string",
       "id": "string",
-      "scale": "bool",
+      "no_scale": "bool",
       "min_nc": "int",
       "max_nc": "int",
       "max_iter": "int",
@@ -937,7 +936,7 @@
       "output": "--output",
       "features": "--features",
       "id": "--id",
-      "scale": "--scale/--no-scale",
+      "no_scale": "--no-scale",
       "min_nc": "--min_nc",
       "max_nc": "--max_nc",
       "max_iter": "--max_iter",
@@ -947,7 +946,7 @@
       "output_sep": "--output_sep"
     },
     "bool_mode": {
-      "scale": "dual_flag",
+      "no_scale": "flag_true",
       "print_result": "flag_true"
     }
   },
