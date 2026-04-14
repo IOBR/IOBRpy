@@ -1,12 +1,19 @@
 include README.md
 include LICENSE
 include IOBRpy.png
+include agent-manifest.json
 
 recursive-include src/iobrpy/resources *.pkl *.gmt *.txt
+recursive-include src/iobrpy/RAG_MCP *.json
+recursive-include agent-harness/iobrpy_cli *.py README.md
+recursive-include agent-harness/iobrpy_cli/iobrpy/agent_assets *
 
 prune recipe
 prune build
 prune dist
+prune agent-harness/build
+prune agent-harness/iobrpy_cli.egg-info
+prune agent-harness/iobrpy_cli/iobrpy/tests
 prune src/iobrpy.egg-info
 prune iobrpy.egg-info
 prune .eggs

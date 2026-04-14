@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "iobrpy"
-version = "0.1.7"
+version = "0.1.8"
 description = "Immuno-Oncology Biological Research tools in Python"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -32,12 +32,14 @@ dependencies = [
   "statsmodels>=0.13",
   "matplotlib>=3.7",
   "tqdm>=4.66",
+  "click>=8.0",
   "gseapy>=1.0.6",
   "joblib>=1.3",
   "multiqc==1.31",
   "xarray>=0.20",
   "requests>=2.32",
-  "chromadb>=1.5.0"
+  "chromadb>=1.5.0",
+  "prompt-toolkit>=3.0"
 ]
 
 [project.urls]
@@ -46,16 +48,33 @@ Issues = "https://github.com/IOBR/IOBRpy/issues"
 
 [project.scripts]
 iobrpy = "iobrpy.main:main"
+iobrpy-cli = "iobrpy_cli.iobrpy.iobrpy_cli:main"
+iobrpy-cli-mcp = "iobrpy_cli.iobrpy.mcp_server:main"
 
 [tool.setuptools]
-package-dir = {"" = "src"}
-
-[tool.setuptools.packages.find]
-where = ["src"]
-include = ["iobrpy*"]
+package-dir = {"" = "src", "iobrpy_cli" = "agent-harness/iobrpy_cli"}
+packages = [
+  "iobrpy_cli",
+  "iobrpy",
+  "iobrpy.bayesprism",
+  "iobrpy.RAG_MCP",
+  "iobrpy.resources",
+  "iobrpy.SpecHLA",
+  "iobrpy.workflow",
+  "iobrpy_cli.iobrpy",
+  "iobrpy_cli.iobrpy.core",
+  "iobrpy_cli.iobrpy.utils"
+]
 
 [tool.setuptools.package-data]
+"iobrpy.RAG_MCP" = ["*.json"]
 "iobrpy.resources" = ["*"]
+"iobrpy_cli.iobrpy" = [
+  "README.md",
+  "agent_assets/*",
+  "agent_assets/*/*",
+  "agent_assets/*/*/*"
+]
 "iobrpy.SpecHLA" = [
   "*.sh",
   "bin/**",
@@ -66,3 +85,4 @@ include = ["iobrpy*"]
   "BP_data/*",
   "txt/*"
 ]
+

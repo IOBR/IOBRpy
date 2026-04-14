@@ -34,7 +34,7 @@ from iobrpy.SpecHLA.extract_hla_read import main as extract_hla_read_main
 from iobrpy.workflow.hla_typing import main as hla_typing_main
 from iobrpy.bayesprism.bayesprism import main as bayesprism_main
 
-VERSION = "0.1.7"
+VERSION = "0.1.8"
 
 def main():
     parser = argparse.ArgumentParser(
@@ -247,7 +247,7 @@ def main():
                      help='Regex to select feature columns by name')
     p12.add_argument('--id', default=None,
                      help='Column name for sample IDs (default: first column)')
-    p12.add_argument('--scale', action='store_true', dest='scale',
+    p12.add_argument('--scale', action='store_true', dest='scale', default=True,
                      help='Enable z-score scaling (default: True)')
     p12.add_argument('--no-scale', action='store_false', dest='scale',
                      help='Disable z-score scaling')
@@ -309,7 +309,7 @@ def main():
     p15.add_argument('--progress', action='store_true',default=True,
                  help='Show a progress bar during saving.')
 
-    # Step 16: batch_salmon2
+    # Step 16: batch_salmon
     p16 = subparsers.add_parser('batch_salmon', help='Batch-run Salmon quantification over paired-end FASTQs')
     p16.add_argument('--index', required=True, help='Path to Salmon index')
     p16.add_argument('--path_fq', required=True, help='Directory containing FASTQ files')
@@ -363,6 +363,37 @@ def main():
     spechla_parser = subparsers.add_parser(
         'spechla',
         help='Run SpecHLA (RNA-seq exon-level HLA typing)',
+    )
+    spechla_parser.add_argument(
+        '-n',
+        '--name',
+        required=True,
+        help='Sample name.',
+    )
+    spechla_parser.add_argument(
+        '-1',
+        '--read1',
+        required=True,
+        help='Path to read1 FASTQ.gz.',
+    )
+    spechla_parser.add_argument(
+        '-2',
+        '--read2',
+        required=True,
+        help='Path to read2 FASTQ.gz.',
+    )
+    spechla_parser.add_argument(
+        '-o',
+        '--outdir',
+        required=True,
+        help='Output directory.',
+    )
+    spechla_parser.add_argument(
+        '-j',
+        '--threads',
+        type=int,
+        default=8,
+        help='Number of threads to use (default: 8).',
     )
     spechla_parser.add_argument(
         '-u',
@@ -454,7 +485,7 @@ def main():
     p_ai = subparsers.add_parser('ai', help='Interactive AI assistant (BYOK cloud LLM planner + local execution)')
     p_ai.add_argument('--logdir', required=True, help='Directory to store AI logs and defaults')
 
-    p_ai.add_argument('--llm', required=True, choices=['qwen','kimi','deepseek','glm','openai','claude','gemini'], help='LLM provider alias')
+    p_ai.add_argument('--llm', required=True, choices=['qwen','kimi','deepseek','glm','chatgpt','claude','gemini'], help='LLM provider alias')
     p_ai.add_argument('--api-key', default=None, help='BYOK API key; if omitted, reads env then hidden prompt')
     p_ai.add_argument('--model', default=None, help='Override model name')
     p_ai.add_argument('--base-url', default=None, help='Override provider base URL')
@@ -887,7 +918,14 @@ def main():
             _sys.exit(code)
         return
     elif args.command == 'spechla':
-        spechla_argv = ['-u', str(args.use_exon)]
+        spechla_argv = [
+            '-n', args.name,
+            '-1', args.read1,
+            '-2', args.read2,
+            '-o', args.outdir,
+            '-j', str(args.threads),
+            '-u', str(args.use_exon),
+        ]
         return spechla_main(spechla_argv + unknown)
     elif args.command == 'extract_hla_read':
         return extract_hla_read_main(unknown)

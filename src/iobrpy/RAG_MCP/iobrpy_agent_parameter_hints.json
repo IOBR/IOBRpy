@@ -1,0 +1,696 @@
+{
+  "version": 1,
+  "source": "Agent-facing placeholder and prompt hints layered on top of iobrpy_required_params.json. Do not use this file as the CLI parameter source of truth.",
+  "commands": {
+    "runall": {
+      "command_template": "iobrpy-cli runall --fastq <path_fastq_dir> --outdir <path_output_dir> --mode <salmon|star> --index <path_salmon_index|path_star_index> --threads <threads> --batch_size <batch_size> --project <project_name>",
+      "priority_parameters": [
+        "fastq",
+        "outdir",
+        "mode",
+        "index",
+        "threads",
+        "batch_size",
+        "project"
+      ],
+      "parameter_overrides": {
+        "fastq": {
+          "placeholder": "path_fastq_dir",
+          "prompt_zh": "替换为 FASTQ 输入目录路径",
+          "prompt_en": "Replace with the FASTQ input directory path."
+        },
+        "outdir": {
+          "placeholder": "path_output_dir",
+          "prompt_zh": "替换为新的输出目录路径",
+          "prompt_en": "Replace with a new output directory path."
+        },
+        "mode": {
+          "placeholder": "salmon|star",
+          "prompt_zh": "选择 salmon 或 star；salmon 更轻量，star 需要基因组比对索引",
+          "prompt_en": "Choose salmon or star; salmon is lighter, while star requires a genome alignment index."
+        },
+        "index": {
+          "placeholder": "path_salmon_index|path_star_index",
+          "prompt_zh": "根据 mode 替换为对应索引路径",
+          "contextual_placeholders": [
+            {
+              "when": "mode=salmon",
+              "placeholder": "path_salmon_index",
+              "prompt_zh": "替换你的 Salmon index 的路径",
+              "prompt_en": "Replace with your Salmon index path."
+            },
+            {
+              "when": "mode=star",
+              "placeholder": "path_star_index",
+              "prompt_zh": "替换你的 STAR index 的路径",
+              "prompt_en": "Replace with your STAR index path."
+            }
+          ],
+          "prompt_en": "Replace with the index path that matches the selected mode."
+        },
+        "threads": {
+          "placeholder": "threads",
+          "prompt_zh": "根据当前机器 CPU/内存负载选择线程数",
+          "prompt_en": "Choose the thread count based on current CPU and memory load."
+        },
+        "batch_size": {
+          "placeholder": "batch_size",
+          "prompt_zh": "根据当前机器资源选择并行样本数",
+          "prompt_en": "Choose the number of samples to process in parallel based on current machine resources."
+        },
+        "project": {
+          "placeholder": "project_name",
+          "prompt_zh": "替换为项目名称",
+          "prompt_en": "Replace with the project name."
+        }
+      }
+    },
+    "tme_profile": {
+      "command_template": "iobrpy-cli tme_profile --input <path_tpm_matrix> --output <path_tme_profile_outdir> --threads <threads>",
+      "priority_parameters": [
+        "input",
+        "output",
+        "threads"
+      ],
+      "parameter_overrides": {
+        "input": {
+          "placeholder": "path_tpm_matrix",
+          "prompt_zh": "替换为 TPM 表达矩阵路径",
+          "prompt_en": "Replace with the TPM expression matrix path."
+        },
+        "output": {
+          "placeholder": "path_tme_profile_outdir",
+          "prompt_zh": "替换为 TME profile 输出目录",
+          "prompt_en": "Replace with the TME profile output directory."
+        },
+        "threads": {
+          "placeholder": "threads",
+          "prompt_zh": "根据当前机器 CPU/内存负载选择线程数",
+          "prompt_en": "Choose the thread count based on current CPU and memory load."
+        }
+      }
+    },
+    "bayesprism": {
+      "command_template": "iobrpy-cli bayesprism --input <path_tpm_matrix> --output <path_bayesprism_outdir> --threads <threads>",
+      "priority_parameters": [
+        "input",
+        "output",
+        "threads",
+        "sc_dat",
+        "cell_state_labels",
+        "cell_type_labels",
+        "key"
+      ],
+      "parameter_overrides": {
+        "input": {
+          "placeholder": "path_tpm_matrix",
+          "prompt_zh": "替换为 bulk TPM/表达矩阵路径",
+          "prompt_en": "Replace with the bulk TPM or expression matrix path."
+        },
+        "output": {
+          "placeholder": "path_bayesprism_outdir",
+          "prompt_zh": "替换为 BayesPrism 输出目录",
+          "prompt_en": "Replace with the BayesPrism output directory."
+        },
+        "threads": {
+          "placeholder": "threads",
+          "prompt_zh": "根据当前机器 CPU/内存负载选择线程数",
+          "prompt_en": "Choose the thread count based on current CPU and memory load."
+        },
+        "sc_dat": {
+          "placeholder": "path_sc_reference_matrix",
+          "prompt_zh": "只有使用自定义单细胞参考时才填写",
+          "prompt_en": "Fill this only when using a custom single-cell reference."
+        },
+        "cell_state_labels": {
+          "placeholder": "path_cell_state_labels",
+          "prompt_zh": "只有使用自定义单细胞参考时才填写",
+          "prompt_en": "Fill this only when using a custom single-cell reference."
+        },
+        "cell_type_labels": {
+          "placeholder": "path_cell_type_labels",
+          "prompt_zh": "只有使用自定义单细胞参考时才填写",
+          "prompt_en": "Fill this only when using a custom single-cell reference."
+        },
+        "key": {
+          "placeholder": "tumor_cell_type_name",
+          "prompt_zh": "自定义单细胞参考中代表肿瘤细胞的 cell type 名称",
+          "prompt_en": "Cell type name in the custom single-cell reference that represents tumor cells."
+        }
+      },
+      "parameter_groups": [
+        {
+          "id": "custom_single_cell_reference",
+          "prompt_zh": "如果不使用自定义单细胞参考，可以不填 sc_dat、cell_state_labels、cell_type_labels 和 key；如果使用自定义参考，这四项需要一起确认。",
+          "parameters": [
+            "sc_dat",
+            "cell_state_labels",
+            "cell_type_labels",
+            "key"
+          ],
+          "prompt_en": "If you are not using a custom single-cell reference, leave sc_dat, cell_state_labels, cell_type_labels, and key unset; if you use a custom reference, confirm all four together."
+        }
+      ]
+    },
+    "batch_salmon": {
+      "command_template": "iobrpy-cli batch_salmon --index <path_salmon_index> --path_fq <path_fastq_dir> --path_out <path_salmon_outdir> --batch_size <batch_size> --num_threads <num_threads>",
+      "priority_parameters": [
+        "index",
+        "path_fq",
+        "path_out",
+        "batch_size",
+        "num_threads",
+        "suffix1",
+        "gtf"
+      ],
+      "parameter_overrides": {
+        "index": {
+          "placeholder": "path_salmon_index",
+          "prompt_zh": "替换你的 Salmon index 的路径",
+          "prompt_en": "Replace with your Salmon index path."
+        },
+        "path_fq": {
+          "placeholder": "path_fastq_dir",
+          "prompt_zh": "替换为 FASTQ 输入目录路径",
+          "prompt_en": "Replace with the FASTQ input directory path."
+        },
+        "path_out": {
+          "placeholder": "path_salmon_outdir",
+          "prompt_zh": "替换为 Salmon 样本级结果输出目录",
+          "prompt_en": "Replace with the Salmon per-sample result output directory."
+        },
+        "batch_size": {
+          "placeholder": "batch_size",
+          "prompt_zh": "根据当前机器资源选择并行样本数",
+          "prompt_en": "Choose the number of samples to process in parallel based on current machine resources."
+        },
+        "num_threads": {
+          "placeholder": "num_threads",
+          "prompt_zh": "根据当前机器资源选择每个 Salmon 进程线程数",
+          "prompt_en": "Choose the thread count for each Salmon process based on current machine resources."
+        },
+        "suffix1": {
+          "placeholder": "r1_suffix",
+          "prompt_zh": "如 R1 文件后缀不是默认 _1.fastq.gz，需要替换",
+          "prompt_en": "Replace this if the R1 filename suffix is not the default _1.fastq.gz."
+        },
+        "gtf": {
+          "placeholder": "path_gtf",
+          "prompt_zh": "可选：需要基因层级汇总时填写 GTF 路径",
+          "prompt_en": "Optional: provide a GTF path when gene-level summarization is needed."
+        }
+      }
+    },
+    "batch_star_count": {
+      "command_template": "iobrpy-cli batch_star_count --index <path_star_index> --path_fq <path_fastq_dir> --path_out <path_star_outdir> --batch_size <batch_size> --num_threads <num_threads>",
+      "priority_parameters": [
+        "index",
+        "path_fq",
+        "path_out",
+        "batch_size",
+        "num_threads",
+        "suffix1"
+      ],
+      "parameter_overrides": {
+        "index": {
+          "placeholder": "path_star_index",
+          "prompt_zh": "替换你的 STAR index 的路径",
+          "prompt_en": "Replace with your STAR index path."
+        },
+        "path_fq": {
+          "placeholder": "path_fastq_dir",
+          "prompt_zh": "替换为 FASTQ 输入目录路径",
+          "prompt_en": "Replace with the FASTQ input directory path."
+        },
+        "path_out": {
+          "placeholder": "path_star_outdir",
+          "prompt_zh": "替换为 STAR 输出目录",
+          "prompt_en": "Replace with the STAR output directory."
+        },
+        "batch_size": {
+          "placeholder": "batch_size",
+          "prompt_zh": "根据当前机器资源选择并行样本数",
+          "prompt_en": "Choose the number of samples to process in parallel based on current machine resources."
+        },
+        "num_threads": {
+          "placeholder": "num_threads",
+          "prompt_zh": "根据当前机器资源选择 STAR/排序线程数",
+          "prompt_en": "Choose the STAR/alignment sorting thread count based on current machine resources."
+        },
+        "suffix1": {
+          "placeholder": "r1_suffix",
+          "prompt_zh": "如 R1 文件后缀不是默认 _1.fastq.gz，需要替换",
+          "prompt_en": "Replace this if the R1 filename suffix is not the default _1.fastq.gz."
+        }
+      }
+    },
+    "merge_salmon": {
+      "command_template": "iobrpy-cli merge_salmon --path_salmon <path_salmon_outdir> --project <project_name> --num_processes <num_processes>",
+      "priority_parameters": [
+        "path_salmon",
+        "project",
+        "num_processes"
+      ],
+      "parameter_overrides": {
+        "path_salmon": {
+          "placeholder": "path_salmon_outdir",
+          "prompt_zh": "替换为包含样本 quant.sf 的 Salmon 结果根目录",
+          "prompt_en": "Replace with the Salmon result root directory that contains sample quant.sf files."
+        },
+        "project": {
+          "placeholder": "project_name",
+          "prompt_zh": "替换为项目名称",
+          "prompt_en": "Replace with the project name."
+        },
+        "num_processes": {
+          "placeholder": "num_processes",
+          "prompt_zh": "根据当前机器资源选择并行进程数",
+          "prompt_en": "Choose the process count based on current machine resources."
+        }
+      }
+    },
+    "merge_star_count": {
+      "command_template": "iobrpy-cli merge_star_count --path <path_star_outdir> --project <project_name>",
+      "priority_parameters": [
+        "path",
+        "project"
+      ],
+      "parameter_overrides": {
+        "path": {
+          "placeholder": "path_star_outdir",
+          "prompt_zh": "替换为 STAR 结果目录",
+          "prompt_en": "Replace with the STAR result directory."
+        },
+        "project": {
+          "placeholder": "project_name",
+          "prompt_zh": "替换为项目名称",
+          "prompt_en": "Replace with the project name."
+        }
+      }
+    },
+    "count2tpm": {
+      "command_template": "iobrpy-cli count2tpm --input <path_count_matrix> --output <path_tpm_matrix> --idtype <ensembl|entrez|symbol|mgi> --org <hsa|mmus>",
+      "priority_parameters": [
+        "input",
+        "output",
+        "idtype",
+        "org",
+        "effLength_csv",
+        "remove_version"
+      ],
+      "parameter_overrides": {
+        "input": {
+          "placeholder": "path_count_matrix",
+          "prompt_zh": "替换为合并后的 count 矩阵路径",
+          "prompt_en": "Replace with the merged count matrix path."
+        },
+        "output": {
+          "placeholder": "path_tpm_matrix",
+          "prompt_zh": "替换为输出 TPM 矩阵路径",
+          "prompt_en": "Replace with the output TPM matrix path."
+        },
+        "idtype": {
+          "placeholder": "ensembl|entrez|symbol|mgi",
+          "prompt_zh": "选择输入矩阵的基因 ID 类型",
+          "prompt_en": "Choose the gene ID type used in the input matrix."
+        },
+        "org": {
+          "placeholder": "hsa|mmus",
+          "prompt_zh": "选择物种：人类 hsa，小鼠 mmus",
+          "prompt_en": "Choose the organism: hsa for human, mmus for mouse."
+        },
+        "effLength_csv": {
+          "placeholder": "path_effective_length_csv",
+          "prompt_zh": "可选：如果需要自定义有效长度表再填写",
+          "prompt_en": "Optional: fill this only when a custom effective-length table is needed."
+        },
+        "remove_version": {
+          "placeholder": "true|false",
+          "prompt_zh": "如基因 ID 带版本号，可选择是否去掉版本号",
+          "prompt_en": "Choose whether to remove version suffixes from gene IDs when present."
+        }
+      }
+    },
+    "calculate_sig_score": {
+      "command_template": "iobrpy-cli calculate_sig_score --input <path_tpm_matrix> --output <path_signature_scores> --signature <signature_group> --parallel_size <parallel_size>",
+      "priority_parameters": [
+        "input",
+        "output",
+        "signature",
+        "method",
+        "parallel_size"
+      ],
+      "parameter_overrides": {
+        "input": {
+          "placeholder": "path_tpm_matrix",
+          "prompt_zh": "替换为 TPM 表达矩阵路径",
+          "prompt_en": "Replace with the TPM expression matrix path."
+        },
+        "output": {
+          "placeholder": "path_signature_scores",
+          "prompt_zh": "替换为 signature 评分输出文件路径",
+          "prompt_en": "Replace with the signature score output file path."
+        },
+        "signature": {
+          "placeholder": "signature_group",
+          "prompt_zh": "选择要评分的 signature 集合",
+          "prompt_en": "Choose the signature collection to score."
+        },
+        "method": {
+          "placeholder": "pca|zscore|ssgsea|integration",
+          "prompt_zh": "选择 signature scoring 方法",
+          "prompt_en": "Choose the signature scoring method."
+        },
+        "parallel_size": {
+          "placeholder": "parallel_size",
+          "prompt_zh": "根据当前机器资源选择并行数",
+          "prompt_en": "Choose the parallel worker count based on current machine resources."
+        }
+      }
+    },
+    "LR_cal": {
+      "command_template": "iobrpy-cli LR_cal --input <path_tpm_matrix> --output <path_lr_scores> --data_type <tpm|count> --id_type <ensembl|entrez|symbol|mgi> --cancer_type <cancer_type>",
+      "priority_parameters": [
+        "input",
+        "output",
+        "data_type",
+        "id_type",
+        "cancer_type"
+      ],
+      "parameter_overrides": {
+        "input": {
+          "placeholder": "path_tpm_matrix",
+          "prompt_zh": "替换为表达矩阵路径",
+          "prompt_en": "Replace with the expression matrix path."
+        },
+        "output": {
+          "placeholder": "path_lr_scores",
+          "prompt_zh": "替换为配体-受体评分输出文件路径",
+          "prompt_en": "Replace with the ligand-receptor score output file path."
+        },
+        "data_type": {
+          "placeholder": "tpm|count",
+          "prompt_zh": "选择输入表达矩阵类型",
+          "prompt_en": "Choose the input expression matrix type."
+        },
+        "id_type": {
+          "placeholder": "ensembl|entrez|symbol|mgi",
+          "prompt_zh": "选择输入矩阵的基因 ID 类型",
+          "prompt_en": "Choose the gene ID type used in the input matrix."
+        },
+        "cancer_type": {
+          "placeholder": "cancer_type",
+          "prompt_zh": "替换为癌种标签；不确定时可使用默认 pancan",
+          "prompt_en": "Replace with the cancer type label; use the default pancan when unsure."
+        }
+      }
+    },
+    "tme_cluster": {
+      "command_template": "iobrpy-cli tme_cluster --input <path_tme_matrix> --output <path_tme_cluster_outdir> --features <feature_columns>",
+      "priority_parameters": [
+        "input",
+        "output",
+        "features",
+        "min_nc",
+        "max_nc",
+        "max_iter"
+      ],
+      "parameter_overrides": {
+        "input": {
+          "placeholder": "path_tme_matrix",
+          "prompt_zh": "替换为用于聚类的 TME 特征矩阵",
+          "prompt_en": "Replace with the TME feature matrix used for clustering."
+        },
+        "output": {
+          "placeholder": "path_tme_cluster_outdir",
+          "prompt_zh": "替换为 TME 聚类输出路径或目录",
+          "prompt_en": "Replace with the TME clustering output path or directory."
+        },
+        "features": {
+          "placeholder": "feature_columns",
+          "prompt_zh": "选择用于聚类的特征列；需符合 tme_cluster 的 features 参数",
+          "prompt_en": "Choose the feature columns for clustering; they must match the tme_cluster features parameter format."
+        },
+        "min_nc": {
+          "placeholder": "min_cluster_count",
+          "prompt_zh": "可选：最小聚类数",
+          "prompt_en": "Optional: minimum number of clusters."
+        },
+        "max_nc": {
+          "placeholder": "max_cluster_count",
+          "prompt_zh": "可选：最大聚类数",
+          "prompt_en": "Optional: maximum number of clusters."
+        },
+        "max_iter": {
+          "placeholder": "max_iter",
+          "prompt_zh": "可选：最大迭代次数",
+          "prompt_en": "Optional: maximum number of iterations."
+        }
+      }
+    },
+    "hla_typing": {
+      "command_template": "iobrpy-cli hla_typing -b <path_bam_dir> -r <hg19|hg38> -o <path_hla_outdir> -j <threads>",
+      "priority_parameters": [
+        "bam_dir",
+        "ref",
+        "outdir",
+        "threads",
+        "use_exon"
+      ],
+      "parameter_overrides": {
+        "bam_dir": {
+          "placeholder": "path_bam_dir",
+          "prompt_zh": "替换为 BAM 输入目录",
+          "prompt_en": "Replace with the BAM input directory."
+        },
+        "ref": {
+          "placeholder": "hg19|hg38",
+          "prompt_zh": "选择参考基因组版本",
+          "prompt_en": "Choose the reference genome version."
+        },
+        "outdir": {
+          "placeholder": "path_hla_outdir",
+          "prompt_zh": "替换为 HLA 分型输出目录",
+          "prompt_en": "Replace with the HLA typing output directory."
+        },
+        "threads": {
+          "placeholder": "threads",
+          "prompt_zh": "根据当前机器 CPU/内存负载选择线程数",
+          "prompt_en": "Choose the thread count based on current CPU and memory load."
+        },
+        "use_exon": {
+          "placeholder": "0|1",
+          "prompt_zh": "选择是否使用 exon 模式",
+          "prompt_en": "Choose whether to use exon mode."
+        }
+      }
+    },
+    "trust4": {
+      "command_template": "iobrpy-cli trust4 --fqdir <path_fastq_dir> -o <path_trust4_outdir> -t <threads>",
+      "priority_parameters": [
+        "fqdir",
+        "bam",
+        "r1",
+        "r2",
+        "ru",
+        "o",
+        "t"
+      ],
+      "parameter_overrides": {
+        "fqdir": {
+          "placeholder": "path_fastq_dir",
+          "prompt_zh": "批量 FASTQ 模式：替换为 FASTQ 输入目录",
+          "prompt_en": "Batch FASTQ mode: replace with the FASTQ input directory."
+        },
+        "bam": {
+          "placeholder": "path_bam_or_bam_dir",
+          "prompt_zh": "BAM 模式：替换为 BAM 文件或目录",
+          "prompt_en": "BAM mode: replace with a BAM file or directory."
+        },
+        "r1": {
+          "placeholder": "path_r1_fastq",
+          "prompt_zh": "单样本双端 FASTQ 模式：替换为 R1 文件路径",
+          "prompt_en": "Single-sample paired-end FASTQ mode: replace with the R1 file path."
+        },
+        "r2": {
+          "placeholder": "path_r2_fastq",
+          "prompt_zh": "单样本双端 FASTQ 模式：替换为 R2 文件路径",
+          "prompt_en": "Single-sample paired-end FASTQ mode: replace with the R2 file path."
+        },
+        "ru": {
+          "placeholder": "path_unpaired_fastq",
+          "prompt_zh": "单端 FASTQ 模式：替换为单端 reads 文件路径",
+          "prompt_en": "Single-end FASTQ mode: replace with the single-end reads file path."
+        },
+        "o": {
+          "placeholder": "path_trust4_outdir",
+          "prompt_zh": "替换为 TRUST4 输出目录",
+          "prompt_en": "Replace with the TRUST4 output directory."
+        },
+        "t": {
+          "placeholder": "threads",
+          "prompt_zh": "根据当前机器 CPU/内存负载选择线程数",
+          "prompt_en": "Choose the thread count based on current CPU and memory load."
+        }
+      },
+      "parameter_groups": [
+        {
+          "id": "trust4_input_mode",
+          "prompt_zh": "TRUST4 输入模式四选一：bam、r1+r2、ru、或 fqdir；不要同时混用多个输入模式。",
+          "parameters": [
+            "bam",
+            "r1",
+            "r2",
+            "ru",
+            "fqdir"
+          ],
+          "prompt_en": "Choose exactly one TRUST4 input mode: bam, r1+r2, ru, or fqdir; do not mix multiple input modes."
+        }
+      ]
+    },
+    "cibersort": {
+      "command_template": "iobrpy-cli cibersort --input <path_tpm_matrix> --output <path_cibersort_results> --threads <threads>",
+      "priority_parameters": [
+        "input",
+        "output",
+        "threads",
+        "perm",
+        "QN"
+      ],
+      "parameter_overrides": {
+        "input": {
+          "placeholder": "path_tpm_matrix",
+          "prompt_zh": "替换为表达矩阵路径",
+          "prompt_en": "Replace with the expression matrix path."
+        },
+        "output": {
+          "placeholder": "path_cibersort_results",
+          "prompt_zh": "替换为 CIBERSORT 输出文件路径",
+          "prompt_en": "Replace with the CIBERSORT output file path."
+        },
+        "threads": {
+          "placeholder": "threads",
+          "prompt_zh": "根据当前机器资源选择线程数",
+          "prompt_en": "Choose the thread count based on current machine resources."
+        }
+      }
+    },
+    "epic": {
+      "command_template": "iobrpy-cli epic --input <path_tpm_matrix> --output <path_epic_results> --reference <TRef|BRef|both>",
+      "priority_parameters": [
+        "input",
+        "output",
+        "reference"
+      ],
+      "parameter_overrides": {
+        "input": {
+          "placeholder": "path_tpm_matrix",
+          "prompt_zh": "替换为表达矩阵路径",
+          "prompt_en": "Replace with the expression matrix path."
+        },
+        "output": {
+          "placeholder": "path_epic_results",
+          "prompt_zh": "替换为 EPIC 输出文件路径",
+          "prompt_en": "Replace with the EPIC output file path."
+        },
+        "reference": {
+          "placeholder": "TRef|BRef|both",
+          "prompt_zh": "选择 EPIC 参考面板",
+          "prompt_en": "Choose the EPIC reference panel."
+        }
+      }
+    },
+    "quantiseq": {
+      "command_template": "iobrpy-cli quantiseq --input <path_tpm_matrix> --output <path_quantiseq_results>",
+      "priority_parameters": [
+        "input",
+        "output",
+        "method",
+        "arrays",
+        "tumor",
+        "scale_mrna"
+      ],
+      "parameter_overrides": {
+        "input": {
+          "placeholder": "path_tpm_matrix",
+          "prompt_zh": "替换为表达矩阵路径",
+          "prompt_en": "Replace with the expression matrix path."
+        },
+        "output": {
+          "placeholder": "path_quantiseq_results",
+          "prompt_zh": "替换为 quanTIseq 输出文件路径",
+          "prompt_en": "Replace with the quanTIseq output file path."
+        }
+      }
+    },
+    "mcpcounter": {
+      "command_template": "iobrpy-cli mcpcounter --input <path_tpm_matrix> --features <HUGO_symbols|ENTREZ_ID|ENSEMBL_ID|affy133P2_probesets> --output <path_mcpcounter_results>",
+      "priority_parameters": [
+        "input",
+        "features",
+        "output"
+      ],
+      "parameter_overrides": {
+        "input": {
+          "placeholder": "path_tpm_matrix",
+          "prompt_zh": "替换为表达矩阵路径",
+          "prompt_en": "Replace with the expression matrix path."
+        },
+        "features": {
+          "placeholder": "HUGO_symbols|ENTREZ_ID|ENSEMBL_ID|affy133P2_probesets",
+          "prompt_zh": "选择输入矩阵的基因 ID 类型",
+          "prompt_en": "Choose the gene ID type used in the input matrix."
+        },
+        "output": {
+          "placeholder": "path_mcpcounter_results",
+          "prompt_zh": "替换为 MCPcounter 输出文件路径",
+          "prompt_en": "Replace with the MCPcounter output file path."
+        }
+      }
+    },
+    "estimate": {
+      "command_template": "iobrpy-cli estimate --input <path_tpm_matrix> --output <path_estimate_results> --platform <affymetrix|agilent|illumina>",
+      "priority_parameters": [
+        "input",
+        "output",
+        "platform"
+      ],
+      "parameter_overrides": {
+        "input": {
+          "placeholder": "path_tpm_matrix",
+          "prompt_zh": "替换为表达矩阵路径",
+          "prompt_en": "Replace with the expression matrix path."
+        },
+        "output": {
+          "placeholder": "path_estimate_results",
+          "prompt_zh": "替换为 ESTIMATE 输出文件路径",
+          "prompt_en": "Replace with the ESTIMATE output file path."
+        },
+        "platform": {
+          "placeholder": "affymetrix|agilent|illumina",
+          "prompt_zh": "选择平台类型；RNA-seq 场景通常先确认是否需要该参数",
+          "prompt_en": "Choose the platform type; in RNA-seq scenarios, first confirm whether this parameter is needed."
+        }
+      }
+    },
+    "IPS": {
+      "command_template": "iobrpy-cli IPS --input <path_tpm_matrix> --output <path_ips_results>",
+      "priority_parameters": [
+        "input",
+        "output"
+      ],
+      "parameter_overrides": {
+        "input": {
+          "placeholder": "path_tpm_matrix",
+          "prompt_zh": "替换为表达矩阵路径",
+          "prompt_en": "Replace with the expression matrix path."
+        },
+        "output": {
+          "placeholder": "path_ips_results",
+          "prompt_zh": "替换为 IPS 输出文件路径",
+          "prompt_en": "Replace with the IPS output file path."
+        }
+      }
+    }
+  }
+}

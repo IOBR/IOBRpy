@@ -18,6 +18,43 @@ A complete documentation for IOBRpy can be found at https://iobr.github.io/IOBRp
 
 ---
 
+## Agent Bootstrap
+
+If you want coding agents to discover `iobrpy-cli` without repeating it in every prompt, install the packaged agent integrations once:
+
+```bash
+# Codex: install the bundled global skill plus MCP registration
+iobrpy-cli agent install --client codex
+
+# Claude Code: install the managed global memory plus MCP registration
+iobrpy-cli agent install --client claude-code
+
+# Configure every supported client in one pass
+iobrpy-cli agent install --client all
+
+# Inspect what is already installed without changing anything
+iobrpy-cli agent status
+```
+
+By default these commands print a short human-readable summary. Add `--json` when you want the full machine-readable payload for automation or another agent.
+
+For path-driven agent work, start with:
+
+```bash
+iobrpy-cli map --path /path/to/data --json
+```
+
+This stage map tells the agent whether the directory is still raw FASTQ input, partially processed, or already ready for downstream TPM/TME analysis, so it can ask whether you want to continue, rerun the current stage, or rerun the full pipeline.
+The JSON output also includes a scenario card and roadmap position summary so an agent can explain, in plain language, what has already been done and what the next sensible choices are.
+
+What gets installed:
+- **Codex**: a global `iobrpy-fastpath` skill under `~/.codex/skills/` plus an MCP server entry in `~/.codex/config.toml`.
+- **Claude Code**: a managed global memory import in `~/.claude/CLAUDE.md`, the managed memory file at `~/.claude/iobrpy/CLAUDE.md`, and a user-scoped MCP server via `claude mcp add ...`.
+
+The registered server launches `iobrpy-cli-mcp` through the current Python environment, so agents can call native `iobrpy` workflows as tools instead of guessing from source files.
+
+---
+
 ## Installation
 
 ### Quick install
@@ -27,7 +64,7 @@ A complete documentation for IOBRpy can be found at https://iobr.github.io/IOBRp
 pip install iobrpy
 
 # Method 2 : Conda (bioconda via conda-forge + bioconda)
-conda install -c conda-forge -c bioconda iobrpy=0.1.4
+conda install -c conda-forge -c bioconda iobrpy=0.1.8
 
 # Method 3 : Docker
 docker pull hhn123123/iobrpy:latest
@@ -80,12 +117,12 @@ conda create -n iobrpy python=3.11 -y
 conda activate iobrpy
 ```
 ```bash
-# Install iobrpy 0.1.4 (from bioconda via conda-forge + bioconda)
+# Install iobrpy 0.1.8 (from bioconda via conda-forge + bioconda)
 # Recommended: use mamba for faster solves (if available)
-mamba install -y -c conda-forge -c bioconda iobrpy=0.1.7
+mamba install -y -c conda-forge -c bioconda iobrpy=0.1.8
 
 # If you don't have mamba, use conda instead
-conda install -y -c conda-forge -c bioconda iobrpy=0.1.7
+conda install -y -c conda-forge -c bioconda iobrpy=0.1.8
 ```
 </details>
 

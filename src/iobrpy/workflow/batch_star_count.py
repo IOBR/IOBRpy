@@ -3,9 +3,17 @@ import os
 import random
 import subprocess
 import argparse
-import resource
+import sys
+
+try:
+    import resource
+except ImportError:
+    resource = None
 
 def set_ulimit(n=65535):
+    if resource is None:
+        return
+
     soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
     target = min(n, hard)
     try:
@@ -41,23 +49,32 @@ def process_sample(f1, path_out, index, suffix1, num_threads):
     else:
         print(f"[Start] {sample_id} is running...")
 
-        # Construct STAR command (splitted into multiple lines)
-        command = (
-            f"STAR --genomeDir {index} "
-            f"--readFilesIn {f1} {f2} "
-            f"--outFileNamePrefix {os.path.join(path_out, sample_id)}_ "
-            f"--twopassMode Basic "
-            f"--runThreadN {num_threads} "
-            f"--outBAMsortingThreadN {num_threads} "
-            f"--outTmpDir {os.path.join(path_out, sample_id + '_STARtmp')} "
-            f"--readFilesCommand zcat "
-            f"--outSAMtype BAM SortedByCoordinate "
-            f"--quantMode GeneCounts "
-            f"--limitBAMsortRAM 137438953472"
-        )
-        
-        # Run STAR command using subprocess
-        subprocess.run(command, shell=True, check=True)
+        command = [
+            "STAR",
+            "--genomeDir", index,
+            "--readFilesIn", f1, f2,
+            "--outFileNamePrefix", os.path.join(path_out, sample_id) + "_",
+            "--twopassMode", "Basic",
+            "--runThreadN", str(num_threads),
+            "--outBAMsortingThreadN", str(num_threads),
+            "--outTmpDir", os.path.join(path_out, sample_id + "_STARtmp"),
+            "--readFilesCommand", "zcat",
+            "--outSAMtype", "BAM", "SortedByCoordinate",
+            "--quantMode", "GeneCounts",
+            "--limitBAMsortRAM", "137438953472",
+        ]
+
+        try:
+            subprocess.run(
+                command,
+                check=True,
+                stdout=sys.stderr,
+                stderr=sys.stderr,
+            )
+        except subprocess.CalledProcessError as e:
+            raise RuntimeError(
+                f"STAR failed for sample {sample_id} with exit code {e.returncode}"
+            ) from e
 
         # Create task.complete file
         os.makedirs(os.path.join(path_out, sample_id), exist_ok=True)

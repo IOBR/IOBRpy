@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.4)
+cmake_minimum_required(VERSION 3.10)
 
 if (NOT $ENV{CONDA_PREFIX} STREQUAL "")
     message(STATUS "CURRENT CONDA PREFIX: $ENV{CONDA_PREFIX}")
@@ -27,7 +27,20 @@ aux_source_directory(./samtools SAM_SRC)
 #set(LIBSAM libbam.a)
 set(LIBHTS libhts.a)
 
+if (NOT "$ENV{CONDA_PREFIX}" STREQUAL "")
+    set(CONDA_HTS_LIBRARY "$ENV{CONDA_PREFIX}/lib/libhts.so")
+    set(CONDA_ZLIB_LIBRARY "$ENV{CONDA_PREFIX}/lib/libz.so")
+endif ()
 
 add_executable(ExtractHAIRs ${EXTRACT_SRC})
+if (EXISTS "${CONDA_HTS_LIBRARY}")
+    target_link_libraries(ExtractHAIRs "${CONDA_HTS_LIBRARY}")
+else ()
+    target_link_libraries(ExtractHAIRs -lhts)
+endif ()
 
-target_link_libraries(ExtractHAIRs -lhts z)
+if (EXISTS "${CONDA_ZLIB_LIBRARY}")
+    target_link_libraries(ExtractHAIRs "${CONDA_ZLIB_LIBRARY}")
+else ()
+    target_link_libraries(ExtractHAIRs z)
+endif ()

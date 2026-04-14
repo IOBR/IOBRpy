@@ -16,12 +16,12 @@ conda create -n iobrpy python=3.11 -y
 conda activate iobrpy
 ```
 ```bash
-# Install iobrpy 0.1.6 (from bioconda via conda-forge + bioconda)
+# Install iobrpy 0.1.8 (from bioconda via conda-forge + bioconda)
 # Recommended: use mamba for faster solves (if available)
-mamba install -y -c conda-forge -c bioconda iobrpy=0.1.7
+mamba install -y -c conda-forge -c bioconda iobrpy=0.1.8
 
 # If you don't have mamba, use conda instead
-conda install -y -c conda-forge -c bioconda iobrpy=0.1.7
+conda install -y -c conda-forge -c bioconda iobrpy=0.1.8
 ```
 
 ## PyPI {.unnumbered}

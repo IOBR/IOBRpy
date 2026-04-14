@@ -1,0 +1,209 @@
+{
+  "version": 1,
+  "roadmap": {
+    "title": "Comprehensive TME Analysis Pipeline",
+    "url": "https://iobr.github.io/IOBRpy/workflow.html",
+    "local_doc": "docs/workflow.html"
+  },
+  "stages": [
+    {
+      "id": "raw_fastq",
+      "label": "Raw sequencing files (FASTQ)",
+      "technical_label": "raw_fastq",
+      "group": "input",
+      "detect_any": ["*.fastq.gz", "*.fq.gz", "*.fastq", "*.fq"],
+      "implies": []
+    },
+    {
+      "id": "fastq_qc",
+      "label": "Read quality control and cleaning with fastp",
+      "technical_label": "fastq_qc / fastp",
+      "group": "input",
+      "detect_any": ["*_fastp.html", "*_fastp.json"],
+      "detect_weak": [],
+      "implies": ["raw_fastq"]
+    },
+    {
+      "id": "salmon_quant",
+      "label": "Expression quantification (Salmon)",
+      "technical_label": "batch_salmon",
+      "group": "salmon",
+      "detect_any": ["*/quant.sf"],
+      "detect_weak": ["02-salmon", ".batch_salmon.done"],
+      "implies": ["fastq_qc", "raw_fastq"]
+    },
+    {
+      "id": "salmon_merge",
+      "label": "Merged Salmon expression results",
+      "technical_label": "merge_salmon",
+      "group": "salmon",
+      "detect_any": ["*_salmon_tpm.tsv.gz", "*_salmon_count.tsv.gz", "*salmon*tpm*.tsv", "*salmon*tpm*.csv"],
+      "detect_weak": [".merge_salmon.done"],
+      "implies": ["salmon_quant", "fastq_qc", "raw_fastq"]
+    },
+    {
+      "id": "prepare_salmon",
+      "label": "TPM preparation from Salmon quantification",
+      "technical_label": "prepare_salmon",
+      "group": "salmon",
+      "detect_any": ["prepare_salmon.csv"],
+      "implies": ["salmon_merge", "salmon_quant", "fastq_qc", "raw_fastq"]
+    },
+    {
+      "id": "star_quant",
+      "label": "Expression quantification (STAR)",
+      "technical_label": "batch_star_count",
+      "group": "star",
+      "detect_any": ["*_ReadsPerGene.out.tab", "*_Aligned.sortedByCoord.out.bam"],
+      "detect_weak": ["02-star", ".batch_star_count.done"],
+      "implies": ["fastq_qc", "raw_fastq"]
+    },
+    {
+      "id": "star_merge",
+      "label": "Merged STAR gene counts",
+      "technical_label": "merge_star_count",
+      "group": "star",
+      "detect_any": [
+        "*.STAR.count.tsv.gz",
+        "featureCounts.txt",
+        "*featureCounts*.txt",
+        "*gene_count*.tsv",
+        "*gene_count*.csv",
+        "*count_matrix*.tsv",
+        "*count_matrix*.csv",
+        "*counts_matrix*.tsv",
+        "*counts_matrix*.csv",
+        "*raw_count*.tsv",
+        "*raw_count*.csv",
+        "*read_count*.tsv",
+        "*read_count*.csv"
+      ],
+      "detect_weak": [".merge_star_count.done"],
+      "implies": ["star_quant", "fastq_qc", "raw_fastq"]
+    },
+    {
+      "id": "count2tpm",
+      "label": "TPM conversion from gene counts",
+      "technical_label": "count2tpm",
+      "group": "star",
+      "detect_any": ["count2tpm.csv"],
+      "implies": ["star_merge", "star_quant", "fastq_qc", "raw_fastq"]
+    },
+    {
+      "id": "tpm_matrix",
+      "label": "TPM expression matrix ready",
+      "technical_label": "TPM Matrix",
+      "group": "core",
+      "detect_any": [
+        "tpm_matrix.csv",
+        "TPM_matrix.csv",
+        "prepare_salmon.csv",
+        "count2tpm.csv",
+        "*TPM*.csv",
+        "*TPM*.tsv",
+        "*TPM*.txt",
+        "*TPM*.csv.gz",
+        "*TPM*.tsv.gz",
+        "*TPM*.txt.gz",
+        "*tpm*.csv",
+        "*tpm*.tsv",
+        "*tpm*.txt",
+        "*tpm*.csv.gz",
+        "*tpm*.tsv.gz",
+        "*tpm*.txt.gz"
+      ],
+      "detect_weak": ["03-tpm"],
+      "implies": []
+    },
+    {
+      "id": "signature_scoring",
+      "label": "Pathway / signature scoring",
+      "technical_label": "Signature Scoring",
+      "group": "core",
+      "detect_any": ["calculate_sig_score.csv", "*calculate_sig_score*.csv", "*calculate_sig_score*.tsv", "*signature_score*.csv", "*signature_score*.tsv", "*sig_score*.csv", "*sig_score*.tsv", "*ssgsea*.csv", "*ssgsea*.tsv"],
+      "detect_weak": ["01-signatures", "04-signatures", "*tme_profile*", "*tme-profile*", "*tme-profile-iobrpy*"],
+      "implies": ["tpm_matrix"]
+    },
+    {
+      "id": "deconvolution",
+      "label": "Immune / stromal deconvolution",
+      "technical_label": "Deconvolution",
+      "group": "core",
+      "detect_any": [
+        "cibersort_results.csv",
+        "epic_results.csv",
+        "quantiseq_results.csv",
+        "estimate_results.csv",
+        "mcpcounter_results.csv",
+        "IPS_results.csv",
+        "deconvo_merged.csv",
+        "*CIBERSORT*.txt",
+        "*CIBERSORT*.csv",
+        "*EPIC*.txt",
+        "*EPIC*.csv",
+        "*quantiseq*.txt",
+        "*quantiseq*.csv",
+        "*estimate*.txt",
+        "*estimate*.csv",
+        "*MCPcounter*.txt",
+        "*MCPcounter*.csv"
+      ],
+      "detect_weak": ["02-tme", "05-tme", "*tme_profile*", "*tme-profile*", "*tme-profile-iobrpy*"],
+      "implies": ["tpm_matrix"]
+    },
+    {
+      "id": "ligand_receptor",
+      "label": "Ligand-receptor analysis",
+      "technical_label": "Ligand-Receptor",
+      "group": "core",
+      "detect_any": ["lr_cal.csv", "LR_score.csv", "*ligand*receptor*.csv", "*ligand*receptor*.tsv"],
+      "detect_weak": ["03-LR_cal", "06-LR_cal", "*tme_profile*", "*tme-profile*", "*tme-profile-iobrpy*"],
+      "implies": ["tpm_matrix"]
+    },
+    {
+      "id": "clustering",
+      "label": "TME clustering / subtyping",
+      "technical_label": "Clustering",
+      "group": "core",
+      "detect_any": ["tme_cluster.csv", "*tme_cluster*.csv", "*nmf*.csv", "*nmf*.tsv"],
+      "detect_weak": ["nmf_results", "nmf"],
+      "implies": ["deconvolution", "tpm_matrix"]
+    },
+    {
+      "id": "trust4",
+      "label": "TCR/BCR repertoire analysis",
+      "technical_label": "TRUST4",
+      "group": "immune",
+      "detect_any": ["*cdr3.out", "*trust4*"],
+      "detect_weak": ["07-TCRBCR"],
+      "implies": ["raw_fastq"]
+    },
+    {
+      "id": "spechla",
+      "label": "Per-sample HLA typing",
+      "technical_label": "SpecHLA",
+      "group": "immune",
+      "detect_any": ["*HLAfinal.type.txt"],
+      "detect_weak": ["*spechla*"],
+      "implies": []
+    },
+    {
+      "id": "hla_typing",
+      "label": "Merged HLA typing results",
+      "technical_label": "HLA typing",
+      "group": "immune",
+      "detect_any": [
+        "hla_result_merged.txt",
+        "*hla_result*.txt",
+        "*hla_result*.tsv",
+        "*hla_result*.csv",
+        "*hla*merged*.txt",
+        "*hla*merged*.tsv",
+        "*hla*merged*.csv",
+        "*cohort*genotype*.tsv",
+        "*cohort*genotype*.csv"
+      ],
+      "implies": ["spechla"]
+    }
+  ]
+}
