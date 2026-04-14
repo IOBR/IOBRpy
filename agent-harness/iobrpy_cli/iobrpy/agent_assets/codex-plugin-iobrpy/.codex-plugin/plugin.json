@@ -1,0 +1,43 @@
+{
+  "name": "iobrpy",
+  "version": "0.1.0",
+  "description": "Bulk RNA-seq immuno-oncology workflow routing for Codex via iobrpy-cli and iobrpy MCP.",
+  "author": {
+    "name": "IOBRpy",
+    "url": "https://github.com/IOBR/IOBRpy"
+  },
+  "homepage": "https://github.com/IOBR/IOBRpy",
+  "repository": "https://github.com/IOBR/IOBRpy",
+  "license": "MIT",
+  "keywords": [
+    "iobrpy",
+    "bioinformatics",
+    "rna-seq",
+    "tme",
+    "hla",
+    "tcr-bcr"
+  ],
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "IOBRpy",
+    "shortDescription": "Use iobrpy-cli to inspect paths, choose workflows, and run TME, HLA, and repertoire analyses",
+    "longDescription": "Bring IOBRpy workflow routing into Codex with a local MCP server plus an iobrpy command namespace for bulk RNA-seq, TME, HLA typing, and TCR/BCR repertoire tasks.",
+    "developerName": "IOBRpy",
+    "category": "Coding",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://github.com/IOBR/IOBRpy",
+    "privacyPolicyURL": "https://github.com/IOBR/IOBRpy",
+    "termsOfServiceURL": "https://github.com/IOBR/IOBRpy",
+    "defaultPrompt": [
+      "Parse this RNA-seq result path with iobrpy",
+      "Pick the right IOBRpy workflow for this matrix",
+      "Help me continue an existing TME analysis"
+    ],
+    "brandColor": "#0F766E",
+    "screenshots": []
+  }
+}

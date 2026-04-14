@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "iobrpy": {
+      "command": "iobrpy-cli-mcp",
+      "args": [],
+      "note": "Local stdio MCP server exposed by the iobrpy-cli package."
+    }
+  }
+}

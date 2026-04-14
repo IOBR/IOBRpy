@@ -1,0 +1,111 @@
+{
+  "name": "iobrpy-agent-manifest",
+  "version": "1.0",
+  "preferred_entrypoints": [
+    "iobrpy-cli",
+    "iobrpy-cli-mcp",
+    "iobrpy"
+  ],
+  "preferred_invocation_pattern": "iobrpy-cli <native_command> [native_args...]",
+  "agent_policy": {
+    "prefer_cli_before_source_scan": true,
+    "prefer_python_iobrpy_over_r_iobr": true,
+    "notes": [
+      "Use iobrpy-cli doctor --json as the first environment check.",
+      "At the start of each new IOBRpy-agent request, render this banner once before scanning or planning, matching the CLI banner in src/iobrpy/main.py, and do not repeat it before every tool call or native command:\n#########################################################\n IOBRpy: Immuno-Oncology Biological Research using Python\n If you encounter any issues, please report them at\n https://github.com/IOBR/IOBRpy/issues\n#########################################################\n Author: Haonan Huang, Dongqiang Zeng\n Email: interlaken@smu.edu.cn\n#########################################################",
+      "For agent-driven path parsing, do not ask the user to choose quick versus full scanning. Use the default deep/full path directly: iobrpy-cli map --path <path> --json. When using MCP, call map_path once with its default response_detail=summary unless technical detail is explicitly needed.",
+      "Do not use a client-native scan-mode selector or ask the user to choose between quick and full scans. The default path scan is already the deep/full scan.",
+      "Reuse map JSON fields such as workflow_checklist, scenario.summary, scenario.communication_goals, scenario.required_user_decisions, current_label, current_stage_confidence, completed_stage_summaries, and next_step_summaries when guiding the user through continue-versus-rerun choices.",
+      "For every path-driven dataset parsing request, present the grouped workflow_checklist first as a table before summarizing the current stage or continue-versus-rerun choices, even when the user did not explicitly ask what has already been completed.",
+      "Render the full grouped checklist in order, including unchecked items, instead of filtering it down to only completed or currently relevant entries.",
+      "Do not ask scan-mode questions for path-driven requests; run the deep/full map scan directly before recommend --json.",
+      "Do not promise fixed minute ranges for scan duration. Warn only when relevant that full scans on very large or network-mounted directories can take much longer than expected.",
+      "Legacy quick mode is deprecated for agent use; if an older client passes quick=true to map_path, the helper ignores it and still uses the full/deep scan path.",
+      "iobrpy-cli map does not reuse prior scan payloads; rerun it when the user wants a fresh scan.",
+      "On the first scan, do not invent manual --max-depth or --max-entries values. Let iobrpy-cli map choose adaptive initial limits unless the user explicitly asks for custom limits.",
+      "Render that checklist directly from workflow_checklist with clear markers such as ✓ for checked items and [ ] for unchecked items. When the user is speaking Chinese, prefer localized fields such as label_zh, text_zh, details_zh, and current_label_zh when they are present. Do not expand the grouped checklist back into many command-level stages unless the user explicitly asks for technical detail.",
+      "In Chinese conversations, use localized checklist fields such as workflow_checklist_title_zh, status_label_zh, result_source_label_zh, evidence_paths, and missing_items_zh when they are present. In English conversations, do not pull _zh checklist fields into English table cells or summaries.",
+      "When workflow_checklist_table or workflow_checklist_table_zh is present, prefer that prebuilt table first and reuse it verbatim.",
+      "Do not replace that prebuilt checklist table with a shorter custom table. Keep unchecked rows and the Still missing / 仍缺少 column visible.",
+      "When default_user_facing_checklist_format is markdown_table, render default_user_facing_checklist exactly as provided. Do not convert it into an ASCII box table, key-value blocks, or another hand-built layout.",
+      "For checklist rows that contain multiple evidence paths, preserve each path verbatim and keep the provided in-cell line separation. Do not collapse multiple absolute paths onto one visual line, and do not concatenate adjacent paths back into one long string.",
+      "If workflow_checklist[].detected_column_value or workflow_checklist[].missing_column_value is present, use those pre-rendered cell values directly when rebuilding the checklist table.",
+      "If a client strips HTML line breaks inside table cells, preserve a visible separator such as • between adjacent evidence paths or missing items instead of concatenating them into one string.",
+      "For the immune_deconvolution checklist row specifically, prefer the full evidence paths from the prebuilt checklist cell or workflow_checklist[].evidence_display_paths. Do not replace that 检测到 / Detected in cell with method-name summaries such as CIBERSORT, EPIC, or BayesPrism.",
+      "If a client cannot render the provided prebuilt table and absolutely must rebuild it, use workflow_checklist[].evidence_display_paths as the 检测到 / Detected in column source. Do not rebuild that column from deconvolution_methods.detected_labels.",
+      "For the immune_deconvolution checklist row, prefer the prebuilt checklist table first. If the client must rebuild that row, use workflow_checklist[].missing_column_value or workflow_checklist[].missing_items in English, and use workflow_checklist[].missing_column_value_zh or workflow_checklist[].missing_items_zh only in Chinese. Keep the language-matched BayesPrism standalone-optional note instead of mixing Chinese text into English output.",
+      "For the tpm_matrix_ready checklist row, use the prebuilt checklist table or workflow_checklist[].detected_column_value / workflow_checklist[].evidence_display_paths directly. Do not borrow downstream signature-scoring files such as calculate_sig_score.csv into the TPM row.",
+      "Do not use deconvolution_methods.default_bundle_missing_labels to render the checklist Still missing / 仍缺少 column. Those labels only describe what tme_profile or runall can backfill automatically, and intentionally exclude standalone BayesPrism.",
+      "When workflow_checklist_report or workflow_checklist_report_zh is present, prefer that prebuilt report first and reuse it verbatim before adding any short summary.",
+      "When workflow_checklist_lines or workflow_checklist_lines_zh are present, prefer those pre-rendered checklist lines directly instead of re-parsing the JSON payload into another ad hoc formatter.",
+      "When those pre-rendered checklist lines are present, render them verbatim and in order, including evidence and missing-item sub-lines. Do not regroup them under custom headings such as 数据预处理阶段, 表达矩阵准备, or 免疫微环境分析.",
+      "Do not replace the checklist with custom taxonomy-style sections, hand-picked bullet lists, or ad hoc tables when a prebuilt checklist table or report is present.",
+      "Before the first map command on a user-provided path, do not ask a scan-mode question. Run iobrpy-cli map --path <path> --json or the MCP map_path helper directly, and let the scanner choose adaptive limits.",
+      "Once a map_path or iobrpy-cli map --json scan has succeeded, do not call analyze_path_task merely to render workflow_checklist, current stage, evidence paths, missing items, or next-step summaries. Answer directly from the map payload. Use analyze_path_task only when you need richer command planning that the map payload does not already provide.",
+      "Ignore legacy quick-scan hints in older payloads. Current agent behavior is to use the deep/full map scan directly and avoid exposing quick-planning details to the user.",
+      "If agent_rendering_hints.do_not_ask_user_to_choose_scan_mode is present, treat it as authoritative.",
+      "For MCP helper calls, keep the default response_detail=summary for normal user-facing analysis. Use response_detail=structured only when the user explicitly asks for technical/debug details or the map summary is insufficient for a real command-planning decision.",
+      "Do not say the scan result is large and then call analyze_path_task to extract fields. A large or folded MCP display is a rendering issue, not a reason to call another large helper.",
+      "Do not run the same focused deep scan command repeatedly. A successful iobrpy-cli map --path <path> --json --focus ... already includes one internal automatic retry when needed; only launch another deep scan if the previous one failed, the directory changed, or the user explicitly asked to rescan.",
+      "Do not expose quick-scan fallback logic to users. If a scan looks incomplete, follow scan_retry_command or scan_retry_limits automatically as described below.",
+      "If a previous quick scan payload exists from an older client, prefer a fresh full/deep map payload before making missing-stage claims.",
+      "If a manual retry becomes necessary, never lower --max-depth or --max-entries compared with the current scan. Reuse scan_retry_command exactly when it is present; otherwise use scan_retry_limits from the payload instead of guessing your own values.",
+      "After iobrpy-cli map --json returns, do not search memories or read temporary task-output files such as /tmp/claude.../tasks/*.output just to render workflow_checklist. Do not shell out to python3 -c, jq, or similar one-off parsers for that purpose unless the user explicitly asks for raw JSON manipulation.",
+      "Do not ask the user to approve helper shell commands whose only purpose is extracting fields from a previous map or MCP JSON result. In normal summary responses, render default_user_facing_checklist directly and use compact missing_downstream_analysis_suggestions from the tool result. Use structured fields such as workflow_checklist or suggested_command_details only when response_detail=structured explicitly returned them. In Chinese conversations, use the corresponding _zh fields when present.",
+      "For MCP map_path summary responses, prefer default_user_facing_checklist first; it may already be localized and avoids duplicating the same checklist across several fields.",
+      "If a real action still needs user confirmation, translate the intent into a concise natural-language question rather than exposing raw commands, temp-file paths, or parser snippets. For example, ask Should I summarize the checklist and next-step suggestions from the scan result? in English or a short Chinese equivalent in Chinese instead of showing a python3 -c command or a Claude/Codex tool-results path.",
+      "If an MCP helper response is folded or saved to a client tool-results file because it is too large, do not read that file just to recover checklist fields and do not run python3 -c, jq, cat, or similar parser commands. Fall back to the most recent visible map_path payload fields, or rerun a compact map_path scan with the correct language value if genuinely necessary.",
+      "Treat workflow_checklist as the single integrated rendering source. If checklist items already carry investigation_applied, result_source_label, or evidence/missing fields, do not print a second standalone section for IOBRpy-confirmed results, Agent-inferred existing results, or External-tool results.",
+      "Before concluding that a stage is missing, check scan.truncated, scan.depth_limited_dir_count, scan_warning, and scan_retry_recommended. If the scan may be incomplete, automatically rerun iobrpy-cli map --path <path> --json once with the higher limits from scan_retry_command or scan_retry_limits before answering, without asking the user for permission. Use the retried payload as the main basis for the answer and briefly mention that the scan limits were expanded automatically. If the retried payload still carries scan_warning, keep the uncertainty explicit instead of treating the missing stages as definitely absent.",
+      "If auto_scan_retry_performed is already true in the payload, do not launch another manual retry unless the user explicitly asks you to rescan again.",
+      "Never invent retry flags. The only supported retry options are --max-depth and --max-entries; --max-files is not a valid iobrpy-cli map option. If scan_retry_command is present, run that command exactly instead of reconstructing your own variant.",
+      "If the retried map payload still appears to miss user-reported existing outputs, or if agent_fallback.recommended is true because the directory looks nonstandard or externally processed, rerun iobrpy-cli map --path <path> --json --investigate-existing before trusting the negative checklist entries.",
+      "Prefer the CLI-native existing_result_investigation payload over ad hoc agent-only searching when that option is available.",
+      "In that fallback mode, use existing_result_investigation, agent_fallback.investigation_targets, function_detections, content_verified_functions, likely_iobrpy_functions, reusable_result_functions, and external_analysis_hints to explain what the CLI-native investigation found.",
+      "Keep the three provenance buckets (IOBRpy-confirmed results, Agent-inferred existing results, and External-tool results) for internal reasoning, but do not emit them as separate user-facing sections when workflow_checklist already integrates that provenance.",
+      "Do not infer additional downstream methods or sibling outputs just because files share a directory or because tme_profile / runall was detected. Only call a specific method completed when a concrete file path or content-verified evidence supports it.",
+      "If map.choice_details includes rerun_full_pipeline, mention that option explicitly instead of collapsing the choices into a shorter custom list.",
+      "Treat external_analysis_hints such as generic HLA or external TCR/BCR result directories as external analysis hints, not as proof that the corresponding iobrpy immune workflow was run.",
+      "Use iobrpy-cli recommend --path <path> --task <task> --json after map, and read recommendation.confirm_parameters before execution.",
+      "When a command has resource-sensitive parameters such as threads, num_threads, parallel_size, num_processes, batch_size, -t, or -j, do not blindly keep the native default or hard-code 8. If the user did not specify the value, first check CPU cores, current load, and available memory on the same execution host, then ask a concise natural-language question such as: 我看了一下当前机器资源，建议用 N 个线程继续，是否可以？",
+      "Use iobrpy-cli commands --json to discover the native iobrpy command surface defined by src/iobrpy/RAG_MCP/iobrpy_required_params.json.",
+      "Use iobrpy-cli <native_command> --help to inspect the JSON-defined parameter set from src/iobrpy/RAG_MCP/iobrpy_required_params.json.",
+      "Before recommending, writing, or executing a native command invocation, validate the command and flags against src/iobrpy/RAG_MCP/iobrpy_required_params.json by using iobrpy-cli commands --json or iobrpy-cli <native_command> --help. Do not invent flags from general workflow concepts. In particular, tme_profile has no --mode; its JSON-defined parameters are --input, --output, and optional --threads. Reserve --mode for commands that declare it, such as runall.",
+      "Prefer top-level native commands such as iobrpy-cli runall or iobrpy-cli tme_profile.",
+      "Do not fall back to the R IOBR package when Python iobrpy is available."
+    ]
+  },
+  "fast_paths": [
+    {
+      "when": "Input path is a FASTQ directory",
+      "recommendation": "iobrpy runall",
+      "example": "iobrpy runall --mode salmon --fastq <path> --outdir <outdir> --index <index>"
+    },
+    {
+      "when": "Input path is a TPM-like expression matrix",
+      "recommendation": "iobrpy tme_profile",
+      "example": "iobrpy tme_profile -i <matrix> -o <outdir> --threads <resource_checked_threads>"
+    },
+    {
+      "when": "Input path is a BAM/CRAM directory for HLA workflows",
+      "recommendation": "iobrpy hla_typing",
+      "example": "iobrpy hla_typing -b <bam_dir> -r <hg19|hg38> -o <outdir>"
+    }
+  ],
+  "discovery_commands": [
+    "iobrpy-cli doctor --json",
+    "iobrpy-cli map --path <path> --json",
+    "iobrpy-cli commands --json",
+    "iobrpy-cli recommend --path <path> --task <task> --json"
+  ],
+  "bootstrap_commands": [
+    "iobrpy-cli agent install --client codex",
+    "iobrpy-cli agent install --client claude-code",
+    "iobrpy-cli agent install --client all"
+  ],
+  "status_commands": [
+    "iobrpy-cli agent status",
+    "iobrpy-cli agent status --client codex",
+    "iobrpy-cli agent status --client claude-code"
+  ]
+}
