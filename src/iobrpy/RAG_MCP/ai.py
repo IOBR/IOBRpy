@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import argparse
 import getpass
+import importlib
 import os
 import subprocess
 import sys
@@ -41,9 +42,13 @@ PROVIDERS: Dict[str, ProviderProfile] = {
     "kimi": ProviderProfile("MOONSHOT_API_KEY", "moonshot-v1-8k", "https://api.moonshot.cn/v1"),
     "deepseek": ProviderProfile("DEEPSEEK_API_KEY", "deepseek-chat", "https://api.deepseek.com/v1"),
     "glm": ProviderProfile("ZHIPUAI_API_KEY", "glm-4-plus", "https://open.bigmodel.cn/api/paas/v4"),
-    "openai": ProviderProfile("OPENAI_API_KEY", "gpt-4o-mini", "https://api.openai.com/v1"),
+    "chatgpt": ProviderProfile("OPENAI_API_KEY", "gpt-4o-mini", "https://api.openai.com/v1"),
     "claude": ProviderProfile("ANTHROPIC_API_KEY", "claude-3-5-sonnet-20241022", "https://api.anthropic.com/v1"),
     "gemini": ProviderProfile("GEMINI_API_KEY", "gemini-1.5-pro", "https://generativelanguage.googleapis.com/v1beta"),
+}
+
+LEGACY_PROVIDER_ALIASES: Dict[str, str] = {
+    "openai": "chatgpt",
 }
 
 
@@ -100,6 +105,7 @@ def _ui_text(key: str, prefer_chinese: bool, **kwargs: Any) -> str:
 
 
 def _resolve_api_key(alias: str, api_key_arg: Optional[str]) -> str:
+    alias = normalize_llm_alias(alias)
     if api_key_arg:
         return api_key_arg
     profile = PROVIDERS[alias]
@@ -110,6 +116,11 @@ def _resolve_api_key(alias: str, api_key_arg: Optional[str]) -> str:
     if not key:
         raise ValueError(f"API key is required for --llm {alias}.")
     return key
+
+
+def normalize_llm_alias(alias: str) -> str:
+    normalized = (alias or "").strip().lower()
+    return LEGACY_PROVIDER_ALIASES.get(normalized, normalized)
 
 
 _MAIN_PROMPT_SESSION: Optional[Any] = None
@@ -354,6 +365,7 @@ def run_interactive(logdir: str, *, llm: str, api_key: Optional[str] = None, mod
     if not req_file.exists():
         raise FileNotFoundError(f"Required params JSON not found: {req_file}")
 
+    llm = normalize_llm_alias(llm)
     profile = PROVIDERS[llm]
     resolved_key = _resolve_api_key(llm, api_key)
     resolved_model = model or profile.default_model
@@ -364,7 +376,7 @@ def run_interactive(logdir: str, *, llm: str, api_key: Optional[str] = None, mod
     os.environ["IOBRPY_RUN_LOG_DIR"] = str(logdir_p)
     os.environ["IOBRPY_DEFAULTS_FILE"] = str(logdir_p / "iobrpy_defaults.json")
 
-    from . import iobrpy_rag_mcp as server
+    server = importlib.import_module("iobrpy.RAG_MCP.iobrpy_rag_mcp")
 
     server.configure_runtime(server.AIConfig(**cfg.__dict__))
     session_id = _new_session_id()
