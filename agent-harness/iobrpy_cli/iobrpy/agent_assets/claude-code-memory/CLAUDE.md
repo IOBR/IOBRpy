@@ -101,11 +101,14 @@ Do not repeat this banner before every tool call or native command.
 24. Inspect source files only when implementing code changes or when the CLI output is insufficient.
 25. Do not substitute the R `IOBR` package when Python `iobrpy` is available.
 
+23a. For `runall`, if the original raw FASTQ files are unavailable but a `fastp` output directory with cleaned FASTQ files still exists, that cleaned `fastp` result directory can be used as the `runall --fastq` input directory.
+
 ## Checklist Cell Rendering
 
 - If `workflow_checklist[].detected_column_value` or `workflow_checklist[].missing_column_value` is present, use those pre-rendered cell values directly when rebuilding the checklist table.
 - If a client strips HTML line breaks inside table cells, preserve a visible separator such as `•` between adjacent evidence paths or missing items instead of concatenating them into one string.
 - For the `immune_deconvolution` row, prefer `detected_column_value` or `workflow_checklist[].evidence_display_paths` over method-name summaries.
+- If raw FASTQ is absent but a `fastp` cleaned FASTQ directory exists, treat that `fastp` result directory as a valid `runall` input candidate.
 
 - For the `tpm_matrix_ready` row, prefer `detected_column_value` or `workflow_checklist[].evidence_display_paths` directly and do not add downstream signature-scoring files such as `calculate_sig_score.csv`.
 

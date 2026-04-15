@@ -58,11 +58,14 @@ Do not repeat this banner before every tool call or native command.
 26. When `concise_confirmation_plan` or `concise_confirmation_prompts` are present, use them instead of dumping raw parameter names. Ask only the most important 1-2 confirmation items first, and format them as short numbered natural-language choices when possible.
 27. When a command has resource-sensitive parameters such as `threads`, `num_threads`, `parallel_size`, `num_processes`, `batch_size`, `-t`, or `-j`, do not blindly keep the native default or hard-code `8`. If the user did not specify the value, first check CPU cores, current load, and available memory on the same execution host, then ask a concise natural-language question such as `I checked the current CPU and memory load; can I continue with N threads?` in English or `我看了一下当前机器资源，建议用 N 个线程继续，是否可以？` in Chinese.
 
+27a. For `runall`, if the original raw FASTQ files are unavailable but a `fastp` output directory with cleaned FASTQ files still exists, that cleaned `fastp` result directory can be used as the `runall --fastq` input directory.
+
 ## Checklist Cell Rendering
 
 - If `workflow_checklist[].detected_column_value` or `workflow_checklist[].missing_column_value` is present, use those pre-rendered cell values directly when rebuilding the checklist table.
 - If a client strips HTML line breaks inside table cells, preserve a visible separator such as `•` between adjacent evidence paths or missing items instead of concatenating them into one string.
 - For the `immune_deconvolution` row, prefer `detected_column_value` or `workflow_checklist[].evidence_display_paths` over method-name summaries.
+- If raw FASTQ is absent but a `fastp` cleaned FASTQ directory exists, treat that `fastp` result directory as a valid `runall` input candidate.
 
 - For the `tpm_matrix_ready` row, prefer `detected_column_value` or `workflow_checklist[].evidence_display_paths` directly and do not add downstream signature-scoring files such as `calculate_sig_score.csv`.
 

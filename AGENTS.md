@@ -26,6 +26,7 @@ Recommended first steps:
 - Run `iobrpy-cli commands --json` to inspect the supported native `iobrpy` command surface; parameter sets come from `src/iobrpy/RAG_MCP/iobrpy_required_params.json`.
 - Run `iobrpy-cli <native_command> --help` when you need command semantics; this help is intentionally constrained by `src/iobrpy/RAG_MCP/iobrpy_required_params.json`.
 - Prefer top-level native invocations such as `iobrpy-cli runall ...` or `iobrpy-cli tme_profile ...` instead of the older `analyze/quantify/workflow/immune` wrapper namespaces.
+- For `runall`, if the original raw FASTQ files are no longer available but a `fastp` output directory with cleaned FASTQ files is available, that cleaned `fastp` result directory can still be used as the `runall --fastq` input directory.
 - When users want persistent agent setup across directories, use `iobrpy-cli agent install --client codex|claude-code|all` instead of telling them to copy skill or MCP files manually.
 - Use `iobrpy-cli agent status` when users want to audit whether Codex or Claude Code has already been wired up.
 
