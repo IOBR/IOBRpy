@@ -11,9 +11,7 @@ source:
 
 build:
   number: 0
-  noarch: python
-  run_exports:
-    - {{ pin_subpackage(name, max_pin="x.x") }}
+  skip: true  # [not linux]
   script: {{ PYTHON }} -m pip install . --no-deps --no-build-isolation -vv
 
 requirements:
@@ -40,8 +38,9 @@ requirements:
     - multiqc ==1.31
     - xarray >=0.20
     - requests >=2.32
-    - chromadb >=1.5.0
     - prompt-toolkit >=3.0
+    - pysam ==0.23.3
+    - biopython >=1.83
     - fastp
     - star
     - salmon
@@ -50,6 +49,7 @@ requirements:
 
 test:
   commands:
+    - python -c "import iobrpy.main"
     - iobrpy --help
     - iobrpy-cli --help
 

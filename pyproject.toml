@@ -8,7 +8,7 @@ version = "0.1.8"
 description = "Immuno-Oncology Biological Research tools in Python"
 readme = "README.md"
 requires-python = ">=3.11"
-license = { file = "LICENSE" }
+license = "MIT"
 authors = [
   { name = "Haonan Huang" , email = "2905611068@qq.com" },
   { name = "Dongqiang Zeng" , email = "interlaken@smu.edu.cn" }
@@ -18,10 +18,9 @@ keywords = ["bioinformatics", "immuno-oncology", "RNA-seq", "deconvolution"]
 classifiers = [
   "Intended Audience :: Science/Research",
   "Topic :: Scientific/Engineering :: Bio-Informatics",
-  "License :: OSI Approved :: MIT License",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3 :: Only",
-  "Operating System :: OS Independent",
+  "Operating System :: POSIX :: Linux",
 ]
 
 dependencies = [
@@ -38,8 +37,9 @@ dependencies = [
   "multiqc==1.31",
   "xarray>=0.20",
   "requests>=2.32",
-  "chromadb>=1.5.0",
-  "prompt-toolkit>=3.0"
+  "prompt-toolkit>=3.0",
+  "pysam==0.23.3",
+  "biopython>=1.83"
 ]
 
 [project.urls]
@@ -53,6 +53,7 @@ iobrpy-cli-mcp = "iobrpy_cli.iobrpy.mcp_server:main"
 
 [tool.setuptools]
 package-dir = {"" = "src", "iobrpy_cli" = "agent-harness/iobrpy_cli"}
+include-package-data = false
 packages = [
   "iobrpy_cli",
   "iobrpy",
@@ -60,6 +61,7 @@ packages = [
   "iobrpy.RAG_MCP",
   "iobrpy.resources",
   "iobrpy.SpecHLA",
+  "iobrpy.utils",
   "iobrpy.workflow",
   "iobrpy_cli.iobrpy",
   "iobrpy_cli.iobrpy.core",

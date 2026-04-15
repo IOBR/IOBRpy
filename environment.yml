@@ -39,5 +39,4 @@ dependencies:
   - requests>=2.32
   - pip
   - pip:
-      - chromadb>=1.5.0
       - -e .

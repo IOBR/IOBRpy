@@ -2,9 +2,11 @@ include README.md
 include LICENSE
 include IOBRpy.png
 include agent-manifest.json
+include setup.py
 
 recursive-include src/iobrpy/resources *.pkl *.gmt *.txt
 recursive-include src/iobrpy/RAG_MCP *.json
+recursive-include src/iobrpy/utils *.py
 recursive-include agent-harness/iobrpy_cli *.py README.md
 recursive-include agent-harness/iobrpy_cli/iobrpy/agent_assets *
 
