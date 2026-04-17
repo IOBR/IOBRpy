@@ -7,22 +7,24 @@ package:
 
 source:
   url: https://files.pythonhosted.org/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz
-  sha256: e30b96b4395161e02a8859debff6a9df13a0f66c8c88a8494eb298fd56c77214
+  sha256: 60046891042a276d7bc6426c608920db44be9e1dc1df8f5fd4f3f28faca51104
 
 build:
   number: 0
-  skip: true  # [not linux]
+  skip: true  # [not linux64 or py<311 or py>=314]
+  run_exports:
+    - {{ pin_subpackage(name|lower, max_pin="x.x") }}
   script: {{ PYTHON }} -m pip install . --no-deps --no-build-isolation -vv
 
 requirements:
   host:
-    - python >=3.11
+    - python
     - pip
     - setuptools
     - wheel
 
   run:
-    - python >=3.11
+    - python >=3.11,<3.14
     - numpy >=1.22
     - pandas >=1.5
     - scipy >=1.9
@@ -64,3 +66,5 @@ about:
 extra:
   recipe-maintainers:
     - hhn0527
+  skip-lints:
+    - should_be_noarch_generic
