@@ -23,11 +23,11 @@ A complete documentation for IOBRpy can be found at https://iobr.github.io/IOBRp
 If you want coding agents to discover `iobrpy-cli` without repeating it in every prompt, install the packaged agent integrations once:
 
 ```bash
-# Codex: install the bundled global skill plus MCP registration
-iobrpy-cli agent install --client codex
-
 # Claude Code: install the managed global memory plus MCP registration
 iobrpy-cli agent install --client claude-code
+
+# Codex: install the bundled global skill plus MCP registration
+iobrpy-cli agent install --client codex
 
 # Configure every supported client in one pass
 iobrpy-cli agent install --client all
@@ -36,22 +36,13 @@ iobrpy-cli agent install --client all
 iobrpy-cli agent status
 ```
 
-By default these commands print a short human-readable summary. Add `--json` when you want the full machine-readable payload for automation or another agent.
+After installing the Claude Code/Codex integration, restart Claude Code/Codex once so the slash-command list refreshes.
 
-For path-driven agent work, start with:
+Example dialogue:
 
-```bash
-iobrpy-cli map --path /path/to/data --json
+```text
+/iobrpy please scan path/to/your/target/directory
 ```
-
-This stage map tells the agent whether the directory is still raw FASTQ input, partially processed, or already ready for downstream TPM/TME analysis, so it can ask whether you want to continue, rerun the current stage, or rerun the full pipeline.
-The JSON output also includes a scenario card and roadmap position summary so an agent can explain, in plain language, what has already been done and what the next sensible choices are.
-
-What gets installed:
-- **Codex**: a global `iobrpy-fastpath` skill under `~/.codex/skills/` plus an MCP server entry in `~/.codex/config.toml`.
-- **Claude Code**: a managed global memory import in `~/.claude/CLAUDE.md`, the managed memory file at `~/.claude/iobrpy/CLAUDE.md`, and a user-scoped MCP server via `claude mcp add ...`.
-
-The registered server launches `iobrpy-cli-mcp` through the current Python environment, so agents can call native `iobrpy` workflows as tools instead of guessing from source files.
 
 ---
 
@@ -188,6 +179,7 @@ docker load -i iobrpy.tar.gz
 - `estimate` — ESTIMATE immune/stromal/tumor purity scores.
 - `mcpcounter` — MCPcounter infiltration scores.
 - `IPS` — Immunophenoscore (AZ/SC/CP/EC + total).
+- `bayesprism` — Bayesian deconvolution with a single-cell reference; standalone optional workflow outside the default `tme_profile` / `runall` six-method bundle.
 - `deside` — Deep learning–based deconvolution (requires pre‑downloaded model; supports pathway‑masked mode via KEGG/Reactome GMTs).
 
 **Clustering / decomposition**

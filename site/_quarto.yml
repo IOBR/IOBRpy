@@ -18,6 +18,7 @@ book:
   chapters:
     - index.md
     - installation.md
+    - agent.md
     - build-index.md
     - runall.md
     - trust4.md
