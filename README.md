@@ -18,34 +18,6 @@ A complete documentation for IOBRpy can be found at https://iobr.github.io/IOBRp
 
 ---
 
-## Agent Bootstrap
-
-If you want coding agents to discover `iobrpy-cli` without repeating it in every prompt, install the packaged agent integrations once:
-
-```bash
-# Claude Code: install the managed global memory plus MCP registration
-iobrpy-cli agent install --client claude-code
-
-# Codex: install the bundled global skill plus MCP registration
-iobrpy-cli agent install --client codex
-
-# Configure every supported client in one pass
-iobrpy-cli agent install --client all
-
-# Inspect what is already installed without changing anything
-iobrpy-cli agent status
-```
-
-After installing the Claude Code/Codex integration, restart Claude Code/Codex once so the slash-command list refreshes.
-
-Example dialogue:
-
-```text
-/iobrpy please scan path/to/your/target/directory
-```
-
----
-
 ## Installation
 
 ### Quick install
@@ -135,6 +107,34 @@ cd /path/to/iobrpy.tar.gz
 docker load -i iobrpy.tar.gz
 ```
 </details>
+
+---
+
+## Agent Bootstrap
+
+If you want coding agents to discover `iobrpy-cli` without repeating it in every prompt, install the packaged agent integrations once:
+
+```bash
+# Claude Code: install the managed global memory plus MCP registration
+iobrpy-cli agent install --client claude-code
+
+# Codex: install the bundled global skill plus MCP registration
+iobrpy-cli agent install --client codex
+
+# Configure every supported client in one pass
+iobrpy-cli agent install --client all
+
+# Inspect what is already installed without changing anything
+iobrpy-cli agent status
+```
+
+After installing the Claude Code/Codex integration, restart Claude Code/Codex once so the slash-command list refreshes.
+
+Example dialogue:
+
+```text
+/iobrpy please scan path/to/your/target/directory
+```
 
 ---
 
