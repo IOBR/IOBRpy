@@ -263,11 +263,13 @@ def sig_score_integration(eset, sig_dict, mini_gene_count, adjust_eset, parallel
     z = sig_score_zscore(eset, filtered_sigs, mini_gene_count, adjust_eset)
     z = z.set_index('ID').add_suffix('_zscore')
 
-    if gp is None:
-        raise ImportError("gseapy required for ssGSEA")
+    # Only run ssGSEA if there are filtered signatures and gseapy is available
+    if gp is None or not filtered_sigs:
+        # Skip ssGSEA if no signatures match or gseapy is not available
+        return pd.concat([p, z], axis=1).reset_index()
 
     eset2 = preprocess_eset(eset, adjust_eset)
-    
+
     print("Running ssGSEA (this may take a while)...")
     ss = gp.ssgsea(
         data=eset2,
