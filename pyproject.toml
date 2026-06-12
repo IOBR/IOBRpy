@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "iobrpy"
-version = "0.1.8"
+version = "0.1.9"
 description = "Immuno-Oncology Biological Research tools in Python"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -52,7 +52,7 @@ iobrpy-cli = "iobrpy_cli.iobrpy.iobrpy_cli:main"
 iobrpy-cli-mcp = "iobrpy_cli.iobrpy.mcp_server:main"
 
 [tool.setuptools]
-package-dir = {"" = "src", "iobrpy_cli" = "agent-harness/iobrpy_cli"}
+package-dir = {"" = "src", "iobrpy_cli" = "agent-harness/iobrpy_cli", "iobrpy_result" = "agent-harness/iobrpy_result"}
 include-package-data = false
 packages = [
   "iobrpy_cli",
@@ -63,6 +63,7 @@ packages = [
   "iobrpy.SpecHLA",
   "iobrpy.utils",
   "iobrpy.workflow",
+  "iobrpy_result",
   "iobrpy_cli.iobrpy",
   "iobrpy_cli.iobrpy.core",
   "iobrpy_cli.iobrpy.utils"
@@ -75,7 +76,17 @@ packages = [
   "README.md",
   "agent_assets/*",
   "agent_assets/*/*",
-  "agent_assets/*/*/*"
+  "agent_assets/*/*/*",
+  "agent_assets/codex-plugin-iobrpy/.mcp.json",
+  "agent_assets/codex-plugin-iobrpy/.codex-plugin/plugin.json"
+]
+"iobrpy_result" = [
+  "agent_assets/*",
+  "agent_assets/*/*",
+  "agent_assets/*/*/*",
+  "agent_assets/*/*/*/*",
+  "agent_assets/*/*/*/*/*",
+  "agent_assets/plugins/*/.codex-plugin/plugin.json"
 ]
 "iobrpy.SpecHLA" = [
   "*.sh",
@@ -87,4 +98,3 @@ packages = [
   "BP_data/*",
   "txt/*"
 ]
-

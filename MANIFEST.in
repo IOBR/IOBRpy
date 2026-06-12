@@ -9,6 +9,8 @@ recursive-include src/iobrpy/RAG_MCP *.json
 recursive-include src/iobrpy/utils *.py
 recursive-include agent-harness/iobrpy_cli *.py README.md
 recursive-include agent-harness/iobrpy_cli/iobrpy/agent_assets *
+recursive-include agent-harness/iobrpy_result *.py
+recursive-include agent-harness/iobrpy_result/agent_assets *
 
 prune recipe
 prune build

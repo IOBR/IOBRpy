@@ -1,0 +1,4 @@
+interface:
+  display_name: "IOBRpy Result"
+  short_description: "Visualize and interpret non-deside IOBRpy results"
+  default_prompt: "Use $iobrpy-result to render the IOBRpy startup banner once, classify mixed-directory files by provenance, then interpret every content-confirmed IOBRpy result-producing function except deside. Select English or Simplified Chinese only from my current request, never from earlier conversation turns, and pass the matching en or zh language value to map_path. Do not ask about Python or R unless I explicitly request creation or modification of a visualization. After drawing, list every generated image using its complete absolute path."

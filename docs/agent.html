@@ -250,10 +250,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#step-3-call-the-plugin-inside-the-agent" id="toc-step-3-call-the-plugin-inside-the-agent" class="nav-link" data-scroll-target="#step-3-call-the-plugin-inside-the-agent"><span class="header-section-number">3.2.4</span> Step 3: Call the Plugin Inside the Agent</a></li>
   </ul></li>
   <li><a href="#common-problems-and-fixes" id="toc-common-problems-and-fixes" class="nav-link" data-scroll-target="#common-problems-and-fixes"><span class="header-section-number">3.3</span> Common Problems and Fixes</a></li>
-  <li><a href="#tutorial-2-what-kinds-of-prompts-work-best-for-iobrpy" id="toc-tutorial-2-what-kinds-of-prompts-work-best-for-iobrpy" class="nav-link" data-scroll-target="#tutorial-2-what-kinds-of-prompts-work-best-for-iobrpy"><span class="header-section-number">3.4</span> Tutorial 2: What Kinds of Prompts Work Best for <code>/iobrpy</code></a>
+  <li><a href="#tutorial-2-prompt-examples" id="toc-tutorial-2-prompt-examples" class="nav-link" data-scroll-target="#tutorial-2-prompt-examples"><span class="header-section-number">3.4</span> Tutorial 2: Prompt Examples</a>
   <ul class="collapse">
-  <li><a href="#path-scanning-prompt" id="toc-path-scanning-prompt" class="nav-link" data-scroll-target="#path-scanning-prompt"><span class="header-section-number">3.4.1</span> 1. Path Scanning Prompt</a></li>
-  <li><a href="#choose-the-command-suggested-by-the-agent" id="toc-choose-the-command-suggested-by-the-agent" class="nav-link" data-scroll-target="#choose-the-command-suggested-by-the-agent"><span class="header-section-number">3.4.2</span> 2. Choose the Command Suggested by the Agent</a></li>
+  <li><a href="#iobrpy-workflow-assistance" id="toc-iobrpy-workflow-assistance" class="nav-link" data-scroll-target="#iobrpy-workflow-assistance"><span class="header-section-number">3.4.1</span> 1. <code>/iobrpy</code>: Workflow Assistance</a></li>
+  <li><a href="#iobrpy-result-result-interpretation-and-visualization" id="toc-iobrpy-result-result-interpretation-and-visualization" class="nav-link" data-scroll-target="#iobrpy-result-result-interpretation-and-visualization"><span class="header-section-number">3.4.2</span> 2. <code>/iobrpy-result</code>: Result Interpretation and Visualization</a></li>
   </ul></li>
   </ul>
 <div class="toc-actions"><ul><li><a href="https://github.com/IOBR/IOBRpy/edit/main/site/agent.md" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li><li><a href="https://github.com/IOBR/IOBRpy/issues/new" class="toc-action"><i class="bi empty"></i>Report an issue</a></li></ul></div></nav>
@@ -284,9 +284,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 data-number="3.1" class="anchored" data-anchor-id="what-this-page-helps-you-do"><span class="header-section-number">3.1</span> What This Page Helps You Do</h2>
 <p>This guide is for users who want to connect <strong>IOBRpy</strong> to <strong>Codex</strong> or <strong>Claude Code</strong>. It focuses on three practical goals:</p>
 <ol type="1">
-<li>How to install the <code>/iobrpy</code> plugin and entrypoints.</li>
+<li>How to install <code>/iobrpy</code> for workflow assistance and <code>/iobrpy-result</code> for result interpretation and visualization.</li>
 <li>How to verify that the installation worked.</li>
-<li>What kinds of prompts help <code>/iobrpy</code> reach the right result faster.</li>
+<li>When to use <code>/iobrpy</code> versus <code>/iobrpy-result</code>.</li>
 </ol>
 <hr>
 </section>
@@ -311,8 +311,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a><span class="ex">iobrpy-cli</span> agent install <span class="at">--client</span> all</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>What this installs:</p>
 <ul>
-<li><code>codex</code>: the Codex skill, Codex plugin, and MCP integration.</li>
-<li><code>claude-code</code>: the Claude Code memory, <code>/iobrpy</code> command entrypoint, and MCP integration.</li>
+<li><code>codex</code>: the <code>/iobrpy</code> and <code>/iobrpy-result</code> skills, both Codex plugins, and MCP integration.</li>
+<li><code>claude-code</code>: the Claude Code memories, <code>/iobrpy</code> and <code>/iobrpy-result</code> commands, and MCP integration.</li>
 <li><code>all</code>: both of the above.</li>
 </ul>
 <p><strong>Reference standard:</strong></p>
@@ -338,23 +338,28 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <ul>
 <li>Ideally, the output should include <code>Agent status: healthy</code>.</li>
 <li>You should no longer see states such as <code>not_installed</code>, <code>not_configured</code>, or <code>invalid_config</code>.</li>
-<li>After installation, the relevant client should be able to use <code>/iobrpy</code>.</li>
+<li>After installation, the relevant client should be able to use <code>/iobrpy</code> and <code>/iobrpy-result</code>.</li>
 </ul>
 <hr>
 </section>
 <section id="step-3-call-the-plugin-inside-the-agent" class="level3" data-number="3.2.4">
 <h3 data-number="3.2.4" class="anchored" data-anchor-id="step-3-call-the-plugin-inside-the-agent"><span class="header-section-number">3.2.4</span> Step 3: Call the Plugin Inside the Agent</h3>
 <p>After installation, open your agent client and call the IOBRpy entrypoint directly in the chat input.</p>
-<p>For both Codex and Claude Code, the normal entrypoint is:</p>
-<pre class="text"><code>/iobrpy</code></pre>
+<p>IOBRpy provides two agent entrypoints:</p>
+<ul>
+<li><code>/iobrpy</code> is for analysis setup and execution. Use it to inspect input data, choose the right IOBRpy workflow, and prepare or run commands.</li>
+<li><code>/iobrpy-result</code> is for finished outputs. Use it to summarize, audit, interpret, compare, or visualize IOBRpy result directories and result tables.</li>
+</ul>
 <p>If you are using Codex and specifically want the plugin-scoped namespace, you can also use:</p>
 <pre class="text"><code>/iobrpy:iobrpy</code></pre>
 <p><strong>Reference standard:</strong></p>
 <ul>
 <li>Typing <code>/iobrpy</code> in the agent should show or trigger the IOBRpy entrypoint.</li>
+<li>Typing <code>/iobrpy-result</code> should trigger IOBRpy-specific result visualization and interpretation.</li>
 <li>After you send a message with <code>/iobrpy</code>, the agent should respond as an IOBRpy workflow assistant rather than a generic chat assistant.</li>
+<li>After you send a message with <code>/iobrpy-result</code>, the agent should focus on existing result files rather than planning a new run by default.</li>
 <li>In Codex, <code>/iobrpy:iobrpy</code> should also work when you want the plugin namespace explicitly.</li>
-<li>The best first test is to give a real path or a concrete analysis goal, not just <code>/iobrpy</code> alone.</li>
+<li>The best first test is to give a real path or a concrete analysis goal, not just <code>/iobrpy</code> or <code>/iobrpy-result</code> alone.</li>
 </ul>
 <hr>
 </section>
@@ -386,9 +391,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>Check <code>iobrpy-cli --json agent status</code> first, then rerun the relevant <code>agent install --client ...</code> command</td>
 </tr>
 <tr class="odd">
-<td>Codex does not show <code>/iobrpy</code></td>
+<td>Codex does not show <code>/iobrpy</code> or <code>/iobrpy-result</code></td>
 <td>The skill or plugin did not take effect</td>
-<td>Rerun <code>iobrpy-cli agent install --client codex</code></td>
+<td>Rerun <code>iobrpy-cli agent install --client codex --force</code></td>
 </tr>
 <tr class="even">
 <td>Claude Code installation fails</td>
@@ -404,16 +409,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </table>
 <hr>
 </section>
-<section id="tutorial-2-what-kinds-of-prompts-work-best-for-iobrpy" class="level2" data-number="3.4">
-<h2 data-number="3.4" class="anchored" data-anchor-id="tutorial-2-what-kinds-of-prompts-work-best-for-iobrpy"><span class="header-section-number">3.4</span> Tutorial 2: What Kinds of Prompts Work Best for <code>/iobrpy</code></h2>
-<section id="path-scanning-prompt" class="level3" data-number="3.4.1">
-<h3 data-number="3.4.1" class="anchored" data-anchor-id="path-scanning-prompt"><span class="header-section-number">3.4.1</span> 1. Path Scanning Prompt</h3>
-<p>Use this first when you are not yet sure what the directory contains or which workflow command is the right one.</p>
+<section id="tutorial-2-prompt-examples" class="level2" data-number="3.4">
+<h2 data-number="3.4" class="anchored" data-anchor-id="tutorial-2-prompt-examples"><span class="header-section-number">3.4</span> Tutorial 2: Prompt Examples</h2>
+<section id="iobrpy-workflow-assistance" class="level3" data-number="3.4.1">
+<h3 data-number="3.4.1" class="anchored" data-anchor-id="iobrpy-workflow-assistance"><span class="header-section-number">3.4.1</span> 1. <code>/iobrpy</code>: Workflow Assistance</h3>
+<p>Use <code>/iobrpy</code> before or during analysis, especially when you are not yet sure what the directory contains or which workflow command is the right one.</p>
 <pre class="text"><code>/iobrpy Please scan path/to/your/target/directory
 Show me the full checklist first, then tell me the current stage and the best next step.</code></pre>
-</section>
-<section id="choose-the-command-suggested-by-the-agent" class="level3" data-number="3.4.2">
-<h3 data-number="3.4.2" class="anchored" data-anchor-id="choose-the-command-suggested-by-the-agent"><span class="header-section-number">3.4.2</span> 2. Choose the Command Suggested by the Agent</h3>
 <p>After the scan, the agent will usually tell you which workflow best matches your directory and your current stage.</p>
 <p>Typical examples:</p>
 <ul>
@@ -428,6 +430,23 @@ Show me the full checklist first, then tell me the current stage and the best ne
 <li>Your first prompt includes a real path.</li>
 <li>The agent returns a checklist and a current-stage summary.</li>
 <li>You choose the next command based on the scan result instead of guessing before the scan.</li>
+</ul>
+</section>
+<section id="iobrpy-result-result-interpretation-and-visualization" class="level3" data-number="3.4.2">
+<h3 data-number="3.4.2" class="anchored" data-anchor-id="iobrpy-result-result-interpretation-and-visualization"><span class="header-section-number">3.4.2</span> 2. <code>/iobrpy-result</code>: Result Interpretation and Visualization</h3>
+<p>Use <code>/iobrpy-result</code> after IOBRpy has already generated result files.</p>
+<pre class="text"><code>/iobrpy-result Please summarize, interpret, and visualize path/to/iobrpy/result/directory</code></pre>
+<p>Typical examples:</p>
+<ul>
+<li>If you want to understand what has already been generated, ask <code>/iobrpy-result</code> to summarize the result directory.</li>
+<li>If you want biological interpretation, point <code>/iobrpy-result</code> to the output table or workflow output directory.</li>
+<li>If you want a figure, explicitly ask <code>/iobrpy-result</code> to visualize the result and say whether you prefer Python or R.</li>
+<li>If you ask for visualization without naming a backend, <code>/iobrpy-result</code> will ask you to choose Python or R before creating figures.</li>
+</ul>
+<p><strong>Reference standard:</strong></p>
+<ul>
+<li>Use <code>/iobrpy-result</code> for result reading, interpretation, comparison, and visualization.</li>
+<li>Use <code>/iobrpy</code> when you still need to choose, configure, or run an IOBRpy workflow.</li>
 </ul>
 
 

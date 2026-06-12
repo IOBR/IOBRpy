@@ -5,5 +5,5 @@ This package provides a stateful CLI harness with REPL support for the IOBRpy
 bioinformatics toolkit.
 """
 
-__version__ = "0.1.8"
+__version__ = "0.1.9"
 

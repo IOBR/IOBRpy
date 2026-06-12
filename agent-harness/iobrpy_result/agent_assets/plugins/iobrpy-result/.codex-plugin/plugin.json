@@ -1,0 +1,43 @@
+{
+  "name": "iobrpy-result",
+  "version": "0.3.7",
+  "description": "Adaptive scientific visualization and implementation-aware interpretation for all registered IOBRpy result functions except deside.",
+  "author": {
+    "name": "IOBRpy",
+    "url": "https://github.com/IOBR/IOBRpy"
+  },
+  "homepage": "https://github.com/IOBR/IOBRpy",
+  "repository": "https://github.com/IOBR/IOBRpy",
+  "license": "MIT",
+  "keywords": [
+    "iobrpy",
+    "bioinformatics",
+    "visualization",
+    "tumor-microenvironment",
+    "interpretation"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "IOBRpy Result",
+    "shortDescription": "Adaptively visualize and interpret IOBRpy outputs",
+    "longDescription": "Explore mixed result directories, distinguish confirmed IOBRpy outputs from likely, reusable, external, metadata, and unknown files, design result-specific editable scientific figures, and interpret results with method-aware caveats in English or Simplified Chinese selected from the current request. Excludes deside and the non-result ai orchestrator.",
+    "developerName": "IOBRpy",
+    "category": "Coding",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://github.com/IOBR/IOBRpy",
+    "privacyPolicyURL": "https://github.com/IOBR/IOBRpy",
+    "termsOfServiceURL": "https://github.com/IOBR/IOBRpy",
+    "defaultPrompt": [
+      "Use only the language of my current request, ask me to choose Python or R, then explore this IOBRpy result directory and design the most informative figure",
+      "Ask me to choose Python or R before creating a result-specific publication-ready TME figure",
+      "Explain the biological meaning and limitations of these IOBRpy outputs in my language without asking about Python or R",
+      "Create the requested figure and report the complete absolute path of every generated image"
+    ],
+    "brandColor": "#0F766E",
+    "screenshots": []
+  }
+}

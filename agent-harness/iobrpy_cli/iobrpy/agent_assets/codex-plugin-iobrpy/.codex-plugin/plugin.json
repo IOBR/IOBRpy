@@ -1,6 +1,6 @@
 {
   "name": "iobrpy",
-  "version": "0.1.0",
+  "version": "0.1.9",
   "description": "Bulk RNA-seq immuno-oncology workflow routing for Codex via iobrpy-cli and iobrpy MCP.",
   "author": {
     "name": "IOBRpy",

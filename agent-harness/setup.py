@@ -14,13 +14,13 @@ PACKAGES = [
     "iobrpy_cli",
     "iobrpy_cli.iobrpy",
     "iobrpy_cli.iobrpy.core",
-    "iobrpy_cli.iobrpy.tests",
     "iobrpy_cli.iobrpy.utils",
+    "iobrpy_result",
 ]
 
 setup(
     name="iobrpy-cli",
-    version="0.1.0",
+    version="0.1.9",
     description="CLI harness for IOBRpy with REPL support and JSON output",
     long_description=README_PATH.read_text(encoding='utf-8') if README_PATH.exists() else (
         "CLI harness for IOBRpy (Immuno-Oncology Biological Research using Python) "
@@ -33,9 +33,27 @@ setup(
     license="MIT",
 
     packages=PACKAGES,
-    package_dir={"iobrpy_cli": "iobrpy_cli"},
+    package_dir={
+        "iobrpy_cli": "iobrpy_cli",
+        "iobrpy_result": "iobrpy_result",
+    },
     package_data={
-        'iobrpy_cli.iobrpy': ['README.md'],
+        'iobrpy_cli.iobrpy': [
+            'README.md',
+            'agent_assets/*',
+            'agent_assets/*/*',
+            'agent_assets/*/*/*',
+            'agent_assets/codex-plugin-iobrpy/.mcp.json',
+            'agent_assets/codex-plugin-iobrpy/.codex-plugin/plugin.json',
+        ],
+        'iobrpy_result': [
+            'agent_assets/*',
+            'agent_assets/*/*',
+            'agent_assets/*/*/*',
+            'agent_assets/*/*/*/*',
+            'agent_assets/*/*/*/*/*',
+            'agent_assets/plugins/*/.codex-plugin/plugin.json',
+        ],
     },
 
     # Entry point for CLI
@@ -50,7 +68,7 @@ setup(
         "click>=8.0",
         "pandas>=1.5",
         "prompt-toolkit>=3.0",
-        "iobrpy>=0.1.8",
+        "iobrpy>=0.1.9",
     ],
 
     extras_require={

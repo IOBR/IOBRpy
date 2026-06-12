@@ -19,7 +19,7 @@ from .pipeline_map_scan import (
 )
 
 _EXTERNAL_STATUS_CHECKLIST_ITEM_IDS = {"hla_typing_summary", "tcr_bcr_summary"}
-_BAYESPRISM_OPTIONAL_NOTE_EN = "standalone optional; not run automatically by tme_profile/runall"
+_BAYESPRISM_OPTIONAL_NOTE_EN = "optional standalone; not run by tme_profile/runall"
 _BAYESPRISM_OPTIONAL_NOTE_ZH = "独立可选，不由 tme_profile/runall 自动运行"
 
 

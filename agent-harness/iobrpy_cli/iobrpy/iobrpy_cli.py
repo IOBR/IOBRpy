@@ -54,6 +54,7 @@ from iobrpy_cli.iobrpy.agent_install import (
     agent_status_bundle,
     install_agent_bundle,
 )
+from iobrpy_cli.iobrpy import __version__
 from iobrpy_cli.iobrpy.pipeline_map import (
     analyze_pipeline_path,
     format_pipeline_map_report,
@@ -840,7 +841,7 @@ def _dispatch_cli(argv: Sequence[str]) -> int:
 # ============================================================================
 
 @click.group()
-@click.version_option(version="0.1.8", prog_name="iobrpy-cli")
+@click.version_option(version=__version__, prog_name="iobrpy-cli")
 @click.option('--json', is_flag=True, help='Output in JSON format for agent consumption')
 def cli(json: bool):
     """IOBRpy CLI harness - Stateful CLI for TME analysis."""
@@ -869,7 +870,7 @@ def agent():
     show_default=True,
     help="Agent client(s) to configure.",
 )
-@click.option("--skill/--no-skill", default=True, help="Install packaged iobrpy guidance and `/iobrpy` entrypoints when supported.")
+@click.option("--skill/--no-skill", default=True, help="Install packaged `/iobrpy` and `/iobrpy-result` guidance, plugins, and entrypoints when supported.")
 @click.option("--mcp/--no-mcp", default=True, help="Configure MCP integration for each selected client.")
 @click.option("--force", is_flag=True, help="Overwrite the packaged Codex skill when it already exists.")
 @click.option("--dry-run", is_flag=True, help="Show what would change without writing files or invoking client CLIs.")
@@ -888,7 +889,7 @@ def agent_install(
     claude_home: Optional[Path],
     claude_command: str,
 ):
-    """Install Codex and Claude Code iobrpy entrypoints, plugin assets, and MCP registrations."""
+    """Install Codex and Claude Code iobrpy entrypoints, result assets, and MCP registrations."""
     payload = install_agent_bundle(
         list(clients),
         include_skill=skill,
@@ -915,7 +916,7 @@ def agent_install(
     show_default=True,
     help="Agent client(s) to inspect.",
 )
-@click.option("--skill/--no-skill", default=True, help="Inspect packaged iobrpy guidance and `/iobrpy` entrypoint status when supported.")
+@click.option("--skill/--no-skill", default=True, help="Inspect packaged `/iobrpy` and `/iobrpy-result` guidance, plugins, and entrypoint status.")
 @click.option("--mcp/--no-mcp", default=True, help="Inspect MCP integration status for each selected client.")
 @click.option("--server-name", default="iobrpy", show_default=True, help="MCP server name to inspect.")
 @click.option("--codex-home", type=click.Path(path_type=Path, file_okay=False), help="Override the Codex home directory.")
@@ -930,7 +931,7 @@ def agent_status(
     claude_home: Optional[Path],
     claude_command: str,
 ):
-    """Show Codex and Claude Code iobrpy entrypoint, plugin, and MCP status without modifying user configuration."""
+    """Show IOBRpy workflow, result, plugin, and MCP status without modifying user configuration."""
     payload = agent_status_bundle(
         list(clients),
         include_skill=skill,

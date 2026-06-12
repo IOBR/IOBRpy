@@ -101,7 +101,7 @@ Do not repeat this banner before every tool call or native command.
 24. Inspect source files only when implementing code changes or when the CLI output is insufficient.
 25. Do not substitute the R `IOBR` package when Python `iobrpy` is available.
 
-23a. For `runall`, if the original raw FASTQ files are unavailable but a `fastp` output directory with cleaned FASTQ files still exists, that cleaned `fastp` result directory can be used as the `runall --fastq` input directory.
+23a. For `runall`, if the original raw FASTQ files are unavailable but a fastp output directory with cleaned FASTQ files still exists, that cleaned `fastp` result directory can be used as the `runall --fastq` input directory.
 
 ## Checklist Cell Rendering
 

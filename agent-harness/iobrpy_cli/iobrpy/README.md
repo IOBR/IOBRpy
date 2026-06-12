@@ -28,10 +28,10 @@ agent-facing parameter sets are constrained by
 Use the built-in installer when you want persistent agent integrations instead of repeating `iobrpy-cli` in each prompt:
 
 ```bash
-# Install the bundled Codex skill and Codex MCP config
+# Install the bundled `/iobrpy` and `/iobrpy-result` skills/plugins plus Codex MCP
 iobrpy-cli agent install --client codex
 
-# Install the managed Claude Code memory and Claude Code MCP integration
+# Install both Claude Code commands/memories plus Claude Code MCP
 iobrpy-cli agent install --client claude-code
 
 # Configure every supported client in one pass
@@ -44,8 +44,8 @@ iobrpy-cli agent status
 These commands default to a short human-readable summary. Add `--json` if you want the full structured payload for automation.
 
 What the installer does:
-- `codex`: copies the bundled `iobrpy-fastpath` skill into `~/.codex/skills/` and adds an MCP server entry to `~/.codex/config.toml`.
-- `claude-code`: writes or refreshes `~/.claude/iobrpy/CLAUDE.md`, injects an import block into `~/.claude/CLAUDE.md`, and runs `claude mcp add <name> --scope user -- <python> -m iobrpy_cli.iobrpy.mcp_server`.
+- `codex`: installs the `iobrpy` and `iobrpy-result` skills, their local plugins and marketplace entries, and an MCP server entry in `~/.codex/config.toml`.
+- `claude-code`: installs `/iobrpy` and `/iobrpy-result`, refreshes their managed guidance, injects import blocks into `~/.claude/CLAUDE.md`, and runs `claude mcp add <name> --scope user -- <python> -m iobrpy_cli.iobrpy.mcp_server`.
 
 Use `--dry-run` to preview changes and `--force` when you want to overwrite the packaged Codex skill.
 
@@ -121,7 +121,7 @@ The package requires:
 - click >= 8.0
 - pandas >= 1.5
 - prompt-toolkit >= 3.0
-- iobrpy >= 0.1.8
+- iobrpy >= 0.1.9
 
 ### Optional Dependencies
 

@@ -11,6 +11,7 @@
     ],
     "confirm": [
       "mode",
+      "index",
       "threads",
       "batch_size",
       "project"

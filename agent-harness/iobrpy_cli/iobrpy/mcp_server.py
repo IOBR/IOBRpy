@@ -24,6 +24,7 @@ from importlib import metadata as importlib_metadata
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
+from iobrpy_cli.iobrpy import __version__
 from iobrpy_cli.iobrpy.command_profiles import COMMAND_PROFILES
 from iobrpy_cli.iobrpy.pipeline_map import map_pipeline_path
 
@@ -32,7 +33,7 @@ SUPPORTED_PROTOCOLS = ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"]
 SERVER_INFO = {
     "name": "iobrpy-cli-mcp",
     "title": "iobrpy-cli MCP",
-    "version": "0.1.0",
+    "version": __version__,
     "description": "Expose native iobrpy commands as MCP tools.",
 }
 CAPABILITIES = {"tools": {"listChanged": False}}

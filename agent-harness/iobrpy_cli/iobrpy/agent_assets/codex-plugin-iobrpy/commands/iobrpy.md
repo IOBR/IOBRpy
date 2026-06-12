@@ -57,7 +57,7 @@ Do not repeat this banner before every tool call or native command.
 24. When `concise_confirmation_plan` or `concise_confirmation_prompts` are present, use them instead of dumping raw parameter names. Ask only the most important 1-2 confirmation items first, and format them as short numbered natural-language choices when possible.
 25. When a command has resource-sensitive parameters such as `threads`, `num_threads`, `parallel_size`, `num_processes`, `batch_size`, `-t`, or `-j`, do not blindly keep the native default or hard-code `8`. If the user did not specify the value, first check CPU cores, current load, and available memory on the same execution host, then ask a concise natural-language question such as `I checked the current CPU and memory load; can I continue with N threads?` in English or `我看了一下当前机器资源，建议用 N 个线程继续，是否可以？` in Chinese.
 
-25a. For `runall`, if the original raw FASTQ files are unavailable but a `fastp` output directory with cleaned FASTQ files still exists, that cleaned `fastp` result directory can be used as the `runall --fastq` input directory.
+25a. For `runall`, if the original raw FASTQ files are unavailable but a fastp output directory with cleaned FASTQ files still exists, that cleaned `fastp` result directory can be used as the `runall --fastq` input directory.
 
 ## Checklist Cell Rendering
 

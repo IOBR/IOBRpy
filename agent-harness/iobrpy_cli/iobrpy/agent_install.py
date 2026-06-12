@@ -16,6 +16,12 @@ from typing import Any, Dict, List, Optional, Sequence
 
 import tomllib
 
+from iobrpy_result import (
+    packaged_claude_command_file as packaged_result_claude_command_file,
+    packaged_plugin_dir as packaged_result_plugin_dir,
+    packaged_skill_dir as packaged_result_skill_dir,
+)
+
 
 SUPPORTED_AGENT_CLIENTS = ("codex", "claude-code")
 CODEX_SKILL_NAME = "iobrpy"
@@ -28,11 +34,21 @@ CLAUDE_COMMAND_NAME = "iobrpy"
 CLAUDE_COMMAND_SOURCE_DIRNAME = "claude-code-command"
 DEFAULT_MCP_SERVER_NAME = "iobrpy"
 DEFAULT_CLAUDE_COMMAND = "claude"
+RESULT_SKILL_NAME = "iobrpy-result"
+RESULT_PLUGIN_NAME = "iobrpy-result"
+RESULT_CLAUDE_COMMAND_NAME = "iobrpy-result"
 CLAUDE_MEMORY_IMPORT_BLOCK = "\n".join(
     [
         "<!-- iobrpy-fastpath start -->",
         "@~/.claude/iobrpy/CLAUDE.md",
         "<!-- iobrpy-fastpath end -->",
+    ]
+)
+RESULT_CLAUDE_MEMORY_IMPORT_BLOCK = "\n".join(
+    [
+        "<!-- iobrpy-result start -->",
+        "@~/.claude/iobrpy-result/SKILL.md",
+        "<!-- iobrpy-result end -->",
     ]
 )
 
@@ -157,24 +173,50 @@ def _remove_existing_path(path: Path) -> None:
     path.unlink()
 
 
+def _directory_matches(source: Path, destination: Path) -> bool:
+    if not source.is_dir() or not destination.is_dir():
+        return False
+    source_files = {
+        path.relative_to(source)
+        for path in source.rglob("*")
+        if path.is_file()
+    }
+    destination_files = {
+        path.relative_to(destination)
+        for path in destination.rglob("*")
+        if path.is_file()
+    }
+    if source_files != destination_files:
+        return False
+    return all(
+        (source / relative).read_bytes() == (destination / relative).read_bytes()
+        for relative in source_files
+    )
+
+
 def _codex_user_root(codex_home: Optional[Path] = None) -> Path:
     return _codex_home(codex_home).parent
 
 
-def _codex_plugin_path(codex_home: Optional[Path] = None) -> Path:
-    return _codex_user_root(codex_home) / "plugins" / CODEX_PLUGIN_NAME
+def _codex_plugin_path(
+    codex_home: Optional[Path] = None,
+    plugin_name: str = CODEX_PLUGIN_NAME,
+) -> Path:
+    return _codex_user_root(codex_home) / "plugins" / plugin_name
 
 
 def _codex_marketplace_path(codex_home: Optional[Path] = None) -> Path:
     return _codex_user_root(codex_home) / ".agents" / "plugins" / "marketplace.json"
 
 
-def _expected_codex_marketplace_entry() -> Dict[str, Any]:
+def _expected_codex_marketplace_entry(
+    plugin_name: str = CODEX_PLUGIN_NAME,
+) -> Dict[str, Any]:
     return {
-        "name": CODEX_PLUGIN_NAME,
+        "name": plugin_name,
         "source": {
             "source": "local",
-            "path": f"./plugins/{CODEX_PLUGIN_NAME}",
+            "path": f"./plugins/{plugin_name}",
         },
         "policy": {
             "installation": "AVAILABLE",
@@ -208,13 +250,16 @@ def _load_marketplace_payload(path: Path) -> Dict[str, Any]:
     return payload
 
 
-def _upsert_codex_marketplace_entry(payload: Dict[str, Any]) -> tuple[Dict[str, Any], str]:
-    expected_entry = _expected_codex_marketplace_entry()
+def _upsert_codex_marketplace_entry(
+    payload: Dict[str, Any],
+    plugin_name: str = CODEX_PLUGIN_NAME,
+) -> tuple[Dict[str, Any], str]:
+    expected_entry = _expected_codex_marketplace_entry(plugin_name)
     plugins = payload.get("plugins", [])
     for index, entry in enumerate(plugins):
         if not isinstance(entry, dict):
             continue
-        if entry.get("name") != CODEX_PLUGIN_NAME:
+        if entry.get("name") != plugin_name:
             continue
         if entry == expected_entry:
             return payload, "already_configured"
@@ -483,6 +528,237 @@ def codex_plugin_status(*, codex_home: Optional[Path] = None) -> StatusRecord:
     )
 
 
+def install_result_codex_skill(
+    *,
+    codex_home: Optional[Path] = None,
+    force: bool = False,
+    dry_run: bool = False,
+) -> InstallRecord:
+    source = packaged_result_skill_dir()
+    destination = _codex_home(codex_home) / "skills" / RESULT_SKILL_NAME
+    if destination.exists() and not force:
+        status = "already_installed" if _directory_matches(source, destination) else "mismatched"
+        return InstallRecord(
+            client="codex",
+            component="result_skill",
+            status=status,
+            message=(
+                "IOBRpy result skill was already installed."
+                if status == "already_installed"
+                else "IOBRpy result skill already exists and differs from the packaged version. Re-run with --force to replace it."
+            ),
+            target=str(destination),
+        )
+
+    if dry_run:
+        return InstallRecord(
+            client="codex",
+            component="result_skill",
+            status="dry_run",
+            message="IOBRpy result skill would be installed.",
+            target=str(destination),
+        )
+
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    existed = destination.exists()
+    if existed:
+        _remove_existing_path(destination)
+    shutil.copytree(source, destination)
+    return InstallRecord(
+        client="codex",
+        component="result_skill",
+        status="updated" if existed else "installed",
+        message="IOBRpy result skill updated." if existed else "IOBRpy result skill installed.",
+        target=str(destination),
+    )
+
+
+def result_codex_skill_status(*, codex_home: Optional[Path] = None) -> StatusRecord:
+    source = packaged_result_skill_dir()
+    destination = _codex_home(codex_home) / "skills" / RESULT_SKILL_NAME
+    if not destination.exists():
+        return StatusRecord(
+            client="codex",
+            component="result_skill",
+            status="not_installed",
+            message="IOBRpy result skill is not installed.",
+            target=str(destination),
+            details={"packaged_source": str(source)},
+        )
+    matches = _directory_matches(source, destination)
+    return StatusRecord(
+        client="codex",
+        component="result_skill",
+        status="installed" if matches else "mismatched",
+        message=(
+            "IOBRpy result skill is installed."
+            if matches
+            else "IOBRpy result skill exists but does not match the packaged version."
+        ),
+        target=str(destination),
+        details={"packaged_source": str(source), "matches_packaged": matches},
+    )
+
+
+def _copy_result_plugin(source: Path, skill_source: Path, destination: Path) -> None:
+    shutil.copytree(source, destination)
+    installed_skill = destination / "skills" / RESULT_SKILL_NAME
+    installed_skill.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(skill_source, installed_skill)
+
+
+def install_result_codex_plugin(
+    *,
+    codex_home: Optional[Path] = None,
+    force: bool = False,
+    dry_run: bool = False,
+) -> InstallRecord:
+    source = packaged_result_plugin_dir()
+    skill_source = packaged_result_skill_dir()
+    destination = _codex_plugin_path(codex_home, RESULT_PLUGIN_NAME)
+    marketplace_path = _codex_marketplace_path(codex_home)
+
+    if dry_run:
+        return InstallRecord(
+            client="codex",
+            component="result_plugin",
+            status="dry_run",
+            message="IOBRpy result plugin and marketplace entry would be installed.",
+            target=str(destination),
+        )
+
+    plugin_status = "already_installed"
+    if destination.exists():
+        if force:
+            _remove_existing_path(destination)
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            _copy_result_plugin(source, skill_source, destination)
+            plugin_status = "updated"
+        else:
+            manifest = destination / ".codex-plugin" / "plugin.json"
+            installed_skill = destination / "skills" / RESULT_SKILL_NAME
+            manifest_matches = (
+                manifest.exists()
+                and manifest.read_bytes() == (source / ".codex-plugin" / "plugin.json").read_bytes()
+            )
+            if not manifest_matches or not _directory_matches(skill_source, installed_skill):
+                return InstallRecord(
+                    client="codex",
+                    component="result_plugin",
+                    status="failed",
+                    message="Existing IOBRpy result plugin is incomplete or stale. Re-run with --force to replace it.",
+                    target=str(destination),
+                )
+    else:
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        _copy_result_plugin(source, skill_source, destination)
+        plugin_status = "installed"
+
+    try:
+        payload = _load_marketplace_payload(marketplace_path)
+        payload, marketplace_status = _upsert_codex_marketplace_entry(payload, RESULT_PLUGIN_NAME)
+    except Exception as exc:
+        return InstallRecord(
+            client="codex",
+            component="result_plugin",
+            status="failed",
+            message=f"IOBRpy result plugin marketplace could not be updated: {exc}",
+            target=str(marketplace_path),
+        )
+
+    marketplace_path.parent.mkdir(parents=True, exist_ok=True)
+    marketplace_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+    if plugin_status == "already_installed" and marketplace_status == "already_configured":
+        status = "already_installed"
+        message = "IOBRpy result plugin was already installed."
+    elif "updated" in {plugin_status, marketplace_status}:
+        status = "updated"
+        message = "IOBRpy result plugin and marketplace entry updated."
+    else:
+        status = "installed"
+        message = "IOBRpy result plugin installed and added to the local marketplace."
+    return InstallRecord(
+        client="codex",
+        component="result_plugin",
+        status=status,
+        message=message,
+        target=str(destination),
+    )
+
+
+def result_codex_plugin_status(*, codex_home: Optional[Path] = None) -> StatusRecord:
+    source = packaged_result_plugin_dir()
+    skill_source = packaged_result_skill_dir()
+    destination = _codex_plugin_path(codex_home, RESULT_PLUGIN_NAME)
+    marketplace_path = _codex_marketplace_path(codex_home)
+    manifest = destination / ".codex-plugin" / "plugin.json"
+    installed_skill = destination / "skills" / RESULT_SKILL_NAME
+    if not destination.exists():
+        return StatusRecord(
+            client="codex",
+            component="result_plugin",
+            status="not_installed",
+            message="IOBRpy result plugin is not installed.",
+            target=str(destination),
+            details={"packaged_source": str(source), "marketplace_path": str(marketplace_path)},
+        )
+    if not manifest.exists() or not installed_skill.exists():
+        return StatusRecord(
+            client="codex",
+            component="result_plugin",
+            status="mismatched",
+            message="IOBRpy result plugin directory is incomplete.",
+            target=str(destination),
+        )
+    if not marketplace_path.exists():
+        return StatusRecord(
+            client="codex",
+            component="result_plugin",
+            status="mismatched",
+            message="IOBRpy result plugin files exist, but the local marketplace entry is missing.",
+            target=str(destination),
+        )
+    try:
+        payload = _load_marketplace_payload(marketplace_path)
+    except Exception as exc:
+        return StatusRecord(
+            client="codex",
+            component="result_plugin",
+            status="invalid_config",
+            message=f"Codex marketplace could not be parsed: {exc}",
+            target=str(marketplace_path),
+        )
+    expected_entry = _expected_codex_marketplace_entry(RESULT_PLUGIN_NAME)
+    marketplace_entry = next(
+        (
+            entry for entry in payload.get("plugins", [])
+            if isinstance(entry, dict) and entry.get("name") == RESULT_PLUGIN_NAME
+        ),
+        None,
+    )
+    manifest_matches = manifest.read_bytes() == (source / ".codex-plugin" / "plugin.json").read_bytes()
+    skill_matches = _directory_matches(skill_source, installed_skill)
+    matches = marketplace_entry == expected_entry and manifest_matches and skill_matches
+    return StatusRecord(
+        client="codex",
+        component="result_plugin",
+        status="installed" if matches else "mismatched",
+        message=(
+            "IOBRpy result plugin is installed and registered in the local marketplace."
+            if matches
+            else "IOBRpy result plugin exists, but its files or marketplace entry do not match the packaged bundle."
+        ),
+        target=str(destination),
+        details={
+            "marketplace_path": str(marketplace_path),
+            "marketplace_entry": marketplace_entry,
+            "manifest_matches_packaged": manifest_matches,
+            "skill_matches_packaged": skill_matches,
+        },
+    )
+
+
 def _claude_user_memory_path(claude_home: Optional[Path] = None) -> Path:
     return _claude_home(claude_home) / "CLAUDE.md"
 
@@ -683,6 +959,179 @@ def claude_code_command_status(*, claude_home: Optional[Path] = None) -> StatusR
         component="slash_command",
         status="mismatched",
         message="Claude Code `/iobrpy` command exists but does not match the expected iobrpy command file.",
+        target=str(destination),
+        details={"packaged_source": str(packaged)},
+    )
+
+
+def _claude_result_skill_path(claude_home: Optional[Path] = None) -> Path:
+    return _claude_home(claude_home) / RESULT_SKILL_NAME
+
+
+def _claude_result_command_path(claude_home: Optional[Path] = None) -> Path:
+    return _claude_home(claude_home) / "commands" / f"{RESULT_CLAUDE_COMMAND_NAME}.md"
+
+
+def _ensure_result_claude_import_block(text: str) -> tuple[str, str]:
+    normalized = text if text.endswith("\n") or not text else text + "\n"
+    if RESULT_CLAUDE_MEMORY_IMPORT_BLOCK in normalized:
+        return normalized, "already_configured"
+    stripped = normalized.rstrip()
+    if stripped:
+        stripped += "\n\n"
+    stripped += RESULT_CLAUDE_MEMORY_IMPORT_BLOCK + "\n"
+    return stripped, "installed"
+
+
+def install_claude_code_result_skill(
+    *,
+    claude_home: Optional[Path] = None,
+    dry_run: bool = False,
+) -> InstallRecord:
+    source = packaged_result_skill_dir()
+    user_memory = _claude_user_memory_path(claude_home)
+    destination = _claude_result_skill_path(claude_home)
+    existing_main = user_memory.read_text(encoding="utf-8") if user_memory.exists() else ""
+    updated_main, import_status = _ensure_result_claude_import_block(existing_main)
+    destination_matches = _directory_matches(source, destination)
+
+    if dry_run:
+        return InstallRecord(
+            client="claude-code",
+            component="result_skill",
+            status="dry_run",
+            message="Claude Code IOBRpy result skill would be installed or refreshed.",
+            target=str(destination),
+        )
+
+    existed = destination.exists()
+    if existed:
+        _remove_existing_path(destination)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(source, destination)
+    user_memory.parent.mkdir(parents=True, exist_ok=True)
+    user_memory.write_text(updated_main, encoding="utf-8")
+
+    if destination_matches and import_status == "already_configured":
+        status = "already_installed"
+        message = "Claude Code IOBRpy result skill was already configured."
+    elif existed:
+        status = "updated"
+        message = "Claude Code IOBRpy result skill updated."
+    else:
+        status = "installed"
+        message = "Claude Code IOBRpy result skill installed."
+    return InstallRecord(
+        client="claude-code",
+        component="result_skill",
+        status=status,
+        message=message,
+        target=str(destination),
+    )
+
+
+def claude_code_result_skill_status(
+    *,
+    claude_home: Optional[Path] = None,
+) -> StatusRecord:
+    source = packaged_result_skill_dir()
+    user_memory = _claude_user_memory_path(claude_home)
+    destination = _claude_result_skill_path(claude_home)
+    if not user_memory.exists() and not destination.exists():
+        return StatusRecord(
+            client="claude-code",
+            component="result_skill",
+            status="not_installed",
+            message="Claude Code IOBRpy result skill is not installed.",
+            target=str(destination),
+            details={"packaged_source": str(source)},
+        )
+    import_present = (
+        user_memory.exists()
+        and RESULT_CLAUDE_MEMORY_IMPORT_BLOCK in user_memory.read_text(encoding="utf-8")
+    )
+    skill_matches = _directory_matches(source, destination)
+    matches = import_present and skill_matches
+    return StatusRecord(
+        client="claude-code",
+        component="result_skill",
+        status="installed" if matches else "mismatched",
+        message=(
+            "Claude Code IOBRpy result skill is installed."
+            if matches
+            else "Claude Code IOBRpy result skill or its CLAUDE.md import does not match the packaged setup."
+        ),
+        target=str(destination),
+        details={
+            "packaged_source": str(source),
+            "import_present": import_present,
+            "matches_packaged": skill_matches,
+        },
+    )
+
+
+def install_claude_code_result_command(
+    *,
+    claude_home: Optional[Path] = None,
+    dry_run: bool = False,
+) -> InstallRecord:
+    packaged = packaged_result_claude_command_file()
+    destination = _claude_result_command_path(claude_home)
+    packaged_contents = packaged.read_text(encoding="utf-8")
+    existing_contents = destination.read_text(encoding="utf-8") if destination.exists() else None
+    if dry_run:
+        return InstallRecord(
+            client="claude-code",
+            component="result_slash_command",
+            status="dry_run",
+            message="Claude Code `/iobrpy-result` command would be installed.",
+            target=str(destination),
+        )
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_text(packaged_contents, encoding="utf-8")
+    if existing_contents is None:
+        status = "installed"
+        message = "Claude Code `/iobrpy-result` command installed."
+    elif existing_contents == packaged_contents:
+        status = "already_installed"
+        message = "Claude Code `/iobrpy-result` command was already installed."
+    else:
+        status = "updated"
+        message = "Claude Code `/iobrpy-result` command updated."
+    return InstallRecord(
+        client="claude-code",
+        component="result_slash_command",
+        status=status,
+        message=message,
+        target=str(destination),
+    )
+
+
+def claude_code_result_command_status(
+    *,
+    claude_home: Optional[Path] = None,
+) -> StatusRecord:
+    packaged = packaged_result_claude_command_file()
+    destination = _claude_result_command_path(claude_home)
+    if not destination.exists():
+        return StatusRecord(
+            client="claude-code",
+            component="result_slash_command",
+            status="not_installed",
+            message="Claude Code `/iobrpy-result` command is not installed.",
+            target=str(destination),
+            details={"packaged_source": str(packaged)},
+        )
+    matches = destination.read_text(encoding="utf-8") == packaged.read_text(encoding="utf-8")
+    return StatusRecord(
+        client="claude-code",
+        component="result_slash_command",
+        status="installed" if matches else "mismatched",
+        message=(
+            "Claude Code `/iobrpy-result` command is installed."
+            if matches
+            else "Claude Code `/iobrpy-result` command does not match the packaged version."
+        ),
         target=str(destination),
         details={"packaged_source": str(packaged)},
     )
@@ -1033,6 +1482,12 @@ def install_agent_bundle(
                 records.append(
                     install_codex_plugin(codex_home=codex_home, force=force, dry_run=dry_run)
                 )
+                records.append(
+                    install_result_codex_skill(codex_home=codex_home, force=force, dry_run=dry_run)
+                )
+                records.append(
+                    install_result_codex_plugin(codex_home=codex_home, force=force, dry_run=dry_run)
+                )
             if include_mcp:
                 records.append(
                     install_codex_mcp(spec, codex_home=codex_home, dry_run=dry_run)
@@ -1044,6 +1499,12 @@ def install_agent_bundle(
                 )
                 records.append(
                     install_claude_code_command(claude_home=claude_home, dry_run=dry_run)
+                )
+                records.append(
+                    install_claude_code_result_skill(claude_home=claude_home, dry_run=dry_run)
+                )
+                records.append(
+                    install_claude_code_result_command(claude_home=claude_home, dry_run=dry_run)
                 )
             if include_mcp:
                 records.append(
@@ -1057,18 +1518,26 @@ def install_agent_bundle(
         else:
             raise ValueError(f"Unsupported agent client: {client}")
 
-    success = all(record.status != "failed" for record in records)
+    success = all(record.status not in {"failed", "mismatched"} for record in records)
     next_steps: List[str] = []
     if any(record.client == "codex" and record.component == "skill" and record.status in {"installed", "updated", "already_installed"} for record in records):
         next_steps.append("Restart Codex to pick up the `/iobrpy` skill alias.")
     if any(record.client == "codex" and record.component == "plugin" and record.status in {"installed", "updated", "already_installed"} for record in records):
         next_steps.append("Restart Codex or reopen the plugin picker so the local `iobrpy` plugin and its namespace commands are visible.")
+    if any(record.client == "codex" and record.component == "result_skill" and record.status in {"installed", "updated", "already_installed"} for record in records):
+        next_steps.append("Restart Codex to pick up the `/iobrpy-result` skill.")
+    if any(record.client == "codex" and record.component == "result_plugin" and record.status in {"installed", "updated", "already_installed"} for record in records):
+        next_steps.append("Restart Codex or reopen the plugin picker so the local `iobrpy-result` plugin is visible.")
     if any(record.client == "codex" and record.component == "mcp" and record.status in {"installed", "updated", "already_configured"} for record in records):
         next_steps.append("Restart Codex after MCP changes so the client reloads its server list.")
     if any(record.client == "claude-code" and record.component == "skill" and record.status in {"installed", "updated", "already_installed"} for record in records):
         next_steps.append("Restart Claude Code or start a new session so the updated ~/.claude/CLAUDE.md memory is loaded.")
     if any(record.client == "claude-code" and record.component == "slash_command" and record.status in {"installed", "updated", "already_installed"} for record in records):
         next_steps.append("Restart Claude Code or start a new session so `/iobrpy` appears in the slash-command list.")
+    if any(record.client == "claude-code" and record.component == "result_skill" and record.status in {"installed", "updated", "already_installed"} for record in records):
+        next_steps.append("Restart Claude Code or start a new session so the IOBRpy result skill is loaded.")
+    if any(record.client == "claude-code" and record.component == "result_slash_command" and record.status in {"installed", "updated", "already_installed"} for record in records):
+        next_steps.append("Restart Claude Code or start a new session so `/iobrpy-result` appears in the slash-command list.")
     if any(record.client == "claude-code" and record.component == "mcp" and record.status in {"installed", "already_configured"} for record in records):
         next_steps.append("Run `claude mcp list` or restart Claude Code to confirm the user-scoped server is visible.")
 
@@ -1079,6 +1548,8 @@ def install_agent_bundle(
         "resolved_clients": resolved_clients,
         "components": {
             "skill": include_skill,
+            "result_skill": include_skill,
+            "result_plugin": include_skill,
             "mcp": include_mcp,
         },
         "results": [record.to_dict() for record in records],
@@ -1105,12 +1576,16 @@ def agent_status_bundle(
             if include_skill:
                 records.append(codex_skill_status(codex_home=codex_home))
                 records.append(codex_plugin_status(codex_home=codex_home))
+                records.append(result_codex_skill_status(codex_home=codex_home))
+                records.append(result_codex_plugin_status(codex_home=codex_home))
             if include_mcp:
                 records.append(codex_mcp_status(spec, codex_home=codex_home))
         elif client == "claude-code":
             if include_skill:
                 records.append(claude_code_skill_status(claude_home=claude_home))
                 records.append(claude_code_command_status(claude_home=claude_home))
+                records.append(claude_code_result_skill_status(claude_home=claude_home))
+                records.append(claude_code_result_command_status(claude_home=claude_home))
             if include_mcp:
                 records.append(claude_code_mcp_status(spec, claude_command=claude_command))
         else:
@@ -1123,12 +1598,16 @@ def agent_status_bundle(
         next_steps.append("Install the Codex skill with `iobrpy-cli agent install --client codex --no-mcp` or rerun the default Codex bootstrap command.")
     if any(record.client == "codex" and record.component == "plugin" and record.status in {"not_installed", "mismatched", "invalid_config"} for record in records):
         next_steps.append("Install or refresh the Codex plugin bundle with `iobrpy-cli agent install --client codex --no-mcp`.")
+    if any(record.client == "codex" and record.component in {"result_skill", "result_plugin"} and record.status in {"not_installed", "mismatched", "invalid_config"} for record in records):
+        next_steps.append("Install or refresh the IOBRpy result skill and plugin with `iobrpy-cli agent install --client codex --no-mcp --force`.")
     if any(record.client == "codex" and record.component == "mcp" and record.status in {"not_configured", "mismatched", "invalid_config"} for record in records):
         next_steps.append("Install or refresh the Codex MCP config with `iobrpy-cli agent install --client codex --no-skill`.")
     if any(record.client == "claude-code" and record.component == "skill" and record.status in {"not_installed", "mismatched"} for record in records):
         next_steps.append("Install or refresh Claude Code user memory with `iobrpy-cli agent install --client claude-code --no-mcp`.")
     if any(record.client == "claude-code" and record.component == "slash_command" and record.status in {"not_installed", "mismatched"} for record in records):
         next_steps.append("Install or refresh the Claude Code `/iobrpy` command with `iobrpy-cli agent install --client claude-code --no-mcp`.")
+    if any(record.client == "claude-code" and record.component in {"result_skill", "result_slash_command"} and record.status in {"not_installed", "mismatched"} for record in records):
+        next_steps.append("Install or refresh the Claude Code IOBRpy result integration with `iobrpy-cli agent install --client claude-code --no-mcp`.")
     if any(record.client == "claude-code" and record.component == "mcp" and record.status == "cli_not_found" for record in records):
         next_steps.append("Install the Claude Code CLI first, then run `iobrpy-cli agent install --client claude-code --no-skill`.")
     if any(record.client == "claude-code" and record.component == "mcp" and record.status in {"not_configured", "error"} for record in records):
@@ -1142,6 +1621,8 @@ def agent_status_bundle(
         "resolved_clients": resolved_clients,
         "components": {
             "skill": include_skill,
+            "result_skill": include_skill,
+            "result_plugin": include_skill,
             "mcp": include_mcp,
         },
         "results": [record.to_dict() for record in records],

@@ -18,6 +18,46 @@ A complete documentation for IOBRpy can be found at https://iobr.github.io/IOBRp
 
 ---
 
+## Agent Bootstrap
+
+If you want coding agents to discover `iobrpy-cli` and the result-visualization skill without repeating them in every prompt, install the packaged agent integrations once:
+
+```bash
+# Claude Code: install `/iobrpy`, `/iobrpy-result`, and MCP registration
+iobrpy-cli agent install --client claude-code
+
+# Codex: install both skills, both plugins, and MCP registration
+iobrpy-cli agent install --client codex
+
+# Configure every supported client in one pass
+iobrpy-cli agent install --client all
+
+# Inspect what is already installed without changing anything
+iobrpy-cli agent status
+```
+
+After installing the Claude Code/Codex integration, restart Claude Code/Codex once so the slash-command list refreshes.
+
+---
+
+## Agent Entry Points
+
+IOBRpy provides two agent entrypoints:
+
+- `/iobrpy` helps you inspect input data, choose the right IOBRpy workflow, and prepare or run commands.
+- `/iobrpy-result` is for finished outputs. It helps summarize, audit, interpret, compare, and visualize IOBRpy result directories or result tables.
+
+In short, use `/iobrpy` before or during analysis, and use `/iobrpy-result` after results have been generated.
+
+Examples:
+
+```text
+/iobrpy please scan path/to/your/target/directory
+/iobrpy-result visualize and interpret path/to/iobrpy/result/directory
+```
+
+---
+
 ## Installation
 
 ### Quick install
@@ -27,7 +67,7 @@ A complete documentation for IOBRpy can be found at https://iobr.github.io/IOBRp
 pip install iobrpy
 
 # Method 2 : Conda (bioconda via conda-forge + bioconda)
-conda install -c conda-forge -c bioconda iobrpy=0.1.8
+conda install -c conda-forge -c bioconda iobrpy
 
 # Method 3 : Docker
 docker pull hhn123123/iobrpy:latest
@@ -80,61 +120,14 @@ conda create -n iobrpy python=3.11 -y
 conda activate iobrpy
 ```
 ```bash
-# Install iobrpy 0.1.8 (from bioconda via conda-forge + bioconda)
+# Install iobrpy from bioconda via conda-forge + bioconda
 # Recommended: use mamba for faster solves (if available)
-mamba install -y -c conda-forge -c bioconda iobrpy=0.1.8
+mamba install -y -c conda-forge -c bioconda iobrpy
 
 # If you don't have mamba, use conda instead
-conda install -y -c conda-forge -c bioconda iobrpy=0.1.8
+conda install -y -c conda-forge -c bioconda iobrpy
 ```
 </details>
-
-### Docker
-
-> **Docker Hub website:** [Docker Hub](https://hub.docker.com/)
-
-<details><summary><strong>Show Docker pull</strong></summary>
-
-```bash
-# Option 1: Pull the latest image from Docker Hub
-docker pull hhn123123/iobrpy:latest
-```
-```bash
-# Option 2: Offline install (from GitHub Release)
-# 1) Download iobrpy.tar.gz from https://github.com/IOBR/IOBRpy/releases/tag/v1.0.0
-# 2) Change to the directory where the archive is saved and load the image
-cd /path/to/iobrpy.tar.gz
-docker load -i iobrpy.tar.gz
-```
-</details>
-
----
-
-## Agent Bootstrap
-
-If you want coding agents to discover `iobrpy-cli` without repeating it in every prompt, install the packaged agent integrations once:
-
-```bash
-# Claude Code: install the managed global memory plus MCP registration
-iobrpy-cli agent install --client claude-code
-
-# Codex: install the bundled global skill plus MCP registration
-iobrpy-cli agent install --client codex
-
-# Configure every supported client in one pass
-iobrpy-cli agent install --client all
-
-# Inspect what is already installed without changing anything
-iobrpy-cli agent status
-```
-
-After installing the Claude Code/Codex integration, restart Claude Code/Codex once so the slash-command list refreshes.
-
-Example dialogue:
-
-```text
-/iobrpy please scan path/to/your/target/directory
-```
 
 ---
 

@@ -2507,17 +2507,22 @@ def _external_hint_match_rank(
         rank = _EXTERNAL_HINT_CONFIDENCE_RANK.get(str(profile.get("confidence", "low")), 0)
 
     if hint_id == "external_hla":
+        if rank == 0 and preview.strip():
+            path_profile = _external_hint_profile(
+                relpath,
+                preview,
+                hint_id,
+                respect_native_context=False,
+            )
+            if path_profile:
+                rank = _EXTERNAL_HINT_CONFIDENCE_RANK.get(str(path_profile.get("confidence", "low")), 0)
         if _looks_like_hla_per_sample_result_path(relpath) or Path(relpath.rstrip("/")).name.lower().endswith(".task.complete"):
             rank = max(rank, 2)
-        if relpath.endswith("/") and not preview.strip():
-            return 0
         return rank
 
     if hint_id == "external_tcr_bcr":
         if _looks_like_external_tcr_bcr_result_path(relpath):
             rank = max(rank, 2)
-        if relpath.endswith("/") and not preview.strip():
-            return 0
         return rank
 
     return rank
@@ -2534,7 +2539,18 @@ def _filter_external_hint_matches(
         (match, _external_hint_match_rank(match, hint_id, preview_texts))
         for match in deduped
     ]
-    kept = [match for match, rank in ranked if rank > 0]
+    has_content_or_specific_evidence = any(rank >= 2 for _, rank in ranked)
+    kept = [
+        match
+        for match, rank in ranked
+        if rank > 0
+        and not (
+            has_content_or_specific_evidence
+            and rank == 1
+            and not Path(match.rstrip("/")).suffixes
+            and not preview_texts.get(match, "").strip()
+        )
+    ]
     if not kept:
         return []
 
@@ -2563,7 +2579,12 @@ def _has_native_hla_result_evidence(
         if name.endswith(".spechla.done"):
             return True
         preview = preview_texts.get(relpath, "")
-        if preview and _looks_like_hla_merged(preview) and ("merged" in name or "cohort" in name):
+        if (
+            preview
+            and _looks_like_hla_merged(preview)
+            and ("merged" in name or "cohort" in name)
+            and _has_iobrpy_context(relpath, "hla")
+        ):
             return True
     return False
 
