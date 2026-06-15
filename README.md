@@ -97,14 +97,16 @@ mamba install -y -c conda-forge -c bioconda \
   fastp \
   salmon \
   star \
-  trust4
+  trust4 \
+  samtools=1.21
 
 # If you don't have mamba, use conda instead
 conda install -y -c conda-forge -c bioconda \
   fastp \
   salmon \
   star \
-  trust4
+  trust4 \
+  samtools=1.21
 ```
 </details>
 
