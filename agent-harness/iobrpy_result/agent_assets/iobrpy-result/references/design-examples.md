@@ -27,6 +27,29 @@ that explain separation. Do not begin with one box plot per cell type.
 method-feature, and show direction/rank concordance. Preserve method families and expose
 disagreement rather than averaging it away.
 
+**Publication architecture:** use the concordance view as an asymmetric hero panel. Place
+one compact effect-size panel beside it and one fit/uncertainty strip below it. Do not give
+three raw method heatmaps equal visual weight.
+
+## TME Landscape Plus Focused Inference
+
+**Question: What is the cohort landscape, and which populations differ by outcome?**
+
+Use a wide sample composition, heatmap, or ordination panel to establish the landscape.
+Follow with raw group distributions and effect intervals for a prespecified or reproducibly
+selected subset. Add fit, uncertainty, or metadata coverage as a quiet context strip. This
+is stronger than using the same relative-abundance matrix in both a stacked bar and an
+absolute-value heatmap.
+
+## Runall Or TME Profile Evidence
+
+**Weak design:** create one equally sized panel for every output directory.
+
+**Stronger design:** choose a `workflow evidence composite`. Let the decisive QC,
+quantification, or downstream TME conclusion lead. Use a compact stage/completeness ribbon
+for workflow context, then include only child-result panels that contribute unique evidence.
+Workflow completion is not itself biological validation.
+
 ## BayesPrism
 
 **Weak design:** plot theta alone.
@@ -53,3 +76,10 @@ a cohort summary. Use both only when individual and cohort scales are both neces
 
 Do not manufacture group comparisons. Explore cohort structure, variance, correlations,
 fit, uncertainty, and outliers, then state what metadata would unlock a stronger analysis.
+
+## Final-Size Decision
+
+For every example above, decide whether the figure is a single-column `89 mm` result or a
+double-column `183 mm` composite before styling. At final size, remove redundant legends,
+use direct labels when stable, and enlarge the hero evidence rather than shrinking every
+panel equally.

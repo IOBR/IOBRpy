@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import argparse
+import warnings
 import pandas as pd
 import numpy as np
 from sklearn.decomposition import PCA
@@ -263,9 +264,18 @@ def sig_score_integration(eset, sig_dict, mini_gene_count, adjust_eset, parallel
     z = sig_score_zscore(eset, filtered_sigs, mini_gene_count, adjust_eset)
     z = z.set_index('ID').add_suffix('_zscore')
 
-    # Only run ssGSEA if there are filtered signatures and gseapy is available
     if gp is None or not filtered_sigs:
-        # Skip ssGSEA if no signatures match or gseapy is not available
+        reason = (
+            "gseapy is not available"
+            if gp is None
+            else f"no signatures passed the mini_gene_count={mini_gene_count} filter"
+        )
+        warnings.warn(
+            "Skipping ssGSEA in integration scoring because "
+            f"{reason}; returning PCA and z-score results only.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
         return pd.concat([p, z], axis=1).reset_index()
 
     eset2 = preprocess_eset(eset, adjust_eset)

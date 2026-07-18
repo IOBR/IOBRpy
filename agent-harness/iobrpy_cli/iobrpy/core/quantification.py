@@ -1630,11 +1630,30 @@ class QuantificationWorkflow:
                         text=True,
                         timeout=5,
                     )
+                    output_lines = [
+                        line.strip()
+                        for stream in (result.stdout, result.stderr)
+                        for line in stream.splitlines()
+                        if line.strip()
+                    ]
+                    if tool == 'trust4':
+                        trust4_line = next(
+                            (line for line in output_lines if 'TRUST4 v' in line),
+                            None,
+                        )
+                        if trust4_line:
+                            version = trust4_line[trust4_line.index('TRUST4 v'):]
+                            external_tools[tool] = version.split(' begins.', 1)[0]
+                            continue
+
                     if result.returncode == 0:
-                        version = result.stdout.split('\n')[0].strip()
-                        external_tools[tool] = version
-                except (FileNotFoundError, subprocess.TimeoutExpired):
+                        external_tools[tool] = output_lines[0] if output_lines else "available"
+                    else:
+                        external_tools[tool] = f"error (exit {result.returncode})"
+                except FileNotFoundError:
                     external_tools[tool] = "not found"
+                except subprocess.TimeoutExpired:
+                    external_tools[tool] = "timeout"
                 except Exception:
                     external_tools[tool] = "error"
 

@@ -14,7 +14,6 @@ from iobrpy.workflow.mcpcounter import MCPcounter_estimate as MCPcounter_estimat
 from iobrpy.workflow.mcpcounter import preprocess_input as preprocess_input_main
 from iobrpy.workflow.quantiseq import main as quantiseq_main
 from iobrpy.workflow.epic import main as epic_main
-from iobrpy.workflow.deside_bootstrap import main as deside_main
 from iobrpy.workflow.tme_cluster import main as tme_cluster_main
 from iobrpy.workflow.LR_cal import main as LR_cal_main
 from iobrpy.workflow.nmf import main as nmf_main
@@ -34,7 +33,7 @@ from iobrpy.SpecHLA.extract_hla_read import main as extract_hla_read_main
 from iobrpy.workflow.hla_typing import main as hla_typing_main
 from iobrpy.bayesprism.bayesprism import main as bayesprism_main
 
-VERSION = "0.1.9"
+VERSION = "0.2.0"
 
 def main():
     parser = argparse.ArgumentParser(
@@ -206,153 +205,125 @@ def main():
     p10.add_argument('--reference', choices=['TRef','BRef','both'], default='TRef',
                     help='Which reference to use for deconvolution')
 
-    # Step 11: deside
-    p11 = subparsers.add_parser('deside', help='Run DeSide deconvolution')
-    p11.add_argument('-m', '--model_dir', required=True,
-                     help='Path to DeSide_model directory')
-    p11.add_argument('-i', '--input', required=True,
-                     help='Expression file (CSV/TSV) with rows=genes and columns=samples')
-    p11.add_argument('-o', '--output', required=True,
-                     help='Output CSV for predicted cell fractions')
-    p11.add_argument('--exp_type', choices=['TPM','log_space','linear'], default='TPM',
-                     help='Input format: TPM (log2 processed), log_space (log2 TPM+1), or linear (TPM/counts)')
-    p11.add_argument('--gmt', nargs='+', default=None,
-                     help='Optional GMT files for pathway masking')
-    p11.add_argument('--print_info', action='store_true',
-                     help='Show detailed logs during prediction')
-    p11.add_argument('--add_cell_type', action='store_true',
-                     help='Append predicted cell type labels')
-    p11.add_argument('--scaling_by_constant', action='store_true',
-                     help='Enable division-by-constant scaling')
-    p11.add_argument('--scaling_by_sample', action='store_true',
-                     help='Enable per-sample min–max scaling')
-    p11.add_argument('--one_minus_alpha', action='store_true',
-                     help='Use 1−α transformation for all cell types')
-    p11.add_argument('--method_adding_pathway', choices=['add_to_end','convert'], default='add_to_end',
-                     help='How to integrate pathway profiles: add_to_end or convert')
-    p11.add_argument('--transpose', action='store_true',
-                     help='Transpose input so that rows=samples and columns=genes')
-    p11.add_argument('-r', '--result_dir', default=None,
-                     help='Directory to save result plots')
-
-    # Step 12: tme_cluster
-    p12 = subparsers.add_parser('tme_cluster', help='Run TME clustering')
-    p12.add_argument('-i','--input', required=True,
+    # Step 11: tme_cluster
+    p11 = subparsers.add_parser('tme_cluster', help='Run TME clustering')
+    p11.add_argument('-i','--input', required=True,
                      help='Path to input file (CSV/TSV/TXT)')
-    p12.add_argument('-o','--output', required=True,
+    p11.add_argument('-o','--output', required=True,
                      help='Path to save clustering results (CSV/TSV/TXT)')
-    p12.add_argument('--features', default=None,
+    p11.add_argument('--features', default=None,
                      help="Feature columns to use, e.g. '1:22' if use cibersort(excluding the sample column)")
-    p12.add_argument('--pattern', default=None,
+    p11.add_argument('--pattern', default=None,
                      help='Regex to select feature columns by name')
-    p12.add_argument('--id', default=None,
+    p11.add_argument('--id', default=None,
                      help='Column name for sample IDs (default: first column)')
-    p12.add_argument('--scale', action='store_true', dest='scale', default=True,
+    p11.add_argument('--scale', action='store_true', dest='scale', default=True,
                      help='Enable z-score scaling (default: True)')
-    p12.add_argument('--no-scale', action='store_false', dest='scale',
+    p11.add_argument('--no-scale', action='store_false', dest='scale',
                      help='Disable z-score scaling')
-    p12.add_argument('--min_nc', type=int, default=2,
+    p11.add_argument('--min_nc', type=int, default=2,
                      help='Minimum number of clusters')
-    p12.add_argument('--max_nc', type=int, default=6,
+    p11.add_argument('--max_nc', type=int, default=6,
                      help='Maximum number of clusters')
-    p12.add_argument('--max_iter', type=int, default=10,
+    p11.add_argument('--max_iter', type=int, default=10,
                      help='Maximum number of iterations for the k-means algorithm')
-    p12.add_argument('--tol', type=float, default=1e-4,
+    p11.add_argument('--tol', type=float, default=1e-4,
                      help='Convergence tolerance for cluster center updates')
-    p12.add_argument('--print_result', action='store_true',
+    p11.add_argument('--print_result', action='store_true',
                      help='Print intermediate KL scores and cluster counts')
-    p12.add_argument('--input_sep', default=None,
+    p11.add_argument('--input_sep', default=None,
                      help='Field separator for input (auto-detect if not set)')
-    p12.add_argument('--output_sep', default=None,
+    p11.add_argument('--output_sep', default=None,
                      help='Field separator for output (auto-detect if not set)')
     
-    # Step 13: LR_cal
-    p13 = subparsers.add_parser('LR_cal', help='Compute ligand-receptor interactions')
-    p13.add_argument('-i','--input', required=True, help='Path to input expression matrix (genes x samples)')
-    p13.add_argument('-o','--output', required=True, help='Path to save LR scores')
-    p13.add_argument('--data_type', choices=['count','tpm'], default='tpm',
+    # Step 12: LR_cal
+    p12 = subparsers.add_parser('LR_cal', help='Compute ligand-receptor interactions')
+    p12.add_argument('-i','--input', required=True, help='Path to input expression matrix (genes x samples)')
+    p12.add_argument('-o','--output', required=True, help='Path to save LR scores')
+    p12.add_argument('--data_type', choices=['count','tpm'], default='tpm',
                      help='Type of input data: count or tpm')
-    p13.add_argument('--id_type', default='ensembl', help='Gene ID type.Choices: ensembl, entrez, symbol, mgi.')
-    p13.add_argument('--cancer_type', default='pancan', help='Cancer type network')
-    p13.add_argument('--verbose', action='store_true', help='Enable verbose output')
+    p12.add_argument('--id_type', default='ensembl', help='Gene ID type.Choices: ensembl, entrez, symbol, mgi.')
+    p12.add_argument('--cancer_type', default='pancan', help='Cancer type network')
+    p12.add_argument('--verbose', action='store_true', help='Enable verbose output')
 
-        # Step 14: nmf
-    p14 = subparsers.add_parser('nmf', help='Run NMF-based clustering (uses nmf.py logic)')
-    p14.add_argument('-i', '--input', required=True, help='Input matrix file (CSV or TSV). First column should be sample names (index).')
-    p14.add_argument('-o', '--output', required=True, help='Output directory where results will be saved.')
-    p14.add_argument('--kmin', type=int, default=2, help='Minimum k (inclusive). Default: 2')
-    p14.add_argument('--kmax', type=int, default=8, help='Maximum k (inclusive). Default: 8')
-    p14.add_argument('--features', type=str, default=None, help="Columns (cell types) to use, e.g. '2-10' or '1:5'. 1-based inclusive.")
-    p14.add_argument('--log1p', action='store_true', help='Apply log1p transform to the input (useful for counts).')
-    p14.add_argument('--normalize', action='store_true', help='Apply L1 row normalization (each sample sums to 1).')
-    p14.add_argument('--shift', type=float, default=None, help='If input contains negatives, add a constant shift to make values non-negative.')
-    p14.add_argument('--random-state', type=int, default=42, help='Random state passed to NMF')
-    p14.add_argument('--max-iter', type=int, default=1000, help='Maximum iterations for NMF (default: 1000)')
-    p14.add_argument('--skip_k_2', action='store_true',help='Skip k=2 when searching for the best k (default: do not skip)')
+    # Step 13: nmf
+    p13 = subparsers.add_parser('nmf', help='Run NMF-based clustering (uses nmf.py logic)')
+    p13.add_argument('-i', '--input', required=True, help='Input matrix file (CSV or TSV). First column should be sample names (index).')
+    p13.add_argument('-o', '--output', required=True, help='Output directory where results will be saved.')
+    p13.add_argument('--kmin', type=int, default=2, help='Minimum k (inclusive). Default: 2')
+    p13.add_argument('--kmax', type=int, default=8, help='Maximum k (inclusive). Default: 8')
+    p13.add_argument('--features', type=str, default=None, help="Columns (cell types) to use, e.g. '2-10' or '1:5'. 1-based inclusive.")
+    p13.add_argument('--log1p', action='store_true', help='Apply log1p transform to the input (useful for counts).')
+    p13.add_argument('--normalize', action='store_true', help='Apply L1 row normalization (each sample sums to 1).')
+    p13.add_argument('--shift', type=float, default=None, help='If input contains negatives, add a constant shift to make values non-negative.')
+    p13.add_argument('--random-state', type=int, default=42, help='Random state passed to NMF')
+    p13.add_argument('--max-iter', type=int, default=1000, help='Maximum iterations for NMF (default: 1000)')
+    p13.add_argument('--skip_k_2', action='store_true',help='Skip k=2 when searching for the best k (default: do not skip)')
 
-    # Step 15: mouse2human_eset
-    p15 = subparsers.add_parser('mouse2human_eset', help='Convert mouse gene symbols to human symbols (local mapping)')
-    p15.add_argument('-i', '--input', required=True,
+    # Step 14: mouse2human_eset
+    p14 = subparsers.add_parser('mouse2human_eset', help='Convert mouse gene symbols to human symbols (local mapping)')
+    p14.add_argument('-i', '--input', required=True,
                  help='Path to input file (CSV/TSV/TXT, optionally .gz)')
-    p15.add_argument('-o', '--output', required=True,
+    p14.add_argument('-o', '--output', required=True,
                  help='Path to save converted matrix (CSV/TSV/TXT, optionally .gz)')
-    p15.add_argument('--is_matrix', action='store_true',
+    p14.add_argument('--is_matrix', action='store_true',
                  help='Treat input as a matrix (rows=genes, cols=samples). If omitted, expects a symbol column.')
-    p15.add_argument('--column_of_symbol', default=None,
+    p14.add_argument('--column_of_symbol', default=None,
                  help='Column name containing gene symbols when not using --is_matrix.')
-    p15.add_argument('--verbose', action='store_true',
+    p14.add_argument('--verbose', action='store_true',
                  help='Verbose output.')
-    p15.add_argument('--sep', default=None,
+    p14.add_argument('--sep', default=None,
                  help="Input separator (',' or '\\t'). If omitted, infer by input extension.")
-    p15.add_argument('--out_sep', default=None,
+    p14.add_argument('--out_sep', default=None,
                  help="Output separator (',' or '\\t'). If omitted, infer by output extension.")
-    p15.add_argument('--progress', action='store_true',default=True,
+    p14.add_argument('--progress', action='store_true',default=True,
                  help='Show a progress bar during saving.')
 
-    # Step 16: batch_salmon
-    p16 = subparsers.add_parser('batch_salmon', help='Batch-run Salmon quantification over paired-end FASTQs')
-    p16.add_argument('--index', required=True, help='Path to Salmon index')
-    p16.add_argument('--path_fq', required=True, help='Directory containing FASTQ files')
-    p16.add_argument('--path_out', required=True, help='Output directory for per-sample results')
-    p16.add_argument('--suffix1', default='_1.fastq.gz', help="R1 suffix; R2 inferred by replacing '1' with '2'")
-    p16.add_argument('--batch_size', type=int, default=1, help='Number of concurrent samples (processes)')
-    p16.add_argument('--num_threads', type=int, default=8, help='Threads per Salmon process')
-    p16.add_argument('--gtf', default=None, help='Optional GTF file path for Salmon (-g)')
+    # Step 15: batch_salmon
+    p15 = subparsers.add_parser('batch_salmon', help='Batch-run Salmon quantification over paired-end FASTQs')
+    p15.add_argument('--index', required=True, help='Path to Salmon index')
+    p15.add_argument('--path_fq', required=True, help='Directory containing FASTQ files')
+    p15.add_argument('--path_out', required=True, help='Output directory for per-sample results')
+    p15.add_argument('--suffix1', default='_1.fastq.gz', help="R1 suffix; R2 inferred by replacing '1' with '2'")
+    p15.add_argument('--batch_size', type=int, default=1, help='Number of concurrent samples (processes)')
+    p15.add_argument('--num_threads', type=int, default=8, help='Threads per Salmon process')
+    p15.add_argument('--gtf', default=None, help='Optional GTF file path for Salmon (-g)')
 
-    # Step 17: merge_salmon
-    p17 = subparsers.add_parser('merge_salmon', help='Merge Salmon quant.sf into TPM & NumReads matrices')
-    p17.add_argument('--path_salmon', required=True, help='Root folder searched recursively for quant.sf')
-    p17.add_argument('--project', required=True, help='Output file prefix')
-    p17.add_argument('--num_processes', type=int, default=None, help='Threads for loading quant.sf (I/O bound)')
+    # Step 16: merge_salmon
+    p16 = subparsers.add_parser('merge_salmon', help='Merge Salmon quant.sf into TPM & NumReads matrices')
+    p16.add_argument('--path_salmon', required=True, help='Root folder searched recursively for quant.sf')
+    p16.add_argument('--project', required=True, help='Output file prefix')
+    p16.add_argument('--num_processes', type=int, default=None, help='Threads for loading quant.sf (I/O bound)')
 
-    # Step 18: merge_star_count
-    p18 = subparsers.add_parser('merge_star_count', help='Merge STAR *_ReadsPerGene.out.tab into one matrix')
-    p18.add_argument('--path', required=True, help='Folder containing STAR outputs')
-    p18.add_argument('--project', required=True, help='Output name prefix')
+    # Step 17: merge_star_count
+    p17 = subparsers.add_parser('merge_star_count', help='Merge STAR *_ReadsPerGene.out.tab into one matrix')
+    p17.add_argument('--path', required=True, help='Folder containing STAR outputs')
+    p17.add_argument('--project', required=True, help='Output name prefix')
     
-    # Step 19: batch_star_count
-    p19 = subparsers.add_parser('batch_star_count', help='Run STAR on paired FASTQs in batches (with GeneCounts)')
-    p19.add_argument('--index', required=True, help='STAR genome index directory')
-    p19.add_argument('--path_fq', required=True, help='Folder containing FASTQs (R1 endswith suffix1)')
-    p19.add_argument('--path_out', required=True, help='Output folder for STAR results')
-    p19.add_argument('--suffix1', default='_1.fastq.gz', help='R1 suffix; R2 is inferred by 1→2')
-    p19.add_argument('--batch_size', type=int, default=1, help='#samples per batch (sequential batches)')
-    p19.add_argument('--num_threads',type=int, default=8, help='Threads for STAR and BAM sorting')
+    # Step 18: batch_star_count
+    p18 = subparsers.add_parser('batch_star_count', help='Run STAR on paired FASTQs in batches (with GeneCounts)')
+    p18.add_argument('--index', required=True, help='STAR genome index directory')
+    p18.add_argument('--path_fq', required=True, help='Folder containing FASTQs (R1 endswith suffix1)')
+    p18.add_argument('--path_out', required=True, help='Output folder for STAR results')
+    p18.add_argument('--suffix1', default='_1.fastq.gz', help='R1 suffix; R2 is inferred by 1→2')
+    p18.add_argument('--batch_size', type=int, default=1, help='#samples per batch (sequential batches)')
+    p18.add_argument('--num_threads',type=int, default=8, help='Threads for STAR and BAM sorting')
 
-    # Step 20: fastq_qc
-    p20 = subparsers.add_parser('fastq_qc', help='FASTQ QC using fastp (with progress bar)')
-    p20.add_argument('--path1_fastq', required=True, help='Directory containing raw FASTQ files')
-    p20.add_argument('--path2_fastp', required=True, help='Output directory for cleaned FASTQ files')
-    p20.add_argument('--num_threads', type=int, default=8, help='Threads per fastp process')
-    p20.add_argument('--suffix1', default='_1.fastq.gz', help="R1 suffix; R2 inferred by replacing '1' with '2'")
-    p20.add_argument('--batch_size', type=int, default=1, help='Number of concurrent samples (processes)')
-    p20.add_argument('--se', action='store_true', help='Single-end sequencing; omit for paired-end')
-    p20.add_argument('--length_required', type=int, default=50, help='Minimum read length to keep')
+    # Step 19: fastq_qc
+    p19 = subparsers.add_parser('fastq_qc', help='FASTQ QC using fastp (with progress bar)')
+    p19.add_argument('--path1_fastq', required=True, help='Directory containing raw FASTQ files')
+    p19.add_argument('--path2_fastp', required=True, help='Output directory for cleaned FASTQ files')
+    p19.add_argument('--num_threads', type=int, default=8, help='Threads per fastp process')
+    p19.add_argument('--suffix1', default='_1.fastq.gz', help="R1 suffix; R2 inferred by replacing '1' with '2'")
+    p19.add_argument('--batch_size', type=int, default=1, help='Number of concurrent samples (processes)')
+    p19.add_argument('--se', action='store_true', help='Single-end sequencing; omit for paired-end')
+    p19.add_argument('--length_required', type=int, default=50, help='Minimum read length to keep')
 
-    p21 = subparsers.add_parser('log2_eset', help='Apply log2(x+1) to an expression matrix')
-    p21.add_argument('-i', '--input',  required=True,
+    # Step 20: log2_eset
+    p20 = subparsers.add_parser('log2_eset', help='Apply log2(x+1) to an expression matrix')
+    p20.add_argument('-i', '--input',  required=True,
                 help='Path to input matrix (CSV/TSV/TXT, optionally .gz). Rows=genes, cols=samples.')
-    p21.add_argument('-o', '--output', required=True,
+    p20.add_argument('-o', '--output', required=True,
                 help='Path to save the log2(x+1) matrix. Extension selects delimiter (.csv/.tsv or mirror input).')
 
     p_trust4 = subparsers.add_parser(
@@ -689,26 +660,6 @@ def main():
             '-o',       args.output
         ]
         epic_main()
-        _sys.argv = _sys_argv_orig
-    elif args.command == 'deside':
-        _sys_argv_orig = _sys.argv[:]
-        _sys.argv = [
-            _sys_argv_orig[0],
-            '--model_dir', args.model_dir,
-            '--input', args.input,
-            '--output', args.output,
-            '--exp_type', args.exp_type,
-            *(['--gmt'] + args.gmt if args.gmt else []),
-            *(['--print_info'] if args.print_info else []),
-            *(['--add_cell_type'] if args.add_cell_type else []),
-            *(['--scaling_by_constant'] if args.scaling_by_constant else []),
-            *(['--scaling_by_sample'] if args.scaling_by_sample else []),
-            *(['--one_minus_alpha'] if args.one_minus_alpha else []),
-            '--method_adding_pathway', args.method_adding_pathway,
-            *(['--transpose'] if args.transpose else []),
-            *(['--result_dir', args.result_dir] if args.result_dir else []),
-        ]
-        deside_main()
         _sys.argv = _sys_argv_orig
     elif args.command == 'tme_cluster':
         _sys_argv_orig = _sys.argv[:]

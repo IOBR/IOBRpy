@@ -16,7 +16,6 @@ parameter semantics aligned with upstream `iobrpy` instead of maintaining a
 second, drift-prone command surface.
 
 Intentional exclusions:
-- `deside`
 - `ai`
 
 All other native `iobrpy` subcommands are exposed as MCP tools, and their
@@ -51,7 +50,7 @@ Use `--dry-run` to preview changes and `--force` when you want to overwrite the 
 
 ## Overview
 
-IOBRpy is a command-line toolkit for bulk RNA-seq immuno-oncology analysis. This harness is now **native-first**: for every non-`deside`/`ai` IOBRpy command, the agent-facing parameter surface in `iobrpy-cli` is constrained by `src/iobrpy/RAG_MCP/iobrpy_required_params.json`.
+IOBRpy is a command-line toolkit for bulk RNA-seq immuno-oncology analysis. This harness is now **native-first**: for every non-`ai` IOBRpy command, the agent-facing parameter surface in `iobrpy-cli` is constrained by `src/iobrpy/RAG_MCP/iobrpy_required_params.json`.
 
 Preferred pattern:
 
@@ -121,7 +120,7 @@ The package requires:
 - click >= 8.0
 - pandas >= 1.5
 - prompt-toolkit >= 3.0
-- iobrpy >= 0.1.9
+- iobrpy >= 0.2.0
 
 ### Optional Dependencies
 

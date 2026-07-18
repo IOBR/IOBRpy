@@ -20,7 +20,7 @@ PACKAGES = [
 
 setup(
     name="iobrpy-cli",
-    version="0.1.9",
+    version="0.2.0",
     description="CLI harness for IOBRpy with REPL support and JSON output",
     long_description=README_PATH.read_text(encoding='utf-8') if README_PATH.exists() else (
         "CLI harness for IOBRpy (Immuno-Oncology Biological Research using Python) "
@@ -68,7 +68,7 @@ setup(
         "click>=8.0",
         "pandas>=1.5",
         "prompt-toolkit>=3.0",
-        "iobrpy>=0.1.9",
+        "iobrpy>=0.2.0",
     ],
 
     extras_require={

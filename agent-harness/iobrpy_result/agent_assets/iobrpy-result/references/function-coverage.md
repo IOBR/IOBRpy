@@ -35,7 +35,6 @@ This table is the complete coverage contract for `iobrpy-result`. It mirrors the
 
 ## Explicit Exclusions
 
-- `deside` is intentionally not covered.
 - `ai` is intentionally not covered because it is an orchestration interface rather than a
   result-producing analysis function with its own biological output semantics.
 

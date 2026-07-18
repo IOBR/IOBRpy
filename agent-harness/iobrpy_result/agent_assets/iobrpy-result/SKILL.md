@@ -1,6 +1,6 @@
 ---
 name: iobrpy-result
-description: Adaptively visualize, audit, and interpret outputs from every registered IOBRpy result-producing command except deside and the non-result ai orchestrator. Covers FASTQ QC, Salmon/STAR quantification, matrix annotation and transformation, signature scoring, TME methods, ligand-receptor scores, clustering, TRUST4, HLA processing and typing, runall, and tme_profile. Use when the user asks an agent to explore, plot, compare, summarize, explain, biologically interpret, or prepare publication-ready figures from IOBRpy result directories or tables.
+description: Adaptively visualize, audit, and interpret outputs from every registered IOBRpy result-producing command except the non-result ai orchestrator. Builds claim-led, reviewer-ready scientific figures from content-verified IOBRpy evidence while preserving method semantics, provenance, uncertainty, source data, and editable exports. Covers FASTQ QC, Salmon/STAR quantification, matrix annotation and transformation, signature scoring, TME methods, ligand-receptor scores, clustering, TRUST4, HLA processing and typing, runall, and tme_profile. Use when the user asks an agent to explore, plot, compare, summarize, explain, biologically interpret, or prepare publication-ready figures from IOBRpy result directories or tables.
 ---
 
 # IOBRpy Result
@@ -52,8 +52,8 @@ Support both English and Simplified Chinese interactions.
   messages in their original form.
 - If the current request is genuinely balanced or contains no natural-language text, ask
   one concise language question before any backend question.
-- Keep all packaged skill, plugin, command, and reference files in English ASCII. Bilingual
-  support is a runtime behavior and must not depend on hard-coded Chinese source text.
+- Keep packaged instructions in English. Runtime questions, explanations, labels, captions,
+  and interpretation remain dynamically localized from the current request.
 
 ## Request Routing Before Backend Selection
 
@@ -85,22 +85,28 @@ after the user explicitly requests a visualization.
 
 Backend selection is a blocking gate for every request that creates or modifies a figure.
 If the user has not explicitly selected Python or R in the current request, ask one concise
-question equivalent to:
+question in the request-scoped language. The question should naturally ask which of Python
+or R the user prefers. An English example is:
 
 ```text
-Python or R?
+Would you prefer Python or R?
 ```
 
-Ask that question using the request-scoped `en` or `zh` language code, then stop and wait.
-For an English current request, the question must be in English even if earlier conversation
-turns were Chinese. For a Chinese current request, use a natural Simplified Chinese
-equivalent. Do not inspect result files, run `iobrpy-cli map`, draft a figure brief, write
-plotting code, or create previews before the user answers. Do not require a hard-coded
-localized template.
+This is an example, not required fixed wording. Emit only one natural question in the
+request-scoped language, then stop and wait. Do not add an explanation, translation, or
+bilingual pair unless the user explicitly requests bilingual output. For an English current
+request, ask in English even if earlier turns were Chinese. For a Chinese current request,
+ask naturally in Simplified Chinese even if earlier turns were English. Do not inspect result
+files, run `iobrpy-cli map`, draft a figure contract, write plotting code, or create previews
+before the user answers.
 
 Concrete gate example: for a current request such as
-`please analyze /path/to/results and visualize`, select `en` and ask exactly
-`Python or R?`. Do not prepend a Chinese or bilingual explanation before the question.
+`please analyze /path/to/results and visualize`, select `en` and ask naturally in English,
+for example, `Would you prefer Python or R?`. Do not prepend a Chinese or bilingual
+explanation before the question.
+
+For any current request classified as `zh`, ask naturally in Simplified Chinese without
+emitting the English question or a bilingual pair.
 
 A clearly Python- or R-specific script supplied by the user counts as an explicit backend
 selection.
@@ -116,6 +122,22 @@ and visual QA:
 
 Write task-specific plotting code in the user's output directory and keep the original
 result files unchanged.
+
+## Figure Quality Contract
+
+For every explicit visualization request, complete a claim-led figure contract after the
+backend gate and evidence inventory but before plotting code. The contract must define:
+
+- one-sentence core conclusion with an active verb;
+- result-specific figure archetype and target journal/output context;
+- final physical dimensions and required editable/raster formats;
+- panel map with one hero panel and non-redundant context, validation, or robustness roles;
+- statistics, source-data, uncertainty/fit, and image-integrity requirements;
+- the main reviewer risk and the visual choice that addresses it.
+
+Do not start from a favorite template. If hiding a panel would not weaken the conclusion,
+remove or merge it. Set the final-size and export contract before styling so typography,
+annotation density, and panel balance are judged at the delivered dimensions.
 
 ## Core Workflow
 
@@ -135,6 +157,9 @@ result files unchanged.
      function, source class, decisive evidence, confidence, and whether it is eligible for
      IOBRpy-specific interpretation or plotting.
 2. Build a result profile before interpretation or visual design.
+   - Open the actual result table and inspect its delimiter, headers, shape, orientation,
+     sample/feature identifiers, numeric columns, representative values, ranges, and
+     missingness. Do not infer method semantics from filenames alone.
    - Record the method, unit, orientation, sample key, feature family, uncertainty or fit
      fields, metadata coverage, exact IOBRpy version, implementation variant, and effective
      transformation chain.
@@ -155,26 +180,37 @@ result files unchanged.
      native file can confirm its own role without proving that all expected companion files,
      samples, loci, chains, diagnostics, or child stages completed.
 3. Branch by request type.
-   - Interpretation-only: skip the plotting backend question, figure brief, plotting code,
+   - Interpretation-only: skip the plotting backend question, figure contract, plotting code,
      preview generation, and visual QA. Continue directly to evidence-layer interpretation.
-   - Visualization: require the plotting backend gate, then draft a figure brief with
-     [references/figure-framework.md](references/figure-framework.md). State the question,
-     provisional conclusion, comparison unit, evidence hierarchy, selected backend,
-     reviewer risk, and at least two plausible visual designs. Choose the design that best
-     exposes the evidence, not the most familiar chart. Read
+   - Visualization: require the plotting backend gate, establish the evidence inventory,
+     then complete the claim-led figure contract with
+     [references/figure-framework.md](references/figure-framework.md). State the core
+     conclusion, archetype, target output, final dimensions, panel map, comparison unit,
+     evidence hierarchy, selected backend, statistics/source-data needs, reviewer risk, and
+     at least two materially different visual designs. Choose the design that best exposes
+     the evidence, not the most familiar chart. Read
      [references/design-examples.md](references/design-examples.md) when the first design
      still looks generic or when several result families could be integrated.
 4. For visualization requests, implement a bespoke figure.
    - Use [references/visualization.md](references/visualization.md) as a visual grammar,
      not a template catalog.
    - Adapt layout, ordering, transformations, annotations, and panel balance to the result.
-   - Create one coherent visual argument; do not automatically emit one plot per table.
+   - Give the hero evidence the clearest axis or largest panel. Keep context, validation,
+     uncertainty, and robustness panels visually quieter.
+   - Reuse one biological color vocabulary, typography hierarchy, panel-label system, and
+     legend strategy across the figure.
+   - Create one coherent visual argument; do not automatically emit one plot per table or
+     divide the canvas into equal panels when the evidence importance is unequal.
+   - Export from the selected backend at final dimensions, open the rendered preview, inspect
+     hierarchy, clipping, overlap, legibility, color scales, and empty space, then revise and
+     re-render until the applicable QA checks pass.
    - Track every generated image file and resolve it to a normalized absolute path.
 5. Interpret in evidence layers.
    - Separate direct observations, method-aware meaning, biological hypotheses, and limits.
    - Explain why the selected visual encoding supports the conclusion.
-6. Run the applicable sections of [references/qa.md](references/qa.md). Inspect and revise a
-   rendered preview only when a visualization was requested.
+6. Run the applicable sections of [references/qa.md](references/qa.md). For visualization
+   requests, complete its render-inspect-revise loop at final size and verify editable text,
+   source-data traceability, and the export bundle before delivery.
 
 ## Coverage Boundary
 
@@ -183,7 +219,6 @@ The supported result-producing command set is defined by
 [references/function-coverage.md](references/function-coverage.md).
 
 - Cover all 27 registered commands in that table.
-- Exclude `deside`.
 - Exclude `ai`: it orchestrates tools but does not define a standalone biological result
   format to interpret.
 - A workflow wrapper such as `runall` or `tme_profile` requires both wrapper-level
@@ -234,11 +269,17 @@ in code and interpretation.
 
 Use this order:
 
-1. **Observed result**: exact pattern visible in the supplied data.
-2. **Method-aware meaning**: what the IOBRpy method estimates and on which scale.
-3. **Biological hypothesis**: a bounded explanation consistent with the evidence.
-4. **Alternative explanations**: technical, compositional, cohort, or confounding factors.
-5. **Next evidence**: the most useful validation or companion analysis, when relevant.
+1. **Identified result**: method, exact file, table shape, sample orientation, and completion.
+2. **Field meanings**: explain the important columns, units, score direction, and quality or
+   uncertainty fields actually present.
+3. **Key observations**: report concrete patterns, ranges, missing values, outliers, or group
+   differences visible in the supplied values.
+4. **Method-aware meaning**: explain what those observations can mean biologically or
+   technically on the method's actual scale.
+5. **Necessary limitations**: state only the main constraint needed to avoid overclaiming.
+6. **Optional visualization handoff**: when useful, name the comparison, fields, quality
+   overlay, and visual form that would best show the finding. Do not create a figure or ask
+   about Python/R unless the user explicitly requests visualization.
 
 Prefer cross-method concordance in direction or rank. Do not compare raw magnitudes across
 different deconvolution methods.
@@ -249,8 +290,11 @@ Choose deliverables that fit the request. For a publication-oriented task, norma
 
 - editable SVG;
 - PNG preview;
+- PDF when the target workflow accepts vector PDF;
+- TIFF when required by the target journal or image-heavy submission workflow;
 - task-specific plotting script;
 - exact plotted source data;
+- concise figure contract and QA notes;
 - concise interpretation and caveats;
 - statistics table when comparisons were performed.
 

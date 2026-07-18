@@ -1,6 +1,6 @@
 <p align="center">
   <a href="#pypi"><img alt="PyPI" src="https://img.shields.io/badge/PyPI-pip%20install-blue"></a>
-  <a href="#conda"><img alt="Conda" src="https://img.shields.io/badge/Conda-bioconda-brightgreen"></a>
+  <a href="#bioconda"><img alt="Bioconda" src="https://img.shields.io/badge/Conda-bioconda-brightgreen"></a>
   <a href="#docker"><img alt="Docker" src="https://img.shields.io/badge/Docker-pull-2496ED"></a>
 </p>
 
@@ -60,16 +60,18 @@ Examples:
 
 ## Installation
 
+IOBRpy can be installed from PyPI, Bioconda, or Docker. Choose one method; you do not need to install all three.
+
 ### Quick install
 
 ```bash
-# Method 1 : PyPI
+# Method 1: PyPI
 pip install iobrpy
 
-# Method 2 : Conda (bioconda via conda-forge + bioconda)
+# Method 2: Bioconda
 conda install -c conda-forge -c bioconda iobrpy
 
-# Method 3 : Docker
+# Method 3: Docker
 docker pull hhn123123/iobrpy:latest
 ```
 
@@ -79,7 +81,7 @@ docker pull hhn123123/iobrpy:latest
 
 ```bash
 # Creating a virtual environment is recommended
-conda create -n iobrpy python=3.11 -y
+conda create -n iobrpy python=3.11 pip -y
 conda activate iobrpy
 ```
 ```bash
@@ -91,7 +93,7 @@ python -m pip install --upgrade pip
 pip install iobrpy
 ```
 ```bash
-# Install fastp, salmon, STAR and MultiQC
+# Install fastp, salmon, STAR, MultiQC and samtools
 # Recommended: use mamba for faster solves (if available)
 mamba install -y -c conda-forge -c bioconda \
   fastp \
@@ -110,11 +112,11 @@ conda install -y -c conda-forge -c bioconda \
 ```
 </details>
 
-### Conda
+### Bioconda
 
 > **Prerequisite (Conda):** Please install Miniconda or Anaconda first. We recommend [Miniconda](https://docs.anaconda.com/miniconda/).
 
-<details><summary><strong>Show full Conda steps</strong></summary>
+<details><summary><strong>Show full Bioconda steps</strong></summary>
 
 ```bash
 # Creating a virtual environment is recommended
@@ -128,6 +130,16 @@ mamba install -y -c conda-forge -c bioconda iobrpy
 
 # If you don't have mamba, use conda instead
 conda install -y -c conda-forge -c bioconda iobrpy
+```
+</details>
+
+### Docker
+
+<details><summary><strong>Show full Docker steps</strong></summary>
+
+```bash
+#Pull the published image:
+docker pull hhn123123/iobrpy:latest
 ```
 </details>
 
@@ -175,7 +187,6 @@ conda install -y -c conda-forge -c bioconda iobrpy
 - `mcpcounter` — MCPcounter infiltration scores.
 - `IPS` — Immunophenoscore (AZ/SC/CP/EC + total).
 - `bayesprism` — Bayesian deconvolution with a single-cell reference; standalone optional workflow outside the default `tme_profile` / `runall` six-method bundle.
-- `deside` — Deep learning–based deconvolution (requires pre‑downloaded model; supports pathway‑masked mode via KEGG/Reactome GMTs).
 
 **Clustering / decomposition**
 - `tme_cluster` — k‑means with **automatic k** via KL index (Hartigan–Wong), feature selection and standardization.
@@ -365,4 +376,4 @@ Each method writes a single table named `<method>_results.csv`:
 
 ## Contact / Support
 - Issues: https://github.com/IOBR/IOBRpy/issues
-- Maintainers: [ Haonan Huang ] (email = 2905611068@qq.com); [ Dongqiang Zeng ] (email = interlaken@smu.edu.cn)
+- Maintainers: [ Haonan Huang ] (email = 13432263093@163.com); [ Dongqiang Zeng ] (email = interlaken@smu.edu.cn)

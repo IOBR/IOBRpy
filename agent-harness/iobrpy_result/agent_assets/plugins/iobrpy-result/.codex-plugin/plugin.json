@@ -1,7 +1,7 @@
 {
   "name": "iobrpy-result",
-  "version": "0.3.7",
-  "description": "Adaptive scientific visualization and implementation-aware interpretation for all registered IOBRpy result functions except deside.",
+  "version": "0.3.11",
+  "description": "Claim-led scientific visualization and implementation-aware interpretation for all registered IOBRpy result functions.",
   "author": {
     "name": "IOBRpy",
     "url": "https://github.com/IOBR/IOBRpy"
@@ -19,8 +19,8 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "IOBRpy Result",
-    "shortDescription": "Adaptively visualize and interpret IOBRpy outputs",
-    "longDescription": "Explore mixed result directories, distinguish confirmed IOBRpy outputs from likely, reusable, external, metadata, and unknown files, design result-specific editable scientific figures, and interpret results with method-aware caveats in English or Simplified Chinese selected from the current request. Excludes deside and the non-result ai orchestrator.",
+    "shortDescription": "Build claim-led publication figures from IOBRpy outputs",
+    "longDescription": "Explore mixed result directories, distinguish confirmed IOBRpy outputs from likely, reusable, external, metadata, and unknown files, define a conclusion-first figure contract, build final-size editable scientific figures with explicit evidence hierarchy and visual QA, and interpret results with method-aware caveats. Excludes the non-result ai orchestrator.",
     "developerName": "IOBRpy",
     "category": "Coding",
     "capabilities": [
@@ -32,10 +32,10 @@
     "privacyPolicyURL": "https://github.com/IOBR/IOBRpy",
     "termsOfServiceURL": "https://github.com/IOBR/IOBRpy",
     "defaultPrompt": [
-      "Use only the language of my current request, ask me to choose Python or R, then explore this IOBRpy result directory and design the most informative figure",
-      "Ask me to choose Python or R before creating a result-specific publication-ready TME figure",
+      "Use only the language of my current request, ask the exact language-matched backend question defined by the skill, then define a claim-led figure contract and build the most informative IOBRpy result figure",
+      "Ask the exact request-language backend question before creating a final-size publication-ready TME figure with a hero panel and non-redundant supporting evidence",
       "Explain the biological meaning and limitations of these IOBRpy outputs in my language without asking about Python or R",
-      "Create the requested figure and report the complete absolute path of every generated image"
+      "Create the requested figure, complete the render-inspect-revise QA loop, and report the complete absolute path of every generated image"
     ],
     "brandColor": "#0F766E",
     "screenshots": []

@@ -14,18 +14,39 @@ Before routing, apply `source-classification.md`. Method-aware interpretation do
 override provenance: an external or ambiguous table remains external or ambiguous even when
 its columns resemble an IOBRpy-supported analysis family.
 
-## Required Structure
+## File Understanding Gate
+
+Before applying a method guide, open the actual result file and inspect:
+
+- delimiter, headers, table shape, and row/column orientation;
+- sample and feature identifiers, duplicates, and companion-file consistency;
+- numeric versus label columns, representative values, ranges, missingness, and nonfinite
+  values;
+- method-specific quality, fit, uncertainty, depth, residual, or completion fields that are
+  actually present.
+
+A filename or directory name identifies only a candidate result. Do not explain fields,
+claim completion, or apply biological semantics until the content is compatible with the
+method. If the values cannot be read, state that the file was identified but not
+value-interpreted.
+
+## Default User-Facing Interpretation
 
 For each function, report:
 
-1. **Detected evidence**: exact files, sample count, shape, completion markers, and relevant
-   parameters or modes.
-2. **Observed result**: concrete patterns, missing outputs, range violations, or quality
-   signals visible in the supplied evidence.
-3. **Method-aware meaning**: what the function computed and the scale of its output.
-4. **Bounded interpretation**: biological or technical meaning supported by the result.
-5. **Limitations and next evidence**: assumptions, confounding, uncertainty, and the most
-   useful validation when relevant.
+1. **Identified result**: exact file, IOBRpy method, sample count, shape, orientation, and
+   completion evidence.
+2. **Field meanings**: explain important columns, units, score direction, and quality or
+   uncertainty fields present in the file.
+3. **Key observations**: report concrete patterns, ranges, missing outputs, outliers, range
+   violations, or group differences visible in the supplied values.
+4. **Method-aware meaning**: explain the supported biological or technical meaning on the
+   method's actual scale.
+5. **Necessary limitations**: state the main assumption, confounder, uncertainty, or scale
+   constraint needed to avoid overclaiming.
+6. **Optional visualization handoff**: when useful, name the finding, source fields,
+   comparison unit, quality overlay, and suitable visual grammar. Do not create a figure or
+   trigger the Python/R backend gate unless visualization was explicitly requested.
 
 Do not manufacture a biological narrative for a technical preprocessing function. Its
 interpretation should instead explain data quality, transformation provenance, information

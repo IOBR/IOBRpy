@@ -36,14 +36,19 @@ question, update, figure label, caption, interpretation, and final response. Whe
 
 Ask about Python or R only when `$ARGUMENTS` explicitly requests creation or modification
 of a plot, chart, figure, or other visualization. If visualization is explicitly requested
-and no backend is selected, ask the localized equivalent of `Python or R?` in the user's
-request-scoped language and stop before inspecting data or planning the figure. In
-particular, English `$ARGUMENTS` must produce an English backend question even when prior
-conversation turns were Chinese.
+and no backend is selected, ask one concise backend question in the request-scoped language:
+use English for `en` and Simplified Chinese for `zh`. An English example is
+`Would you prefer Python or R?`; it is not fixed wording. Emit only one language-matched
+question and stop before inspecting data or planning the figure. Do not emit a translation
+or bilingual pair unless explicitly requested.
 
 Concrete example: if `$ARGUMENTS` is
-`please analyze /path/to/results and visualize`, select `en` and ask exactly
-`Python or R?`. Do not prepend a Chinese or bilingual explanation.
+`please analyze /path/to/results and visualize`, select `en` and ask naturally in English,
+for example, `Would you prefer Python or R?`. Do not prepend a Chinese or bilingual
+explanation.
+
+For any `$ARGUMENTS` classified as `zh`, ask naturally in Simplified Chinese. Do not emit
+the English question or a bilingual pair.
 
 For interpretation, explanation, audit, summary, comparison, provenance classification, or
 result inspection without explicit visualization intent, do not ask about Python or R.
@@ -55,13 +60,28 @@ and data instead of applying a fixed plot template. Produce editable SVG figures
 previews, source-data tables, reproducible task-specific plotting code, and method-aware
 interpretation when the request calls for artifacts.
 
+Before interpreting a result, open the actual file and inspect its headers, shape,
+orientation, identifiers, representative numeric values, ranges, missingness, and available
+quality or uncertainty fields. Never infer the result meaning from a filename alone.
+
+Before plotting, define a one-sentence core conclusion, result-specific figure archetype,
+target output, final physical size, panel map, evidence hierarchy, statistics/source-data
+needs, and main reviewer risk. Give the hero evidence the dominant panel; keep context,
+uncertainty, validation, and robustness panels visually subordinate. Do not divide the
+canvas equally when the evidence importance is unequal.
+
+Export from the selected backend at final size, open the PNG preview, inspect hierarchy,
+clipping, overlap, legibility, legends, color scales, and empty space, then revise and
+re-render until the figure passes QA. Keep SVG text editable and do not use the other
+backend for previews or export repair.
+
 After successfully generating any figure, verify every image file exists and list the
 complete normalized absolute path of each image in the final response. Do not report only a
 basename, relative path, or parent output directory, even when the image is embedded.
 
 Interpret every detected registered IOBRpy result-producing function, including upstream
 QC, quantification, annotation, transformation, and workflow-wrapper evidence. Exclude
-`deside` and exclude the non-result `ai` orchestration interface.
+the non-result `ai` orchestration interface.
 
 For mixed directories, classify each candidate path as confirmed IOBRpy, likely IOBRpy,
 compatible reusable data, external result, metadata/auxiliary, or unknown before analysis.
@@ -69,5 +89,5 @@ Use content evidence and map provenance fields; never infer native provenance fr
 file, directory name, or filename keyword alone.
 
 Support English and Simplified Chinese interactions while keeping commands, identifiers,
-paths, and raw errors in their original form. All packaged source files remain English ASCII;
+paths, and raw errors in their original form. Packaged instructions remain English;
 localization happens at runtime.

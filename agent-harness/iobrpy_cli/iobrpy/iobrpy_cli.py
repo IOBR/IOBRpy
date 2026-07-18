@@ -692,7 +692,7 @@ def _print_root_help() -> None:
     click.echo()
     click.echo(
         "Native-first IOBRpy harness. Agent-facing command schemas and help for all "
-        "non-deside/ai commands are constrained by `src/iobrpy/RAG_MCP/iobrpy_required_params.json`."
+        "non-ai commands are constrained by `src/iobrpy/RAG_MCP/iobrpy_required_params.json`."
     )
     click.echo()
     click.echo("Quick start:")
@@ -2837,7 +2837,7 @@ def commands(details: bool):
         "native_command_count": len(tool_summaries),
         "commands": tool_summaries,
         "policy": {
-            "excluded_native_commands": ["deside", "ai"],
+            "excluded_native_commands": ["ai"],
             "preferred_first_step": "map",
             "compatibility_namespaces": ["analyze", "quantify", "workflow", "immune", "hla_tcr"],
         },
@@ -2890,6 +2890,15 @@ def map(path: str, max_depth: int, max_entries: int, quick: bool, focus: Tuple[s
         raise click.exceptions.Exit(1)
 
 
+def _find_agent_manifest(start: Optional[Path] = None) -> Optional[Path]:
+    current = (start or Path.cwd()).resolve()
+    for directory in (current, *current.parents):
+        candidate = directory / "agent-manifest.json"
+        if candidate.is_file():
+            return candidate.resolve()
+    return None
+
+
 @cli.command()
 @click.option('--path', type=click.Path(), help='Input path to inspect')
 @click.option('--task', default='', help='Natural-language task description')
@@ -2926,6 +2935,7 @@ def doctor(path: str, task: str, external: bool):
     detected = _detect_input_summary(Path(path)) if path else None
     pipeline_map = analyze_pipeline_path(Path(path)) if path else None
     recommendation = _recommend_for_summary(detected, task) if detected else None
+    agent_manifest = _find_agent_manifest()
     payload = {
         "success": True,
         "entrypoint": "iobrpy-cli",
@@ -2953,7 +2963,7 @@ def doctor(path: str, task: str, external: bool):
         "detected_input": detected,
         "pipeline_map": pipeline_map,
         "recommendation": recommendation,
-        "agent_manifest": str(Path.cwd() / "agent-manifest.json"),
+        "agent_manifest": str(agent_manifest) if agent_manifest else None,
         "guidance": [
             "Prefer iobrpy-cli <native_command> or iobrpy-cli-mcp before scanning source files.",
             "Do not substitute the R IOBR package when Python iobrpy is available.",

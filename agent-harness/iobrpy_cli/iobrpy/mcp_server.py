@@ -4,7 +4,7 @@ MCP server for native IOBRpy commands.
 This module exposes the native ``iobrpy`` subcommands as MCP tools so coding
 agents can call the CLI directly instead of re-discovering workflows from
 source code. The command list is derived from the real argparse parser in
-``iobrpy.main`` and intentionally excludes ``deside`` and ``ai``.
+``iobrpy.main`` and intentionally excludes the non-result ``ai`` orchestrator.
 """
 
 from __future__ import annotations
@@ -37,7 +37,7 @@ SERVER_INFO = {
     "description": "Expose native iobrpy commands as MCP tools.",
 }
 CAPABILITIES = {"tools": {"listChanged": False}}
-EXCLUDED_COMMANDS = {"deside", "ai"}
+EXCLUDED_COMMANDS = {"ai"}
 FORWARDED_PARSER_RELATIVE_PATHS = {
     "runall": Path("workflow") / "runall.py",
     "tme_profile": Path("workflow") / "tme_profile.py",
@@ -3988,7 +3988,7 @@ def _call_list_native_commands_tool(arguments: Dict[str, Any]) -> Dict[str, Any]
         "native_command_count": len(tool_summaries),
         "commands": tool_summaries,
         "policy": {
-            "excluded_native_commands": ["deside", "ai"],
+            "excluded_native_commands": ["ai"],
             "preferred_first_step": "map_path",
             "compatibility_namespaces": ["analyze", "quantify", "workflow", "immune", "hla_tcr"],
         },
