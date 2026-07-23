@@ -16,6 +16,8 @@
 
 A complete documentation for IOBRpy can be found at https://iobr.github.io/IOBRpy/.
 
+**Preprint:** The preprint of this work is now available on [bioRxiv](https://doi.org/10.64898/2026.07.17.739055).
+
 ---
 
 ## Agent Bootstrap
