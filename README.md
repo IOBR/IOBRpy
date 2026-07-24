@@ -18,7 +18,7 @@ A complete documentation for IOBRpy can be found at https://iobr.github.io/IOBRp
 
 **Preprint:** The preprint of this work is now available on [bioRxiv](https://doi.org/10.64898/2026.07.17.739055).
 
-For a complete FASTQ-to-TME example, see the [IOBRpy online tutorial](https://hhn0527.github.io/IOBRpy_book/).
+For a complete FASTQ-to-TME example, see the [IOBRpy online tutorial](https://iobr.github.io/IOBRpy_book/).
 
 ---
 
