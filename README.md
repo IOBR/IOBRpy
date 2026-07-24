@@ -20,46 +20,6 @@ A complete documentation for IOBRpy can be found at https://iobr.github.io/IOBRp
 
 ---
 
-## Agent Bootstrap
-
-If you want coding agents to discover `iobrpy-cli` and the result-visualization skill without repeating them in every prompt, install the packaged agent integrations once:
-
-```bash
-# Claude Code: install `/iobrpy`, `/iobrpy-result`, and MCP registration
-iobrpy-cli agent install --client claude-code
-
-# Codex: install both skills, both plugins, and MCP registration
-iobrpy-cli agent install --client codex
-
-# Configure every supported client in one pass
-iobrpy-cli agent install --client all
-
-# Inspect what is already installed without changing anything
-iobrpy-cli agent status
-```
-
-After installing the Claude Code/Codex integration, restart Claude Code/Codex once so the slash-command list refreshes.
-
----
-
-## Agent Entry Points
-
-IOBRpy provides two agent entrypoints:
-
-- `/iobrpy` helps you inspect input data, choose the right IOBRpy workflow, and prepare or run commands.
-- `/iobrpy-result` is for finished outputs. It helps summarize, audit, interpret, compare, and visualize IOBRpy result directories or result tables.
-
-In short, use `/iobrpy` before or during analysis, and use `/iobrpy-result` after results have been generated.
-
-Examples:
-
-```text
-/iobrpy please scan path/to/your/target/directory
-/iobrpy-result visualize and interpret path/to/iobrpy/result/directory
-```
-
----
-
 ## Installation
 
 IOBRpy can be installed from PyPI, Bioconda, or Docker. Choose one method; you do not need to install all three.
@@ -144,6 +104,46 @@ conda install -y -c conda-forge -c bioconda iobrpy
 docker pull hhn123123/iobrpy:latest
 ```
 </details>
+
+---
+
+## Agent Bootstrap
+
+If you want coding agents to discover `iobrpy-cli` and the result-visualization skill without repeating them in every prompt, install the packaged agent integrations once:
+
+```bash
+# Claude Code: install `/iobrpy`, `/iobrpy-result`, and MCP registration
+iobrpy-cli agent install --client claude-code
+
+# Codex: install both skills, both plugins, and MCP registration
+iobrpy-cli agent install --client codex
+
+# Configure every supported client in one pass
+iobrpy-cli agent install --client all
+
+# Inspect what is already installed without changing anything
+iobrpy-cli agent status
+```
+
+After installing the Claude Code/Codex integration, restart Claude Code/Codex once so the slash-command list refreshes.
+
+---
+
+## Agent Entry Points
+
+IOBRpy provides two agent entrypoints:
+
+- `/iobrpy` helps you inspect input data, choose the right IOBRpy workflow, and prepare or run commands.
+- `/iobrpy-result` is for finished outputs. It helps summarize, audit, interpret, compare, and visualize IOBRpy result directories or result tables.
+
+In short, use `/iobrpy` before or during analysis, and use `/iobrpy-result` after results have been generated.
+
+Examples:
+
+```text
+/iobrpy please scan path/to/your/target/directory
+/iobrpy-result visualize and interpret path/to/iobrpy/result/directory
+```
 
 ---
 
