@@ -554,37 +554,47 @@
     "href": "Citation.html",
     "title": "13  Citation",
     "section": "",
-    "text": "13.1 TME deconvolution\nPlease cite the following papers appropriately for TME deconvolution algorithm if used:\nCIBERSORT: Newman, A. M., Liu, C. L., Green, M. R., Gentles, A. J., Feng, W., Xu, Y., … Alizadeh, A. A. (2015). Robust enumeration of cell subsets from tissue expression profiles. Nature Methods, 12(5), 453–457. https://doi.org/10.1038/nmeth.3337\nESTIMATE: Vegesna R, Kim H, Torres-Garcia W, …, Verhaak R.* (2013). Inferring tumour purity and stromal and immune cell admixture from expression data. Nature Communications 4, 2612. http://doi.org/10.1038/ncomms3612\nquanTIseq: Finotello, F., Mayer, C., Plattner, C., Laschober, G., Rieder, D., Hackl, H., …, Sopper, S.* (2019). Molecular and pharmacological modulators of the tumor immune contexture revealed by deconvolution of RNA-seq data. Genome medicine, 11(1), 34. https://doi.org/10.1186/s13073-019-0638-6\nIPS: P. Charoentong et al.* , Pan-cancer Immunogenomic Analyses Reveal Genotype-Immunophenotype Relationships and Predictors of Response to Checkpoint Blockade. Cell Reports 18, 248-262 (2017). https://doi.org/10.1016/j.celrep.2016.12.019\nMCPCounter: Becht, E., Giraldo, N. A., Lacroix, L., Buttard, B., Elarouci, N., Petitprez, F., … de Reyniès, A*. (2016). Estimating the population abundance of tissue-infiltrating immune and stromal cell populations using gene expression. Genome Biology, 17(1), 218. https://doi.org/10.1186/s13059-016-1070-5\nEPIC: Racle, J., de Jonge, K., Baumgaertner, P., Speiser, D. E., & Gfeller, D*. (2017). Simultaneous enumeration of cancer and immune cell types from bulk tumor gene expression data. ELife, 6, e26476. https://doi.org/10.7554/eLife.26476\nBayesPrism: Chu, T., Wang, Z., Pe’er, D. et al. Cell type and gene expression deconvolution with BayesPrism enables Bayesian integrative analysis across bulk and single-cell RNA sequencing in oncology. Nat Cancer 3, 505–517 (2022). https://doi.org/10.1038/s43018-022-00356-3",
+    "text": "13.1 IOBR",
     "crumbs": [
       "<span class='chapter-number'>13</span>  <span class='chapter-title'>Citation</span>"
     ]
   },
   {
-    "objectID": "Citation.html#tme-signatures",
-    "href": "Citation.html#tme-signatures",
+    "objectID": "Citation.html#iobr",
+    "href": "Citation.html#iobr",
     "title": "13  Citation",
-    "section": "13.2 TME Signatures",
-    "text": "13.2 TME Signatures\nFor signature score estimation, please cite corresponding literature below:\nssgsea: Barbie, D.A. et al (2009). Systematic RNA interference reveals that oncogenic KRAS-driven cancers require TBK1. Nature, 462(5):108-112.\ngsva: Hänzelmann, S., Castelo, R. and Guinney, J. (2013). GSVA: Gene set variation analysis for microarray and RNA-Seq data. BMC Bioinformatics, 14(1):7.\nzscore: Lee, E. et al (2008). Inferring pathway activity toward precise disease classification. PLoS Comp Biol, 4(11):e1000217.",
+    "section": "",
+    "text": "IOBR: IOBR: Multi-Omics Immuno-Oncology Biological Research to Decode Tumor Microenvironment and Signatures. Frontiers in Immunology (2021). https://doi.org/10.3389/fimmu.2021.687975\nIOBR 2.0: Enhancing immuno-oncology investigations through multidimensional decoding of tumor microenvironment with IOBR 2.0. Cell Reports Methods (2024). https://doi.org/10.1016/j.crmeth.2024.100910",
     "crumbs": [
       "<span class='chapter-number'>13</span>  <span class='chapter-title'>Citation</span>"
     ]
   },
   {
-    "objectID": "Citation.html#rna-seq-preprocessing-quantification-tools",
-    "href": "Citation.html#rna-seq-preprocessing-quantification-tools",
+    "objectID": "Citation.html#rna-seq-preprocessing-and-quantification",
+    "href": "Citation.html#rna-seq-preprocessing-and-quantification",
     "title": "13  Citation",
-    "section": "13.3 RNA-seq preprocessing & quantification tools",
-    "text": "13.3 RNA-seq preprocessing & quantification tools\nfastp: Chen, S., Zhou, Y., Chen, Y., & Gu, J. (2018). fastp: an ultra-fast all-in-one FASTQ preprocessor. Bioinformatics, 34(17), i884–i890. https://doi.org/10.1093/bioinformatics/bty560\nMultiQC: Ewels, P., Magnusson, M., Lundin, S., & Käller, M. (2016). MultiQC: summarize analysis results for multiple tools and samples in a single report. Bioinformatics, 32(19), 3047–3048. https://doi.org/10.1093/bioinformatics/btw354\nSalmon: Patro, R., Duggal, G., Love, M. I., Irizarry, R. A., & Kingsford, C. (2017). Salmon provides fast and bias-aware quantification of transcript expression. Nature Methods, 14(4), 417–419. https://doi.org/10.1038/nmeth.4197\nSTAR: Dobin, A., Davis, C. A., Schlesinger, F., Drenkow, J., Zaleski, C., Jha, S., … Gingeras, T. R. (2013). STAR: ultrafast universal RNA-seq aligner. Bioinformatics, 29(1), 15–21. https://doi.org/10.1093/bioinformatics/bts635",
+    "section": "13.2 RNA-seq preprocessing and quantification",
+    "text": "13.2 RNA-seq preprocessing and quantification\n\nfastp: fastp: an ultra-fast all-in-one FASTQ preprocessor. Bioinformatics (2018). https://doi.org/10.1093/bioinformatics/bty560\nfastp 1.0: fastp 1.0: An ultra-fast all-round tool for FASTQ data quality control and preprocessing. iMeta (2025). https://doi.org/10.1002/imt2.70078\nfastp: Ultrafast one-pass FASTQ data preprocessing, quality control, and deduplication using fastp. iMeta (2023). https://doi.org/10.1002/imt2.107\nMultiQC: MultiQC: summarize analysis results for multiple tools and samples in a single report. Bioinformatics (2016). https://doi.org/10.1093/bioinformatics/btw354\nSalmon: Salmon provides fast and bias-aware quantification of transcript expression. Nature Methods (2017). https://doi.org/10.1038/nmeth.4197\nSTAR: STAR: ultrafast universal RNA-seq aligner. Bioinformatics (2013). https://doi.org/10.1093/bioinformatics/bts635",
     "crumbs": [
       "<span class='chapter-number'>13</span>  <span class='chapter-title'>Citation</span>"
     ]
   },
   {
-    "objectID": "Citation.html#tcr-bcr",
-    "href": "Citation.html#tcr-bcr",
+    "objectID": "Citation.html#tme-deconvolution-and-scoring",
+    "href": "Citation.html#tme-deconvolution-and-scoring",
     "title": "13  Citation",
-    "section": "13.4 TCR-BCR",
-    "text": "13.4 TCR-BCR\nTRUST4: Song, L., Cohen, D., Ouyang, Z. et al. TRUST4: immune repertoire reconstruction from bulk and single-cell RNA-seq data. Nat Methods (2021). https://doi.org/10.1038/s41592-021-01142-2",
+    "section": "13.3 TME deconvolution and scoring",
+    "text": "13.3 TME deconvolution and scoring\n\nCIBERSORT: Robust enumeration of cell subsets from tissue expression profiles. Nature Methods (2015). https://doi.org/10.1038/nmeth.3337\nEPIC: Simultaneous enumeration of cancer and immune cell types from bulk tumor gene expression data. eLife (2017). https://doi.org/10.7554/eLife.26476\nquanTIseq: Molecular and pharmacological modulators of the tumor immune contexture revealed by deconvolution of RNA-seq data. Genome Medicine (2019). https://doi.org/10.1186/s13073-019-0638-6\nMCP-counter: Estimating the population abundance of tissue-infiltrating immune and stromal cell populations using gene expression. Genome Biology (2016). https://doi.org/10.1186/s13059-016-1070-5\nIPS: Pan-cancer Immunogenomic Analyses Reveal Genotype-Immunophenotype Relationships and Predictors of Response to Checkpoint Blockade. Cell Reports (2017). https://doi.org/10.1016/j.celrep.2016.12.019\nESTIMATE: Inferring tumour purity and stromal and immune cell admixture from expression data. Nature Communications (2013). https://doi.org/10.1038/ncomms3612\nBayesPrism: Cell type and gene expression deconvolution with BayesPrism enables Bayesian integrative analysis across bulk and single-cell RNA sequencing in oncology. Nature Cancer (2022). https://doi.org/10.1038/s43018-022-00356-3",
+    "crumbs": [
+      "<span class='chapter-number'>13</span>  <span class='chapter-title'>Citation</span>"
+    ]
+  },
+  {
+    "objectID": "Citation.html#signature-scoring-and-enrichment",
+    "href": "Citation.html#signature-scoring-and-enrichment",
+    "title": "13  Citation",
+    "section": "13.4 Signature scoring and enrichment",
+    "text": "13.4 Signature scoring and enrichment\n\nssGSEA: Systematic RNA interference reveals that oncogenic KRAS-driven cancers require TBK1. Nature (2009). https://doi.org/10.1038/nature08460\nGSEApy: GSEApy: a comprehensive package for performing gene set enrichment analysis in Python. Bioinformatics (2023). https://doi.org/10.1093/bioinformatics/btac757\nPCA: What is principal component analysis? Nature Biotechnology (2008). https://doi.org/10.1038/nbt0308-303",
     "crumbs": [
       "<span class='chapter-number'>13</span>  <span class='chapter-title'>Citation</span>"
     ]
@@ -594,7 +604,17 @@
     "href": "Citation.html#hla-typing",
     "title": "13  Citation",
     "section": "13.5 HLA typing",
-    "text": "13.5 HLA typing\nSpecHLA: Wang, Shuai, Mengyao Wang, Lingxi Chen, Guangze Pan, Yanfei Wang, and Shuai Cheng Li. “SpecHLA enables full-resolution HLA typing from sequencing data.” Cell Reports Methods (2023).",
+    "text": "13.5 HLA typing\n\nSpecHLA: SpecHLA enables full-resolution HLA typing from sequencing data. Cell Reports Methods (2023). https://doi.org/10.1016/j.crmeth.2023.100589",
+    "crumbs": [
+      "<span class='chapter-number'>13</span>  <span class='chapter-title'>Citation</span>"
+    ]
+  },
+  {
+    "objectID": "Citation.html#tcrbcr-repertoire-analysis",
+    "href": "Citation.html#tcrbcr-repertoire-analysis",
+    "title": "13  Citation",
+    "section": "13.6 TCR/BCR repertoire analysis",
+    "text": "13.6 TCR/BCR repertoire analysis\n\nTRUST4: TRUST4: immune repertoire reconstruction from bulk and single-cell RNA-seq data. Nature Methods (2021). https://doi.org/10.1038/s41592-021-01142-2",
     "crumbs": [
       "<span class='chapter-number'>13</span>  <span class='chapter-title'>Citation</span>"
     ]
