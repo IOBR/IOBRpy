@@ -252,6 +252,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#signature-scoring" id="toc-signature-scoring" class="nav-link" data-scroll-target="#signature-scoring"><span class="header-section-number">5.4.4</span> Signature scoring</a></li>
   <li><a href="#deconvolution" id="toc-deconvolution" class="nav-link" data-scroll-target="#deconvolution"><span class="header-section-number">5.4.5</span> Deconvolution</a></li>
   <li><a href="#ligandreceptor" id="toc-ligandreceptor" class="nav-link" data-scroll-target="#ligandreceptor"><span class="header-section-number">5.4.6</span> Ligand–receptor</a></li>
+  <li><a href="#tcrbcr-repertoire" id="toc-tcrbcr-repertoire" class="nav-link" data-scroll-target="#tcrbcr-repertoire"><span class="header-section-number">5.4.7</span> TCR/BCR repertoire</a></li>
   </ul></li>
   <li><a href="#expected-layout" id="toc-expected-layout" class="nav-link" data-scroll-target="#expected-layout"><span class="header-section-number">5.5</span> Expected layout</a></li>
   <li><a href="#output-reference" id="toc-output-reference" class="nav-link" data-scroll-target="#output-reference"><span class="header-section-number">5.6</span> Output Reference</a>
@@ -262,6 +263,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#signatures-04-signatures" id="toc-signatures-04-signatures" class="nav-link" data-scroll-target="#signatures-04-signatures"><span class="header-section-number">5.6.4</span> Signatures (<code>04-signatures/</code>)</a></li>
   <li><a href="#deconvolution-05-tme" id="toc-deconvolution-05-tme" class="nav-link" data-scroll-target="#deconvolution-05-tme"><span class="header-section-number">5.6.5</span> Deconvolution (<code>05-tme/</code>)</a></li>
   <li><a href="#ligandreceptor-06-lr_cal" id="toc-ligandreceptor-06-lr_cal" class="nav-link" data-scroll-target="#ligandreceptor-06-lr_cal"><span class="header-section-number">5.6.6</span> Ligand–receptor (<code>06-LR_cal/</code>)</a></li>
+  <li><a href="#tcrbcr-repertoire-07-tcrbcr" id="toc-tcrbcr-repertoire-07-tcrbcr" class="nav-link" data-scroll-target="#tcrbcr-repertoire-07-tcrbcr"><span class="header-section-number">5.6.7</span> TCR/BCR repertoire (<code>07-TCRBCR/</code>)</a></li>
   </ul></li>
   </ul>
 <div class="toc-actions"><ul><li><a href="https://github.com/IOBR/IOBRpy/edit/main/site/runall.md" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li><li><a href="https://github.com/IOBR/IOBRpy/issues/new" class="toc-action"><i class="bi empty"></i>Report an issue</a></li></ul></div></nav>
@@ -374,6 +376,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <li><code>--id_type {symbol|ensembl|...}</code> — Gene ID type for <code>LR_cal</code></li>
 <li><code>--verbose</code> — Verbose logging</li>
 </ul>
+</section>
+<section id="tcrbcr-repertoire" class="level3" data-number="5.4.7">
+<h3 data-number="5.4.7" class="anchored" data-anchor-id="tcrbcr-repertoire"><span class="header-section-number">5.4.7</span> TCR/BCR repertoire</h3>
+<ul>
+<li><code>Salmon mode</code> — Run TRUST4 on the cleaned FASTQs in <code>01-qc/</code></li>
+<li><code>STAR mode</code> — Run TRUST4 on the BAM files in <code>02-star/</code></li>
+<li><code>--threads &lt;INT&gt;</code> — Forward the top-level thread count to TRUST4 as <code>-t</code></li>
+</ul>
 <hr>
 </section>
 </section>
@@ -407,8 +417,16 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 |   |-- estimate_results.csv
 |   |-- mcpcounter_results.csv
 |   `-- deconvo_merged.csv
-`-- 06-LR_cal
-    `-- lr_cal.csv
+|-- 06-LR_cal
+|   `-- lr_cal.csv
+`-- 07-TCRBCR
+    |-- &lt;sample&gt;/
+    |   |-- TRUST_&lt;sample-prefix&gt;_report.tsv
+    |   `-- &lt;sample&gt;.TRUST4.done
+    |-- trust4_immdata.csv
+    |-- trust4_immune_indices.csv
+    `-- .trust4.done
+
 # STAR mode：
 /path/to/outdir
 |-- 01-qc
@@ -447,8 +465,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 |   |-- estimate_results.csv
 |   |-- mcpcounter_results.csv
 |   `-- deconvo_merged.csv
-`-- 06-LR_cal
-    `-- lr_cal.csv</code></pre>
+|-- 06-LR_cal
+|   `-- lr_cal.csv
+`-- 07-TCRBCR
+    |-- &lt;sample&gt;/
+    |   |-- TRUST_&lt;sample-prefix&gt;_report.tsv
+    |   `-- &lt;sample&gt;.TRUST4.done
+    |-- trust4_immdata.csv
+    |-- trust4_immune_indices.csv
+    `-- .trust4.done</code></pre>
 <hr>
 </section>
 <section id="output-reference" class="level2" data-number="5.6">
@@ -458,10 +483,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <ul>
 <li><code>01-qc/</code> — fastp outputs; a resume flag <code>.fastq_qc.done</code> is written when the step completes.</li>
 <li><code>02-salmon/</code> <strong>or</strong> <code>02-star/</code> — quantification/alignment + merged matrices; resume flags like <code>.batch_salmon.done</code>, <code>.merge_salmon.done</code>, or <code>.merge_star_count.done</code>.</li>
-<li><code>03-tpm/</code> — unified TPM matrix <code>tpm_matrix.csv</code>. For Salmon mode it comes from <code>prepare_salmon</code>; for STAR mode it comes from <code>count2tpm</code>.</li>
+<li><code>03-tpm/tpm_matrix.csv</code> — <strong>log2(x+1)</strong> matrix produced from the upstream TPM matrix (<code>prepare_salmon.csv</code> in Salmon mode or <code>count2tpm.csv</code> in STAR mode).</li>
 <li><code>04-signatures/</code> — signature scoring results (file: <code>calculate_sig_score.csv</code>).</li>
 <li><code>05-tme/</code> — deconvolution outputs from multiple methods + <code>deconvo_merged.csv</code>.</li>
 <li><code>06-LR_cal/</code> — ligand–receptor results <code>lr_cal.csv</code>.</li>
+<li><code>07-TCRBCR/</code> — per-sample TRUST4 repertoire outputs plus batch-level immune repertoire summaries.</li>
 </ul>
 </section>
 <section id="salmon-mode-02-salmon" class="level3" data-number="5.6.2">
@@ -513,6 +539,17 @@ A <code>.merge_salmon.done</code> flag is written after completion.</li>
 <h3 data-number="5.6.6" class="anchored" data-anchor-id="ligandreceptor-06-lr_cal"><span class="header-section-number">5.6.6</span> Ligand–receptor (<code>06-LR_cal/</code>)</h3>
 <ul>
 <li><code>lr_cal.csv</code> — ligand–receptor scoring table from <code>LR_cal</code>. Record the <code>--data_type {count|tpm}</code> and the <code>--id_type</code> you used.</li>
+</ul>
+</section>
+<section id="tcrbcr-repertoire-07-tcrbcr" class="level3" data-number="5.6.7">
+<h3 data-number="5.6.7" class="anchored" data-anchor-id="tcrbcr-repertoire-07-tcrbcr"><span class="header-section-number">5.6.7</span> TCR/BCR repertoire (<code>07-TCRBCR/</code>)</h3>
+<ul>
+<li>Input is selected automatically: Salmon mode analyzes paired cleaned FASTQs in <code>01-qc/</code>; STAR mode analyzes BAM files in <code>02-star/</code>.</li>
+<li><code>&lt;sample&gt;/TRUST_&lt;sample-prefix&gt;_report.tsv</code> — per-sample TRUST4 clonotype report.</li>
+<li><code>&lt;sample&gt;/&lt;sample&gt;.TRUST4.done</code> — per-sample completion flag.</li>
+<li><code>trust4_immdata.csv</code> — combined immune repertoire records generated from all discovered <code>*_report.tsv</code> files.</li>
+<li><code>trust4_immune_indices.csv</code> — sample-level immune repertoire indices generated during post-processing.</li>
+<li><code>.trust4.done</code> — <code>runall</code> completion flag for the entire <code>07-TCRBCR/</code> step.</li>
 </ul>
 
 

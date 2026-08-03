@@ -253,8 +253,8 @@ ul.task-list li input[type="checkbox"] {
 <li><code>--mode {salmon|star}</code> (required)</li>
 <li><code>--outdir &lt;DIR&gt;</code> (required): root output directory</li>
 <li><code>--fastq &lt;DIR&gt;</code> (required): forwarded to <code>fastq_qc --path1_fastq</code></li>
-<li><code>--threads &lt;INT&gt;</code> (per-block): CPU/concurrency control set via block-level flags (e.g., fastq_qc –num_threads, batch_salmon –num_threads, batch_star_count –num_threads, merge_salmon –num_processes, cibersort –threads, calculate_sig_score –parallel_size).</li>
-<li><code>--batch_size &lt;INT&gt;</code> (per-block): batching size set via block-level flags (e.g., fastq_qc –batch_size, batch_salmon –batch_size, batch_star_count –batch_size).</li>
+<li><code>--threads &lt;INT&gt;</code> (top-level global): unified CPU/concurrency control propagated to fastq_qc, batch_salmon, batch_star_count, merge_salmon, cibersort, and calculate_sig_score.</li>
+<li><code>--batch_size &lt;INT&gt;</code> (top-level global): unified batching size propagated to fastq_qc, batch_salmon, and batch_star_count.</li>
 <li><code>--resume</code>: skip steps if outputs already exist</li>
 <li><code>--dry_run</code>: print planned commands without executing</li>
 </ul></li>
@@ -282,7 +282,7 @@ ul.task-list li input[type="checkbox"] {
 <li><code>--path2_fastp &lt;DIR&gt;</code> (required): output directory for fastp results (<code>01-qc/</code>)</li>
 <li><code>--num_threads &lt;int&gt;</code> (default: <code>8</code>)</li>
 <li><code>--suffix1 &lt;str&gt;</code> (default: <code>_1.fastq.gz</code>): forward read suffix</li>
-<li><code>--batch_size &lt;int&gt;</code> (default: <code>5</code>)</li>
+<li><code>--batch_size &lt;int&gt;</code> (default: <code>1</code>)</li>
 <li><code>--se</code>: single-end mode</li>
 <li><code>--length_required &lt;int&gt;</code> (default: <code>50</code>)</li>
 <li>Notes: Writes per-sample <code>*_fastp.html/json</code>; if <strong>multiqc</strong> is present, also writes <code>01-qc/multiqc_report/multiqc_fastp_report.html</code>.<br>
@@ -378,7 +378,7 @@ ul.task-list li input[type="checkbox"] {
 <ul>
 <li><code>-i/--input &lt;CSV/TSV/TXT&gt;</code> (required)</li>
 <li><code>-o/--output &lt;CSV/TSV/TXT&gt;</code> (required)</li>
-<li><code>--annotation {anno_hug133plus2|anno_rnaseq|anno_illumina|anno_grch38}</code> (required unless using external file)</li>
+<li><code>--annotation {anno_hug133plus2|anno_rnaseq|anno_illumina|anno_grch38}</code> (required; ignored if <code>--annotation-file</code> is provided)</li>
 <li><code>--annotation-file &lt;pkl/csv/tsv/xlsx&gt;</code>: external annotation (overrides built-in)</li>
 <li><code>--annotation-key &lt;str&gt;</code>: key to pick a table if external <code>.pkl</code> stores a dict of DataFrames</li>
 <li><code>--symbol &lt;str&gt;</code> (default: <code>symbol</code>): column used as gene symbol</li>

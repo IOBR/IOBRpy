@@ -153,7 +153,7 @@ Examples:
 
 **End-to-End Pipeline Runner**
 - `runall` — A single command that wires the full Salmon or STAR pipeline end-to-end and writes the standardized layout:
-  The pipeline creates the following directories, in order: `01-qc/`, `02-salmon/` or `02-star/`, `03-tpm/`, `04-signatures/`, `05-tme/`, and `06-LR_cal/`.
+  The pipeline creates the following directories, in order: `01-qc/`, `02-salmon/` or `02-star/`, `03-tpm/`, `04-signatures/`, `05-tme/`, `06-LR_cal/`, and `07-TCRBCR/`.
 
 **All-in-one TME profiling**
 - `tme_profile` - A single command that inputs a TPM (genes×samples) matrix, performs signature scoring, runs six immune deconvolution methods, merges their outputs, and computes ligand–receptor scores, using the functions `calculate_sig_score`, `cibersort`, `IPS`, `estimate`, `mcpcounter`, `quantiseq`, `epic`, and `LR_cal`.
@@ -194,10 +194,13 @@ Examples:
 
 **Clustering / decomposition**
 - `tme_cluster` — k‑means with **automatic k** via KL index (Hartigan–Wong), feature selection and standardization.
-- `nmf` — NMF‑based clustering (auto‑selects k; excludes k=2) with PCA plot and top features.
+- `nmf` — NMF‑based clustering (auto‑selects k) with PCA plot and top features.
 
 **Ligand–receptor**
 - `LR_cal` — Ligand–receptor interaction scoring using cancer‑type specific networks.
+
+**TCR/BCR repertoire**
+- `trust4` — TRUST4-based TCR/BCR repertoire reconstruction. In `runall`, Salmon mode uses the cleaned FASTQs from `01-qc/`, while STAR mode uses the BAM files from `02-star/`; results are written to `07-TCRBCR/`.
 ---
 
 ## Input Requirements
@@ -285,8 +288,16 @@ iobrpy runall \
 |   |-- estimate_results.csv
 |   |-- mcpcounter_results.csv
 |   `-- deconvo_merged.csv
-`-- 06-LR_cal
-    `-- lr_cal.csv
+|-- 06-LR_cal
+|   `-- lr_cal.csv
+`-- 07-TCRBCR
+    |-- <sample>/
+    |   |-- TRUST_<sample-prefix>_report.tsv
+    |   `-- <sample>.TRUST4.done
+    |-- trust4_immdata.csv
+    |-- trust4_immune_indices.csv
+    `-- .trust4.done
+
 # STAR mode：
 /path/to/outdir
 |-- 01-qc
@@ -325,8 +336,15 @@ iobrpy runall \
 |   |-- estimate_results.csv
 |   |-- mcpcounter_results.csv
 |   `-- deconvo_merged.csv
-`-- 06-LR_cal
-    `-- lr_cal.csv
+|-- 06-LR_cal
+|   `-- lr_cal.csv
+`-- 07-TCRBCR
+    |-- <sample>/
+    |   |-- TRUST_<sample-prefix>_report.tsv
+    |   `-- <sample>.TRUST4.done
+    |-- trust4_immdata.csv
+    |-- trust4_immune_indices.csv
+    `-- .trust4.done
 ```
 
 ---
@@ -336,10 +354,11 @@ iobrpy runall \
 #### Standard layout (produced by `iobrpy runall`)
 - `01-qc/` — fastp outputs; a resume flag `.fastq_qc.done` is written when the step completes.
 - `02-salmon/` **or** `02-star/` — quantification/alignment + merged matrices; resume flags like `.batch_salmon.done`, `.merge_salmon.done`, or `.merge_star_count.done`.
-- `03-tpm/` — unified TPM matrix `tpm_matrix.csv`. For Salmon mode it comes from `prepare_salmon`; for STAR mode it comes from `count2tpm`.
+- `03-tpm/tpm_matrix.csv` — **log2(x+1)** matrix produced from the upstream TPM matrix (`prepare_salmon.csv` in Salmon mode or `count2tpm.csv` in STAR mode).
 - `04-signatures/` — signature scoring results (file: `calculate_sig_score.csv`).
 - `05-tme/` — deconvolution outputs from multiple methods + `deconvo_merged.csv`.
 - `06-LR_cal/` — ligand–receptor results `lr_cal.csv`.
+- `07-TCRBCR/` — per-sample TRUST4 repertoire outputs plus batch-level immune repertoire summaries.
 
 #### Salmon mode (`02-salmon/`)
 - Per-sample Salmon folders containing `quant.sf` (from `batch_salmon`). A `.batch_salmon.done` flag is written after completion.
@@ -375,6 +394,14 @@ Each method writes a single table named `<method>_results.csv`:
 
 #### Ligand–receptor (`06-LR_cal/`)
 - `lr_cal.csv` — ligand–receptor scoring table from `LR_cal`. Record the `--data_type {count|tpm}` and the `--id_type` you used.
+
+#### TCR/BCR repertoire (`07-TCRBCR/`)
+- Input is selected automatically: Salmon mode analyzes paired cleaned FASTQs in `01-qc/`; STAR mode analyzes BAM files in `02-star/`.
+- `<sample>/TRUST_<sample-prefix>_report.tsv` — per-sample TRUST4 clonotype report.
+- `<sample>/<sample>.TRUST4.done` — per-sample completion flag.
+- `trust4_immdata.csv` — combined immune repertoire records generated from all discovered `*_report.tsv` files.
+- `trust4_immune_indices.csv` — sample-level immune repertoire indices generated during post-processing.
+- `.trust4.done` — `runall` completion flag for the entire `07-TCRBCR/` step.
 
 ---
 
